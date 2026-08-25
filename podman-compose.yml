@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: tienda-db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docs/DB.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./docs/DB.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - tienda-net
+
+  backend:
+    build:
+      context: ./backend
+    container_name: backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+    depends_on:
+      - postgres
+    networks:
+      - tienda-net
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - backend
+    networks:
+      - tienda-net
+
+  analitica:
+    build:
+      context: ./analitica
+    container_name: analitica
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ANALITICA_DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+    depends_on:
+      - postgres
+    networks:
+      - tienda-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+      - analitica
+    networks:
+      - tienda-net
+
+networks:
+  tienda-net:
+    driver: bridge
+
+volumes:
+  db_data:
