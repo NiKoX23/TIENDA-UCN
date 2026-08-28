@@ -54,7 +54,7 @@ export default function Login({ onAuthenticated }: { onAuthenticated: (usuario: 
 
                 <button className="login-form-boton" type="submit">Ingresar</button>
 
-                <div className="login-form-separador">o</div>
+                <div className="login-form-separador" aria-hidden="true" />
 
                 <button type="button" className="login-form-boton-google" onClick={loginConGoogle}>
                     <img src={googleLogo} alt="Google" className="login-form-boton-google-logo"/>
