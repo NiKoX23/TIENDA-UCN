@@ -26,6 +26,11 @@ export async function obtenerPerfil(): Promise<Usuario | null> {
     }
 }
 
+export async function updateProfile(nombre: string, email: string, password?: string): Promise<Usuario> {
+    const { data } = await api.put('/auth/perfil', { nombre, email, password });
+    return data.usuario;
+}
+
 export async function logout(): Promise<void> {
     await api.post('/auth/logout');
 }

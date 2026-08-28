@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, UseGuards, Req, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
@@ -6,6 +6,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 const COOKIE_OPTIONS = {
     httpOnly: true,
@@ -52,6 +53,18 @@ export class AuthController {
     @UseGuards(JwtAuthGuard)
     perfil(@Req() req) {
         return req.user;
+    }
+
+    @Put('perfil')
+    @UseGuards(JwtAuthGuard)
+    async actualizarPerfil(
+        @Req() req,
+        @Body() dto: UpdateProfileDto,
+        @Res({ passthrough: true }) res: Response,
+    ) {
+        const { access_token, usuario } = await this.authService.updateProfile(req.user.uid, dto);
+        res.cookie('access_token', access_token, COOKIE_OPTIONS);
+        return { usuario };
     }
 
     @Get('google')

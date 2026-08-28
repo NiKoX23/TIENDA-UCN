@@ -22,7 +22,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         const email = profile.emails?.[0]?.value;
 
         if (!email) {
-            throw new UnauthorizedException('La cuenta de Google no tiene correo');
+            throw new UnauthorizedException('No se pudo obtener el correo electrónico del perfil de Google');
         }
 
         return {

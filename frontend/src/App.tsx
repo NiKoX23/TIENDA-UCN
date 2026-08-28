@@ -5,6 +5,7 @@ import Register from './register/Register';
 import { logout, obtenerPerfil } from './services/auth.service';
 import type { Usuario } from './services/auth.service';
 import Tienda from './tienda/Tienda';
+import Perfil from './perfil/Perfil';
 import './App.css';
 
 export default function App() {
@@ -32,7 +33,11 @@ export default function App() {
         <Routes>
             <Route
                 path="/"
-                element={usuario ? <Tienda usuario={usuario} onLogout={handleLogout} /> : <Navigate to="/login" replace />}
+                element={usuario ? <Tienda usuario={usuario} onPerfil={() => navigate('/perfil')} /> : <Navigate to="/login" replace />}
+            />
+            <Route
+                path="/perfil"
+                element={usuario ? <Perfil usuario={usuario} onLogout={handleLogout} onUpdated={setUsuario} /> : <Navigate to="/login" replace />}
             />
             <Route path="/login" element={<Login onAuthenticated={setUsuario} />} />
             <Route path="/register" element={<Register onAuthenticated={setUsuario} />} />

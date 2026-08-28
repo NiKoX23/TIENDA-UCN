@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { Usuario } from './usuario.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -58,6 +59,28 @@ export class AuthService {
         return this.generarToken(usuario);
     }
 
+    async updateProfile(uid: number, dto: UpdateProfileDto) {
+        const usuario = await this.usuarioRepository.findOne({ where: { uid } });
+        if (!usuario) {
+            throw new UnauthorizedException('Usuario no encontrado');
+        }
+
+        const email = this.normalizarEmail(dto.email);
+        const usuarioConEmail = await this.usuarioRepository.findOne({ where: { email: ILike(email) } });
+        if (usuarioConEmail && usuarioConEmail.uid !== uid) {
+            throw new ConflictException('Ese correo ya está registrado');
+        }
+
+        usuario.nombre = dto.nombre.trim();
+        usuario.email = email;
+        if (dto.password) {
+            usuario.passwordHash = await bcrypt.hash(dto.password, 10);
+        }
+
+        await this.usuarioRepository.save(usuario);
+        return this.generarToken(usuario);
+    }
+
     async loginConGoogle(usuarioGoogle: {googleId: string; nombre: string; email: string;}) {
         const email = this.normalizarEmail(usuarioGoogle.email);
         let usuario = await this.usuarioRepository.findOne({
@@ -94,6 +117,7 @@ export class AuthService {
         const payload = {
             sub: usuario.uid,
             email: usuario.email,
+            nombre: usuario.nombre,
             esAdmin: usuario.esAdmin,
         };
 

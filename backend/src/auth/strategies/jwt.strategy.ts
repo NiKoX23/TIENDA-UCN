@@ -14,8 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: { sub: number; email: string; esAdmin: boolean }) {
-        return { uid: payload.sub, email: payload.email, esAdmin: payload.esAdmin };
+    validate(payload: { sub: number; email: string; nombre?: string; esAdmin: boolean }) {
+      return { uid: payload.sub, nombre: payload.nombre, email: payload.email, esAdmin: payload.esAdmin };
   }
 }
-
