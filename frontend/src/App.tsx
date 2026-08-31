@@ -21,7 +21,7 @@ export default function App() {
             await logout();
         } finally {
             setUsuario(null);
-            navigate('/login', { replace: true });
+            navigate('/', { replace: true });
         }
     };
 
@@ -33,7 +33,14 @@ export default function App() {
         <Routes>
             <Route
                 path="/"
-                element={usuario ? <Tienda usuario={usuario} onPerfil={() => navigate('/perfil')} /> : <Navigate to="/login" replace />}
+                element={
+                    <Tienda
+                        usuario={usuario}
+                        onPerfil={() => navigate('/perfil')}
+                        onLogin={() => navigate('/login')}
+                        onLogout={handleLogout}
+                    />
+                }
             />
             <Route
                 path="/perfil"
