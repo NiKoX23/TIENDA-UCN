@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import './Tienda.css';
 import escudoUcn from '../assets/icons/Escudo-UCN.png';
 import type { Usuario } from '../services/auth.service';
+import { productos, categorias } from '../productos/Productos';
+import { useCarrito } from '../hooks/useCarrito';
+import Carrito from '../carrito/Carrito';
 
 interface TiendaProps {
   usuario: Usuario | null;
@@ -9,61 +12,6 @@ interface TiendaProps {
   onLogin: () => void;
   onLogout: () => void;
 }
-
-interface Talla {
-  nombre: string;
-  disponible: boolean;
-}
-
-interface Producto {
-  nombre: string;
-  categoria: 'poleras' | 'polerones' | 'pantalones' | 'accesorios';
-  precio: string;
-  etiqueta?: 'descuento' | 'nuevo';
-  etiquetaTexto?: string;
-  tallas: Talla[];
-}
-
-const productos: Producto[] = [
-  {
-    nombre: 'Polerón Oversize',
-    categoria: 'polerones',
-    precio: '$19.990',
-    etiqueta: 'descuento',
-    etiquetaTexto: '-20%',
-    tallas: [
-      { nombre: 'S', disponible: true },
-      { nombre: 'M', disponible: true },
-      { nombre: 'L', disponible: false },
-    ],
-  },
-  {
-    nombre: 'Polera Básica',
-    categoria: 'poleras',
-    precio: '$8.990',
-    tallas: [
-      { nombre: 'M', disponible: true },
-      { nombre: 'L', disponible: true },
-      { nombre: 'XL', disponible: true },
-    ],
-  },
-  {
-    nombre: 'Mochila Urbana',
-    categoria: 'accesorios',
-    precio: '$24.990',
-    etiqueta: 'nuevo',
-    etiquetaTexto: 'nuevo',
-    tallas: [{ nombre: 'única', disponible: true }],
-  },
-];
-
-const categorias = [
-  { id: 'todos', label: 'todos' },
-  { id: 'poleras', label: 'poleras' },
-  { id: 'polerones', label: 'polerones' },
-  { id: 'pantalones', label: 'pantalones' },
-  { id: 'accesorios', label: 'accesorios' },
-] as const;
 
 function obtenerIniciales(nombre?: string, email?: string) {
   return (nombre || email || 'Usuario')
@@ -78,12 +26,14 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
   const [categoriaActiva, setCategoriaActiva] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [favoritos, setFavoritos] = useState<string[]>([]);
-  const [carrito, setCarrito] = useState<string[]>([]);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
+  const [carritoAbierto, setCarritoAbierto] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const esInvitado = !usuario;
+
+  const carrito = useCarrito(usuario?.uid);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -95,6 +45,11 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
+
+  // Si el usuario cierra sesión, el panel del carrito no debe quedar abierto.
+  useEffect(() => {
+    if (esInvitado) setCarritoAbierto(false);
+  }, [esInvitado]);
 
   const productosFiltrados = useMemo(() => {
     return productos.filter((producto) => {
@@ -148,16 +103,20 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
       return;
     }
 
-    window.alert(`Tienes ${carrito.length} producto(s) en el carrito.`);
+    setCarritoAbierto(true);
   };
 
-  const handleAgregarAlCarrito = (nombreProducto: string) => {
+  const handleAgregarAlCarrito = (producto: (typeof productos)[number]) => {
     if (esInvitado) {
       requiereLogin();
       return;
     }
 
-    setCarrito((actual) => [...actual, nombreProducto]);
+    carrito.agregar(producto);
+  };
+
+  const handleIrAPagar = () => {
+    window.alert('El pago aún no está disponible. ¡Vuelve pronto!');
   };
 
   const avatarTexto = esInvitado ? 'IN' : obtenerIniciales(usuario?.nombre, usuario?.email);
@@ -182,6 +141,18 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
           </div>
         </div>
       )}
+
+      <Carrito
+        abierto={carritoAbierto}
+        items={carrito.items}
+        total={carrito.total}
+        onCerrar={() => setCarritoAbierto(false)}
+        onSumar={carrito.sumarUno}
+        onRestar={carrito.restarUno}
+        onEliminar={carrito.eliminar}
+        onCantidad={carrito.actualizarCantidad}
+        onIrAPagar={handleIrAPagar}
+      />
 
       <header className="tienda-header">
         <a className="tienda-marca" href="/">
@@ -219,14 +190,18 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
           <button
             type="button"
             className="tienda-icono-boton tienda-carrito"
-            aria-label={`Carrito (${carrito.length})`}
+            aria-label={`Carrito (${carrito.cantidadTotal})`}
             onClick={handleCarrito}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M6 8h12l-1 12H7L6 8Z" />
               <path d="M9 8V6a3 3 0 0 1 6 0v2" />
             </svg>
-            <span className="tienda-carrito-badge">{carrito.length}</span>
+            {carrito.cantidadTotal > 0 && (
+              <span className="tienda-carrito-badge" aria-hidden="true">
+                {carrito.cantidadTotal}
+              </span>
+            )}
           </button>
 
           <div className="tienda-avatar-wrapper" ref={menuRef}>
@@ -380,7 +355,7 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
                 <button
                   type="button"
                   className="producto-agregar"
-                  onClick={() => handleAgregarAlCarrito(producto.nombre)}
+                  onClick={() => handleAgregarAlCarrito(producto)}
                 >
                   agregar al carrito
                 </button>
