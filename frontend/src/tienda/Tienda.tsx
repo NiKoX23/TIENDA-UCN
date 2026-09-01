@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './Tienda.css';
+import escudoUcn from '../assets/icons/Escudo-UCN.png';
 import type { Usuario } from '../services/auth.service';
 
 interface TiendaProps {
@@ -185,9 +186,7 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
       <header className="tienda-header">
         <a className="tienda-marca" href="/">
           <span className="tienda-marca-icono" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M8 4 5 7v3h2v10h10V10h2V7l-3-3-2 2H10L8 4Z" />
-            </svg>
+            <img src={escudoUcn} alt="Escudo UCN" className="tienda-marca-icono-img" />
           </span>
           tienda ucn
         </a>
