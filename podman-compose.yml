@@ -15,6 +15,7 @@ services:
       - db_data:/var/lib/postgresql/data
       - ./docs/DB.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./docs/DB.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./docs/catalogo.sql:/docker-entrypoint-initdb.d/02-catalogo.sql:ro
     ports:
       - "5432:5432"
     networks:
@@ -62,7 +63,7 @@ services:
     container_name: nginx
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:

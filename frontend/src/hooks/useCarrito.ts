@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Producto } from '../productos/Productos';
-import { parsePrecioCLP } from '../utils/precio';
 
 export interface ItemCarrito {
+  codigoProducto: string;
   nombre: string;
   precio: number;
+  imagen: string;
+  stock: number;
   cantidad: number;
 }
 
@@ -24,19 +26,13 @@ function cargarCarrito(uid?: number): ItemCarrito[] {
   }
 }
 
-/**
- * Maneja el estado del carrito de compras y lo persiste en localStorage,
- * separado por usuario (uid), para que el progreso no se pierda al recargar.
- */
 export function useCarrito(uid?: number) {
   const [items, setItems] = useState<ItemCarrito[]>(() => cargarCarrito(uid));
 
-  // Cuando cambia el usuario (login/logout/cambio de cuenta), recarga su carrito.
   useEffect(() => {
     setItems(cargarCarrito(uid));
   }, [uid]);
 
-  // Persiste cada cambio en localStorage bajo la clave del usuario actual.
   useEffect(() => {
     const clave = claveCarrito(uid);
     if (!clave) return;
@@ -45,46 +41,63 @@ export function useCarrito(uid?: number) {
 
   const agregar = useCallback((producto: Producto) => {
     setItems((actuales) => {
-      const existente = actuales.find((item) => item.nombre === producto.nombre);
+      const existente = actuales.find((item) => item.codigoProducto === producto.codigoProducto);
       if (existente) {
+        if (existente.cantidad >= producto.stock) return actuales;
         return actuales.map((item) =>
-          item.nombre === producto.nombre ? { ...item, cantidad: item.cantidad + 1 } : item,
+          item.codigoProducto === producto.codigoProducto
+            ? { ...item, stock: producto.stock, cantidad: item.cantidad + 1 }
+            : item,
         );
       }
+      if (producto.stock < 1) return actuales;
       return [
         ...actuales,
-        { nombre: producto.nombre, precio: parsePrecioCLP(producto.precio), cantidad: 1 },
+        {
+          codigoProducto: producto.codigoProducto,
+          nombre: producto.nombre,
+          precio: producto.precio,
+          imagen: producto.imagen,
+          stock: producto.stock,
+          cantidad: 1,
+        },
       ];
     });
   }, []);
 
-  const sumarUno = useCallback((nombre: string) => {
+  const sumarUno = useCallback((codigoProducto: string) => {
     setItems((actuales) =>
-      actuales.map((item) => (item.nombre === nombre ? { ...item, cantidad: item.cantidad + 1 } : item)),
+      actuales.map((item) =>
+        item.codigoProducto === codigoProducto && item.cantidad < item.stock
+          ? { ...item, cantidad: item.cantidad + 1 }
+          : item,
+      ),
     );
   }, []);
 
-  const restarUno = useCallback((nombre: string) => {
+  const restarUno = useCallback((codigoProducto: string) => {
     setItems((actuales) =>
       actuales
-        .map((item) => (item.nombre === nombre ? { ...item, cantidad: item.cantidad - 1 } : item))
+        .map((item) => (item.codigoProducto === codigoProducto ? { ...item, cantidad: item.cantidad - 1 } : item))
         .filter((item) => item.cantidad > 0),
     );
   }, []);
 
-  const actualizarCantidad = useCallback((nombre: string, cantidad: number) => {
+  const actualizarCantidad = useCallback((codigoProducto: string, cantidad: number) => {
     setItems((actuales) => {
       if (!Number.isFinite(cantidad) || cantidad <= 0) {
-        return actuales.filter((item) => item.nombre !== nombre);
+        return actuales.filter((item) => item.codigoProducto !== codigoProducto);
       }
       return actuales.map((item) =>
-        item.nombre === nombre ? { ...item, cantidad: Math.floor(cantidad) } : item,
+        item.codigoProducto === codigoProducto
+          ? { ...item, cantidad: Math.min(Math.floor(cantidad), item.stock) }
+          : item,
       );
     });
   }, []);
 
-  const eliminar = useCallback((nombre: string) => {
-    setItems((actuales) => actuales.filter((item) => item.nombre !== nombre));
+  const eliminar = useCallback((codigoProducto: string) => {
+    setItems((actuales) => actuales.filter((item) => item.codigoProducto !== codigoProducto));
   }, []);
 
   const vaciar = useCallback(() => setItems([]), []);

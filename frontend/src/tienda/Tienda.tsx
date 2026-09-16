@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Tienda.css';
 import escudoUcn from '../assets/icons/Escudo-UCN.png';
 import type { Usuario } from '../services/auth.service';
-import { productos, categorias } from '../productos/Productos';
+import type { Producto } from '../productos/Productos';
+import { categorias } from '../productos/Productos';
+import { listarProductos, comprarProductos } from '../services/productos.service';
 import { useCarrito } from '../hooks/useCarrito';
 import Carrito from '../carrito/Carrito';
+import { formatearCLP } from '../utils/precio';
 
 interface TiendaProps {
   usuario: Usuario | null;
+  tema: 'dark' | 'light';
+  onToggleTema: () => void;
   onPerfil: () => void;
   onLogin: () => void;
   onLogout: () => void;
@@ -22,18 +28,39 @@ function obtenerIniciales(nombre?: string, email?: string) {
     .join('');
 }
 
-export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaProps) {
+export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout }: TiendaProps) {
+  const navigate = useNavigate();
   const [categoriaActiva, setCategoriaActiva] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
   const [carritoAbierto, setCarritoAbierto] = useState(false);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [cargandoProductos, setCargandoProductos] = useState(true);
+  const [errorProductos, setErrorProductos] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const esInvitado = !usuario;
 
   const carrito = useCarrito(usuario?.uid);
+
+  useEffect(() => {
+    let activo = true;
+    listarProductos()
+      .then((datos) => {
+        if (activo) setProductos(datos);
+      })
+      .catch(() => {
+        if (activo) setErrorProductos(true);
+      })
+      .finally(() => {
+        if (activo) setCargandoProductos(false);
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -55,14 +82,14 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
     return productos.filter((producto) => {
       const coincideCategoria =
         categoriaActiva === 'todos' ||
-        (categoriaActiva === 'favoritos' && favoritos.includes(producto.nombre)) ||
+        (categoriaActiva === 'favoritos' && favoritos.includes(producto.codigoProducto)) ||
         producto.categoria === categoriaActiva;
       const coincideBusqueda = producto.nombre
         .toLowerCase()
         .includes(busqueda.toLowerCase());
       return coincideCategoria && coincideBusqueda;
     });
-  }, [categoriaActiva, busqueda, favoritos]);
+  }, [categoriaActiva, busqueda, favoritos, productos]);
 
   const abrirLogin = () => {
     setModalLoginAbierto(false);
@@ -84,16 +111,16 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
     setCategoriaActiva((actual) => (actual === 'favoritos' ? 'todos' : 'favoritos'));
   };
 
-  const handleToggleFavorito = (nombreProducto: string) => {
+  const handleToggleFavorito = (codigoProducto: string) => {
     if (esInvitado) {
       requiereLogin();
       return;
     }
 
     setFavoritos((actuales) =>
-      actuales.includes(nombreProducto)
-        ? actuales.filter((nombre) => nombre !== nombreProducto)
-        : [...actuales, nombreProducto],
+      actuales.includes(codigoProducto)
+        ? actuales.filter((codigo) => codigo !== codigoProducto)
+        : [...actuales, codigoProducto],
     );
   };
 
@@ -115,8 +142,17 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
     carrito.agregar(producto);
   };
 
-  const handleIrAPagar = () => {
-    window.alert('El pago aún no está disponible. ¡Vuelve pronto!');
+  const handleIrAPagar = async () => {
+    try {
+      const compra = await comprarProductos(
+        carrito.items.map(({ codigoProducto, cantidad }) => ({ codigoProducto, cantidad })),
+      );
+      carrito.vaciar();
+      setCarritoAbierto(false);
+      window.alert(`Compra registrada: ${compra.numeroDocumento}`);
+    } catch {
+      window.alert('No fue posible completar la compra. Revisa el stock disponible.');
+    }
   };
 
   const avatarTexto = esInvitado ? 'IN' : obtenerIniciales(usuario?.nombre, usuario?.email);
@@ -204,6 +240,16 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
             )}
           </button>
 
+          <button
+            type="button"
+            className="theme-toggle theme-toggle--header"
+            onClick={onToggleTema}
+            aria-label={tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            title={tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          >
+            {tema === 'dark' ? '☀' : '☾'}
+          </button>
+
           <div className="tienda-avatar-wrapper" ref={menuRef}>
             <button
               type="button"
@@ -255,6 +301,23 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
         </div>
       </header>
 
+      <section className="tienda-hero">
+        <div className="tienda-hero-content">
+          <h1 className="tienda-hero-title">¡Bienvenido a la Tienda UCN!</h1>
+          <p className="tienda-hero-subtitle">Descubre la mejor selección de merchandising oficial, ropa y accesorios exclusivos para nuestra comunidad.</p>
+          <button 
+            type="button" 
+            className="tienda-hero-cta" 
+            onClick={() => setCategoriaActiva('todos')}
+          >
+            Explorar Colección
+          </button>
+        </div>
+        <div className="tienda-hero-image-wrapper">
+          <img src={escudoUcn} alt="Escudo UCN" className="tienda-hero-image" aria-hidden="true" />
+        </div>
+      </section>
+
       <nav className="tienda-categorias">
         {categorias.map((categoria) => (
           <button
@@ -272,26 +335,6 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
         ))}
       </nav>
 
-      <section className="tienda-banner">
-        <div>
-          <p className="tienda-banner-etiqueta">nueva colección</p>
-          <h1 className="tienda-banner-titulo">invierno 2026, hasta 30% de descuento</h1>
-          <button type="button" className="tienda-banner-boton">
-            ver colección
-          </button>
-        </div>
-        <svg
-          className="tienda-banner-icono"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          aria-hidden="true"
-        >
-          <path d="M8 4 5 7v3h2v10h10V10h2V7l-3-3-2 2H10L8 4Z" />
-        </svg>
-      </section>
-
       <section className="tienda-destacados" aria-labelledby="destacados-titulo">
         <div className="tienda-destacados-header">
           <h2 id="destacados-titulo">destacados</h2>
@@ -304,30 +347,27 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
         </div>
 
         <div className="tienda-productos">
+          {cargandoProductos && <p className="tienda-sin-resultados">Cargando productos...</p>}
+          {errorProductos && <p className="tienda-sin-resultados">No fue posible cargar el catálogo.</p>}
           {productosFiltrados.map((producto) => (
-            <article className="producto" key={producto.nombre}>
-              <div className="producto-imagen">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                  <path d="M8 4 5 7v3h2v10h10V10h2V7l-3-3-2 2H10L8 4Z" />
-                </svg>
-
-                {producto.etiqueta && (
-                  <span
-                    className={
-                      producto.etiqueta === 'descuento'
-                        ? 'producto-etiqueta producto-etiqueta--descuento'
-                        : 'producto-etiqueta producto-etiqueta--nuevo'
-                    }
-                  >
-                    {producto.etiquetaTexto}
-                  </span>
-                )}
+            <article className="producto" key={producto.codigoProducto}>
+              <div className="producto-imagen-container">
+                <div 
+                  className="producto-imagen"
+                  onClick={() => navigate(`/producto/${producto.codigoProducto}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/producto/${producto.codigoProducto}`) }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <img src={producto.imagen} alt={producto.nombre} className="producto-imagen-real" />
+                </div>
 
                 <button
                   type="button"
-                  className={`producto-favorito${favoritos.includes(producto.nombre) ? ' producto-favorito--activo' : ''}`}
-                  aria-label={favoritos.includes(producto.nombre) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                  onClick={() => handleToggleFavorito(producto.nombre)}
+                  className={`producto-favorito${favoritos.includes(producto.codigoProducto) ? ' producto-favorito--activo' : ''}`}
+                  aria-label={favoritos.includes(producto.codigoProducto) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                  onClick={(e) => { e.stopPropagation(); handleToggleFavorito(producto.codigoProducto); }}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 5 6.5 5c2 0 3.5 1.5 5.5 3.5C14 6.5 15.5 5 17.5 5 21 5 23.5 8.5 21.5 12.5 19 16.65 12 21 12 21Z" />
@@ -336,28 +376,31 @@ export default function Tienda({ usuario, onPerfil, onLogin, onLogout }: TiendaP
               </div>
 
               <div className="producto-info">
-                <p className="producto-nombre">{producto.nombre}</p>
-                <p className="producto-precio">{producto.precio}</p>
+                <p 
+                  className="producto-nombre"
+                  onClick={() => navigate(`/producto/${producto.codigoProducto}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/producto/${producto.codigoProducto}`) }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {producto.nombre}
+                </p>
+                <div className="producto-precio-wrapper">
+                  <p className="producto-precio">{formatearCLP(producto.precio)}</p>
+                </div>
                 <div className="producto-tallas">
-                  {producto.tallas.map((talla) => (
-                    <span
-                      key={talla.nombre}
-                      className={
-                        talla.disponible
-                          ? 'producto-talla'
-                          : 'producto-talla producto-talla--agotada'
-                      }
-                    >
-                      {talla.nombre}
-                    </span>
-                  ))}
+                  <span className={producto.stock > 0 ? 'producto-talla' : 'producto-talla producto-talla--agotada'}>
+                    {producto.stock > 0 ? `${producto.stock} disponibles` : 'sin stock'}
+                  </span>
                 </div>
                 <button
                   type="button"
                   className="producto-agregar"
                   onClick={() => handleAgregarAlCarrito(producto)}
+                  disabled={producto.stock < 1}
                 >
-                  agregar al carrito
+                  {producto.stock > 0 ? 'agregar al carrito' : 'agotado'}
                 </button>
               </div>
             </article>

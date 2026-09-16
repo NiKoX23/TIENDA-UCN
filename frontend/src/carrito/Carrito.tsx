@@ -71,7 +71,8 @@ export default function Carrito({
         ) : (
           <ul className="carrito-lista">
             {items.map((item) => (
-              <li className="carrito-item" key={item.nombre}>
+              <li className="carrito-item" key={item.codigoProducto}>
+                <img src={item.imagen} alt="" className="carrito-item-imagen" />
                 <div className="carrito-item-info">
                   <p className="carrito-item-nombre">{item.nombre}</p>
                   <p className="carrito-item-precio">{formatearCLP(item.precio)} c/u</p>
@@ -81,7 +82,7 @@ export default function Carrito({
                   <div className="carrito-cantidad">
                     <button
                       type="button"
-                      onClick={() => onRestar(item.nombre)}
+                      onClick={() => onRestar(item.codigoProducto)}
                       aria-label={`Quitar una unidad de ${item.nombre}`}
                     >
                       −
@@ -90,12 +91,12 @@ export default function Carrito({
                       type="number"
                       min={1}
                       value={item.cantidad}
-                      onChange={(e) => onCantidad(item.nombre, Number(e.target.value))}
+                      onChange={(e) => onCantidad(item.codigoProducto, Number(e.target.value))}
                       aria-label={`Cantidad de ${item.nombre}`}
                     />
                     <button
                       type="button"
-                      onClick={() => onSumar(item.nombre)}
+                      onClick={() => onSumar(item.codigoProducto)}
                       aria-label={`Agregar una unidad de ${item.nombre}`}
                     >
                       +
@@ -107,7 +108,7 @@ export default function Carrito({
                   <button
                     type="button"
                     className="carrito-item-eliminar"
-                    onClick={() => onEliminar(item.nombre)}
+                    onClick={() => onEliminar(item.codigoProducto)}
                     aria-label={`Eliminar ${item.nombre} del carrito`}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">

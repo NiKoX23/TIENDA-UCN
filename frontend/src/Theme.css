@@ -1,0 +1,190 @@
+.app-shell {
+  min-height: 100vh;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 18px;
+  right: 76px;
+  z-index: 100;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 50%;
+  background: #111827;
+  color: #f8fafc;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.28);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  transform: translateY(-1px);
+  border-color: #a78bfa;
+  outline: none;
+}
+
+html[data-theme='light'],
+html[data-theme='light'] body {
+  background: #f3f6fb;
+  color: #172033;
+}
+
+.app-shell--light .theme-toggle {
+  background: #ffffff;
+  color: #172033;
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 24px rgba(71, 85, 105, 0.18);
+}
+
+.app-shell--light .login-container,
+.app-shell--light .register-container,
+.app-shell--light .perfil {
+  background:
+    radial-gradient(circle at top left, rgba(124, 58, 237, 0.1), transparent 30%),
+    linear-gradient(180deg, #f8fafc 0%, #e8eef7 100%);
+  color: #172033;
+}
+
+.app-shell--light .login-form,
+.app-shell--light .register-form,
+.app-shell--light .perfil-formulario {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: #d7dfeb;
+  box-shadow: 0 24px 60px rgba(71, 85, 105, 0.16);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.app-shell--light .login-form-titulo,
+.app-shell--light .register-form-titulo,
+.app-shell--light .perfil-formulario h1 {
+  color: #172033;
+}
+
+.app-shell--light .login-form-input,
+.app-shell--light .register-form-input,
+.app-shell--light .perfil-formulario input {
+  background: #f8fafc;
+  color: #172033;
+  border-color: #cbd5e1;
+}
+
+.app-shell--light .login-form-boton-google,
+.app-shell--light .perfil-volver,
+.app-shell--light .perfil-cerrar {
+  background: #ffffff;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.app-shell--light .login-form-boton-google:hover,
+.app-shell--light .perfil-volver:hover,
+.app-shell--light .perfil-cerrar:hover {
+  background: #eef2f7;
+}
+
+.app-shell--light .login-form-registro,
+.app-shell--light .register-form-login,
+.app-shell--light .perfil-formulario label {
+  color: #475569;
+}
+
+.app-shell--light .tienda {
+  --tienda-bg: #f0f4f8;
+  --tienda-surface-1: #ffffff;
+  --tienda-surface-2: #f8fafc;
+  --tienda-border: rgba(51, 65, 85, 0.15);
+  --tienda-text-primary: #0f172a;
+  --tienda-text-secondary: #334155;
+  --tienda-text-muted: #64748b;
+  --tienda-accent-bg: linear-gradient(135deg, #2563eb, #3b82f6);
+  --tienda-accent-text: #ffffff;
+  --tienda-danger-bg: #fef2f2;
+  --tienda-danger-text: #ef4444;
+  --tienda-success-bg: #f0fdf4;
+  --tienda-success-text: #22c55e;
+  background: #f0f4f8;
+}
+
+.app-shell--light .detalle-page {
+  --tienda-bg: #f0f4f8;
+  --tienda-surface-1: #ffffff;
+  --tienda-surface-2: #f8fafc;
+  --tienda-border: rgba(51, 65, 85, 0.15);
+  --tienda-text-primary: #0f172a;
+  --tienda-text-secondary: #334155;
+  --tienda-text-muted: #64748b;
+  --tienda-accent-bg: linear-gradient(135deg, #2563eb, #3b82f6);
+  --tienda-accent-text: #2563eb;
+  --tienda-danger-bg: #fef2f2;
+  --tienda-danger-text: #b91c1c;
+  --tienda-success-bg: #f0fdf4;
+  --tienda-success-text: #15803d;
+  background: #f0f4f8;
+}
+
+.app-shell--light .tienda-header {
+  background: #ffffff;
+  border-bottom-color: #d7dfeb;
+  box-shadow: 0 5px 18px rgba(71, 85, 105, 0.1);
+}
+
+.app-shell--light .tienda-buscador,
+.app-shell--light .tienda-icono-boton,
+.app-shell--light .tienda-avatar-menu,
+.app-shell--light .producto,
+.app-shell--light .tienda-envio {
+  background: #ffffff;
+  border-color: #d7dfeb;
+}
+
+.app-shell--light .tienda-buscador input,
+.app-shell--light .tienda-buscador input::placeholder {
+  color: #475569;
+}
+
+.app-shell--light .tienda-categoria,
+.app-shell--light .producto-agregar,
+.app-shell--light .producto-talla {
+  background: #f8fafc;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.app-shell--light .producto-imagen {
+  background: transparent;
+}
+
+.app-shell--light .producto-precio {
+  color: #334155;
+}
+
+.app-shell--light .carrito-panel {
+  background: #f8fafc;
+  border-left-color: #d7dfeb;
+}
+
+.app-shell--light .carrito-item {
+  background: #ffffff;
+  border-color: #d7dfeb;
+}
+
+.app-shell--light .carrito-cantidad {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+@media (max-width: 720px) {
+  .theme-toggle {
+    top: 12px;
+    right: 68px;
+  }
+}
+
+.theme-toggle--header {
+  position: static;
+  flex: 0 0 42px;
+}
