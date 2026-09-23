@@ -2,20 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { listarProductos } from '../services/productos.service';
 import type { Producto } from './Productos';
+import type { Usuario } from '../services/auth.service';
 import { useCarrito } from '../hooks/useCarrito';
 
 interface DetalleProductoProps {
-  usuario: { uid: number; nombre: string } | null;
+  usuario: Usuario | null;
   tema: 'dark' | 'light';
   onToggleTema: () => void;
   onPerfil: () => void;
   onLogin: () => void;
   onLogout: () => void;
+  onAdmin: () => void;
 }
 
 const categoriasConTalla = new Set(['polerones', 'poleras', 'pantalones']);
 
-export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout }: DetalleProductoProps) {
+export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: DetalleProductoProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [producto, setProducto] = useState<Producto | null>(null);
@@ -173,6 +175,11 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
                     <button type="button" className="rounded-xl bg-violet-500/15 px-3 py-2 text-left text-sm font-semibold text-slate-100 hover:bg-violet-500/25" onClick={onPerfil}>
                       Editar perfil
                     </button>
+                    {usuario?.esAdmin && (
+                      <button type="button" className="rounded-xl bg-slate-500/15 px-3 py-2 text-left text-sm font-semibold text-slate-100 hover:bg-slate-500/25" onClick={onAdmin}>
+                        Panel admin
+                      </button>
+                    )}
                     <button type="button" className="rounded-xl bg-red-500/15 px-3 py-2 text-left text-sm font-semibold text-red-200 hover:bg-red-500/25" onClick={onLogout}>
                       Cerrar sesión
                     </button>

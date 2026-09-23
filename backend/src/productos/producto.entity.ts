@@ -1,4 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryColumn,
+} from 'typeorm';
 import { Categoria } from './categoria.entity';
 import { VarianteProducto } from './variante-producto.entity';
 
@@ -7,7 +14,9 @@ export class Producto {
   @PrimaryColumn({ name: 'codigo_producto', type: 'varchar', length: 15 })
   codigoProducto!: string;
 
-  @ManyToOne(() => Categoria, (categoria) => categoria.productos, { nullable: false })
+  @ManyToOne(() => Categoria, (categoria) => categoria.productos, {
+    nullable: false,
+  })
   @JoinColumn({ name: 'id_categoria' })
   categoria!: Categoria;
 

@@ -16,6 +16,7 @@ interface TiendaProps {
   onPerfil: () => void;
   onLogin: () => void;
   onLogout: () => void;
+  onAdmin: () => void;
 }
 
 function obtenerIniciales(nombre?: string, email?: string) {
@@ -27,7 +28,7 @@ function obtenerIniciales(nombre?: string, email?: string) {
     .join('');
 }
 
-export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout }: TiendaProps) {
+export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: TiendaProps) {
   const navigate = useNavigate();
   const [categoriaActiva, setCategoriaActiva] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
@@ -292,6 +293,18 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                     >
                       Editar perfil
                     </button>
+                    {usuario?.esAdmin && (
+                      <button
+                        type="button"
+                        className={`rounded-xl px-3 py-2 text-left text-sm font-semibold ${tema === 'light' ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' : 'bg-slate-500/15 text-slate-100 hover:bg-slate-500/25'}`}
+                        onClick={() => {
+                          setMenuAbierto(false);
+                          onAdmin();
+                        }}
+                      >
+                        Panel admin
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="rounded-xl bg-red-500/15 px-3 py-2 text-left text-sm font-semibold text-red-200 hover:bg-red-500/25"

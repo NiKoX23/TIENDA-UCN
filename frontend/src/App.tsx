@@ -7,6 +7,7 @@ import type { Usuario } from './services/auth.service';
 import Tienda from './tienda/Tienda';
 import Perfil from './perfil/Perfil';
 import DetalleProducto from './productos/DetalleProducto';
+import AdminPanel from './admin/AdminPanel';
 
 type Theme = 'dark' | 'light';
 
@@ -66,6 +67,7 @@ export default function App() {
                                 onPerfil={() => navigate('/perfil')}
                                 onLogin={() => navigate('/login')}
                                 onLogout={handleLogout}
+                                onAdmin={() => navigate('/admin')}
                             />
                         }
                     />
@@ -79,12 +81,17 @@ export default function App() {
                                 onPerfil={() => navigate('/perfil')}
                                 onLogin={() => navigate('/login')}
                                 onLogout={handleLogout}
+                                onAdmin={() => navigate('/admin')}
                             />
                         }
                     />
                     <Route
                         path="/perfil"
                         element={usuario ? <Perfil tema={tema} usuario={usuario} onLogout={handleLogout} onUpdated={setUsuario} /> : <Navigate to="/login" replace />}
+                    />
+                    <Route
+                        path="/admin"
+                        element={!usuario ? <Navigate to="/login" replace /> : usuario.esAdmin ? <AdminPanel tema={tema} usuario={usuario} /> : <Navigate to="/" replace />}
                     />
                     <Route path="/login" element={<Login tema={tema} onAuthenticated={setUsuario} />} />
                     <Route path="/register" element={<Register tema={tema} onAuthenticated={setUsuario} />} />

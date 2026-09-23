@@ -9,7 +9,10 @@ export class FacturacionController {
 
   @Post('comprar')
   @UseGuards(JwtAuthGuard)
-  crearCompra(@Req() req: { user: { uid: number } }, @Body() dto: CrearCompraDto) {
+  crearCompra(
+    @Req() req: { user: { uid: number } },
+    @Body() dto: CrearCompraDto,
+  ) {
     return this.facturacionService.crearCompra(req.user.uid, dto);
   }
 }

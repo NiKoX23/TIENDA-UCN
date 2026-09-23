@@ -17,19 +17,21 @@ export class ProductosService {
       order: { nombre: 'ASC' },
     });
 
-    return productos.flatMap((producto) => producto.variantes.map((variante) => ({
-      codigoProducto: producto.codigoProducto,
-      nombre: producto.nombre,
-      descripcion: producto.descripcion,
-      categoria: producto.categoria.nombre,
-      precio: producto.precioVenta,
-      precioTac: producto.precioTac,
-      imagen: producto.imagenUrl,
-      idVariante: variante.idVariante,
-      talla: variante.talla,
-      color: variante.color,
-      sku: variante.sku,
-      stock: variante.stock,
-    })));
+    return productos.flatMap((producto) =>
+      producto.variantes.map((variante) => ({
+        codigoProducto: producto.codigoProducto,
+        nombre: producto.nombre,
+        descripcion: producto.descripcion,
+        categoria: producto.categoria.nombre,
+        precio: producto.precioVenta,
+        precioTac: producto.precioTac,
+        imagen: producto.imagenUrl,
+        idVariante: variante.idVariante,
+        talla: variante.talla,
+        color: variante.color,
+        sku: variante.sku,
+        stock: variante.stock,
+      })),
+    );
   }
 }
