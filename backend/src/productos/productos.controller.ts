@@ -9,4 +9,9 @@ export class ProductosController {
   listar() {
     return this.productosService.listar();
   }
+
+  @Get('categorias')
+  listarCategorias() {
+    return this.productosService.listarCategorias();
+  }
 }
