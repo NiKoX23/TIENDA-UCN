@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Usuario } from '../services/auth.service';
 import { listarUsuarios, cambiarRol, type AdminUsuario } from '../services/admin.service';
 import InventarioTab from './InventarioTab';
+import DashboardTab from './DashboardTab';
 
 interface AdminPanelProps {
     tema: 'dark' | 'light';
@@ -22,7 +23,7 @@ const TABS: { id: TabId; label: string }[] = [
 const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
     inicio: {
         titulo: 'Panel de administración',
-        descripcion: 'Resumen del negocio. Los indicadores clave se habilitarán en la entrega de KPIs.',
+        descripcion: 'Resumen del negocio: indicadores clave, resumen por producto y alertas de stock.',
     },
     inventario: {
         titulo: 'Inventario',
@@ -41,8 +42,6 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
         descripcion: 'Gestiona los permisos de administrador de los usuarios.',
     },
 };
-
-const KPI_PLACEHOLDERS = ['Ingresos totales', 'Ganancias', 'Productos en stock crítico'];
 
 export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
     const navigate = useNavigate();
@@ -124,14 +123,8 @@ export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
                 </div>
 
                 {tab === 'inicio' && (
-                    <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                        {KPI_PLACEHOLDERS.map((label) => (
-                            <div key={label} className="rounded-2xl border border-dashed border-slate-400/25 bg-slate-950/40 p-5">
-                                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
-                                <p className="mt-2 text-2xl font-extrabold text-slate-600">—</p>
-                                <p className="mt-1 text-xs text-slate-500">Disponible en la entrega de KPIs.</p>
-                            </div>
-                        ))}
+                    <div className="mt-6">
+                        <DashboardTab />
                     </div>
                 )}
 
