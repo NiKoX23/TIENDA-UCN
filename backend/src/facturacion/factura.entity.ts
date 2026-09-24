@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Cliente } from '../clientes/cliente.entity';
+import { DocumentoTac } from '../ventas/documento-tac.entity';
 
 @Entity('facturas')
 export class Factura {
@@ -46,6 +47,21 @@ export class Factura {
 
   @Column({ name: 'metodo_pago', type: 'varchar', length: 30 })
   metodoPago!: string;
+
+  @Column({
+    name: 'tipo_venta',
+    type: 'varchar',
+    length: 10,
+    default: 'normal',
+  })
+  tipoVenta!: 'normal' | 'tac';
+
+  @ManyToOne(() => DocumentoTac, { nullable: true })
+  @JoinColumn({ name: 'id_tac' })
+  documento!: DocumentoTac | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  observaciones!: string | null;
 
   @CreateDateColumn({ type: 'timestamp' })
   fecha!: Date;

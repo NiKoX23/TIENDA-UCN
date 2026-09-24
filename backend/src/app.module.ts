@@ -8,6 +8,7 @@ import { ProductosModule } from './productos/productos.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { FacturacionModule } from './facturacion/facturacion.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { VentasModule } from './ventas/ventas.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ClientesModule,
     FacturacionModule,
     DashboardModule,
+    VentasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

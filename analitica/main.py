@@ -40,11 +40,20 @@ def resumen():
     try:
         with conexion.cursor() as cur:
             cur.execute(
-                "SELECT id_variante, COALESCE(SUM(cantidad), 0) FROM salidas GROUP BY id_variante"
+                """
+                SELECT s.id_variante, f.tipo_venta, COALESCE(SUM(s.cantidad), 0)
+                FROM salidas s
+                JOIN facturas f ON f.id_factura = s.id_factura
+                GROUP BY s.id_variante, f.tipo_venta
+                """
             )
-            vendidas_por_variante = {
-                int(fila[0]): int(fila[1]) for fila in cur.fetchall()
-            }
+            vendidas_normales = defaultdict(int)
+            vendidas_tac = defaultdict(int)
+            for id_variante, tipo, cantidad in cur.fetchall():
+                if tipo == "tac":
+                    vendidas_tac[int(id_variante)] = int(cantidad or 0)
+                else:
+                    vendidas_normales[int(id_variante)] = int(cantidad or 0)
 
             cur.execute(
                 """
@@ -59,10 +68,20 @@ def resumen():
             )
             productos = cur.fetchall()
 
-            cur.execute("SELECT COUNT(*), COALESCE(SUM(total), 0) FROM facturas")
-            total_ventas, ingreso_normal = cur.fetchone()
-            total_ventas = int(total_ventas or 0)
-            ingreso_normal = int(ingreso_normal or 0)
+            cur.execute(
+                """
+                SELECT tipo_venta, COUNT(*), COALESCE(SUM(total), 0)
+                FROM facturas GROUP BY tipo_venta
+                """
+            )
+            ventas_normal = (0, 0)
+            ventas_tac = (0, 0)
+            for tipo, conteo, ingreso in cur.fetchall():
+                par = (int(conteo or 0), int(ingreso or 0))
+                if tipo == "tac":
+                    ventas_tac = par
+                else:
+                    ventas_normal = par
 
             cur.execute(
                 """
@@ -71,11 +90,28 @@ def resumen():
                     0
                 )
                 FROM salidas s
+                JOIN facturas f ON f.id_factura = s.id_factura
                 JOIN variantes_producto v ON v.id_variante = s.id_variante
                 JOIN productos p ON p.codigo_producto = v.codigo_producto
+                WHERE f.tipo_venta = 'normal'
                 """
             )
             ganancia_total = int(cur.fetchone()[0] or 0)
+
+            cur.execute(
+                """
+                SELECT COUNT(*),
+                       COUNT(*) FILTER (
+                           WHERE firma_comprador = 'Firmado'
+                             AND firma_vendedor = 'Firmado'
+                       ),
+                       (COUNT(*) FILTER (WHERE firma_comprador = 'Pendiente')
+                        + COUNT(*) FILTER (WHERE firma_vendedor = 'Pendiente')),
+                       COALESCE(SUM(total), 0)
+                FROM documentos_tac
+                """
+            )
+            total_doc, aprobados, pendientes, monto_tac = cur.fetchone()
     finally:
         conexion.close()
 
@@ -115,7 +151,9 @@ def resumen():
         stock_minimo = int(stock_minimo or 0)
         precio_venta = int(precio_venta or 0)
         precio_tac = int(precio_tac or 0)
-        vendidas = vendidas_por_variante.get(int(id_variante), 0)
+        vendidas_n = vendidas_normales.get(int(id_variante), 0)
+        vendidas_t = vendidas_tac.get(int(id_variante), 0)
+        vendidas = vendidas_n + vendidas_t
         inicial = stock + vendidas
 
         total_inicial += inicial
@@ -129,8 +167,8 @@ def resumen():
         agg["cantInicial"] += inicial
         agg["stock"] += stock
         agg["vendidos"] += vendidas
-        agg["ingresoNormal"] += vendidas * precio_venta
-        agg["ingresoTac"] += vendidas * precio_tac
+        agg["ingresoNormal"] += vendidas_n * precio_venta
+        agg["ingresoTac"] += vendidas_t * precio_tac
 
         if stock <= 20:
             alertas.append(
@@ -167,19 +205,19 @@ def resumen():
             ),
         },
         "ventas": {
-            "totalVentas": total_ventas,
-            "ventasNormales": total_ventas,
-            "ventasTac": 0,
-            "ingresoNormal": ingreso_normal,
-            "ingresoTac": 0,
-            "ingresoTotal": ingreso_normal,
+            "totalVentas": ventas_normal[0] + ventas_tac[0],
+            "ventasNormales": ventas_normal[0],
+            "ventasTac": ventas_tac[0],
+            "ingresoNormal": ventas_normal[1],
+            "ingresoTac": ventas_tac[1],
+            "ingresoTotal": ventas_normal[1] + ventas_tac[1],
             "gananciaTotal": ganancia_total,
         },
         "controlTac": {
-            "totalDocumentos": 0,
-            "aprobados": 0,
-            "pendientes": 0,
-            "montoTotal": 0,
+            "totalDocumentos": int(total_doc or 0),
+            "aprobados": int(aprobados or 0),
+            "pendientes": int(pendientes or 0),
+            "montoTotal": int(monto_tac or 0),
         },
         "resumenPorProducto": resumen_lista,
         "alertasStockBajo": alertas,

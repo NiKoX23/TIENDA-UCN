@@ -4,6 +4,8 @@ import type { Usuario } from '../services/auth.service';
 import { listarUsuarios, cambiarRol, type AdminUsuario } from '../services/admin.service';
 import InventarioTab from './InventarioTab';
 import DashboardTab from './DashboardTab';
+import VentasTab from './VentasTab';
+import ControlTacTab from './ControlTacTab';
 
 interface AdminPanelProps {
     tema: 'dark' | 'light';
@@ -31,11 +33,11 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
     },
     ventas: {
         titulo: 'Registro de ventas',
-        descripcion: 'Disponible en una próxima entrega.',
+        descripcion: 'Registra y revisa las ventas de la tienda con separación normal vs TAC.',
     },
     tac: {
         titulo: 'Control TAC',
-        descripcion: 'Disponible en una próxima entrega.',
+        descripcion: 'Documentos TAC con el estado de las firmas de comprador y vendedor.',
     },
     usuarios: {
         titulo: 'Usuarios',
@@ -84,12 +86,6 @@ export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
         }
     };
 
-    const renderPendiente = () => (
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-400/25 bg-slate-950/40 p-8 text-center text-sm text-slate-500">
-            Esta sección se habilitará en una próxima entrega.
-        </div>
-    );
-
     return (
         <main className={`flex min-h-screen flex-col items-center px-5 pb-12 pt-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.14),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
             <button type="button" className="theme-dark-surface self-start rounded-full border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-200 transition hover:-translate-y-px hover:border-violet-400/50" onClick={() => navigate('/')}>
@@ -130,9 +126,9 @@ export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
 
                 {tab === 'inventario' && <InventarioTab />}
 
-                {tab === 'ventas' && renderPendiente()}
+                {tab === 'ventas' && <VentasTab />}
 
-                {tab === 'tac' && renderPendiente()}
+                {tab === 'tac' && <ControlTacTab />}
 
                 {tab === 'usuarios' && (
                     <>
