@@ -4,6 +4,7 @@ import { listarProductos } from '../services/productos.service';
 import type { Producto } from './Productos';
 import type { Usuario } from '../services/auth.service';
 import { useCarrito } from '../hooks/useCarrito';
+import { obtenerIniciales } from '../services/auth.service';
 
 interface DetalleProductoProps {
   usuario: Usuario | null;
@@ -55,7 +56,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
   }, [zoomAbierto]);
 
   const esInvitado = !usuario;
-  const avatarTexto = esInvitado ? 'IN' : usuario.nombre.charAt(0).toUpperCase();
+  const avatarTexto = esInvitado ? 'IN' : obtenerIniciales(usuario.nombre, usuario.email);
 
   const moverZoom = (event: React.MouseEvent<HTMLDivElement>) => {
     const contenedor = event.currentTarget.getBoundingClientRect();
@@ -167,12 +168,12 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             {menuAbierto && (
               <div className="absolute right-0 top-[calc(100%+12px)] z-30 flex min-w-44 flex-col gap-2 rounded-2xl border border-slate-400/15 bg-slate-900/95 p-3 shadow-2xl">
                 {esInvitado ? (
-                  <button type="button" className="rounded-xl bg-violet-500/15 px-3 py-2 text-left text-sm font-semibold text-slate-100 hover:bg-violet-500/25" onClick={onLogin}>
+                  <button type="button" className="rounded-xl bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-blue-200" onClick={onLogin}>
                     Iniciar sesión
                   </button>
                 ) : (
                   <>
-                    <button type="button" className="rounded-xl bg-violet-500/15 px-3 py-2 text-left text-sm font-semibold text-slate-100 hover:bg-violet-500/25" onClick={onPerfil}>
+                    <button type="button" className="rounded-xl bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-blue-200" onClick={onPerfil}>
                       Editar perfil
                     </button>
                     {usuario?.esAdmin && (

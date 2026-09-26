@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import escudoUcn from '../assets/icons/Escudo-UCN.png';
-import type { Usuario } from '../services/auth.service';
+import { obtenerIniciales, type Usuario } from '../services/auth.service';
 import type { Producto } from '../productos/Productos';
 import { categorias } from '../productos/Productos';
 import { listarProductos, comprarProductos } from '../services/productos.service';
@@ -17,15 +17,6 @@ interface TiendaProps {
   onLogin: () => void;
   onLogout: () => void;
   onAdmin: () => void;
-}
-
-function obtenerIniciales(nombre?: string, email?: string) {
-  return (nombre || email || 'Usuario')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((parte) => parte[0]?.toUpperCase())
-    .join('');
 }
 
 export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: TiendaProps) {
@@ -276,7 +267,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                 {esInvitado ? (
                   <button
                     type="button"
-                    className={`rounded-xl px-3 py-2 text-left text-sm font-semibold ${tema === 'light' ? 'bg-blue-50 text-slate-700 hover:bg-blue-100' : 'bg-violet-500/15 text-slate-100 hover:bg-violet-500/25'}`}
+                    className="rounded-xl bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-blue-200"
                     onClick={abrirLogin}
                   >
                     Iniciar sesión
@@ -285,7 +276,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                   <>
                     <button
                       type="button"
-                      className={`rounded-xl px-3 py-2 text-left text-sm font-semibold ${tema === 'light' ? 'bg-blue-50 text-slate-700 hover:bg-blue-100' : 'bg-violet-500/15 text-slate-100 hover:bg-violet-500/25'}`}
+                      className="rounded-xl bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-blue-200"
                       onClick={() => {
                         setMenuAbierto(false);
                         onPerfil();
@@ -307,7 +298,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                     )}
                     <button
                       type="button"
-                      className="rounded-xl bg-red-500/15 px-3 py-2 text-left text-sm font-semibold text-red-200 hover:bg-red-500/25"
+                      className="rounded-xl bg-red-100 px-3 py-2 text-left text-sm font-semibold text-red-900 hover:bg-red-200"
                       onClick={() => {
                         setMenuAbierto(false);
                         onLogout();

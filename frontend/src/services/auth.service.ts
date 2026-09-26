@@ -7,6 +7,15 @@ export interface Usuario {
     esAdmin: boolean;
 }
 
+export function obtenerIniciales(nombre?: string, email?: string): string {
+    const partesNombre = nombre?.trim().split(/\s+/).filter(Boolean) ?? [];
+    if (partesNombre.length >= 2) {
+        return `${partesNombre[0][0]}${partesNombre[partesNombre.length - 1][0]}`.toUpperCase();
+    }
+
+    return (partesNombre[0]?.[0] ?? email?.trim()[0] ?? 'U').toUpperCase();
+}
+
 export async function login(email: string, password: string): Promise<Usuario> {
     const { data } = await api.post('/auth/login', { email, password });
     return data.usuario;
