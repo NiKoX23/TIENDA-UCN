@@ -1,0 +1,16 @@
+:root {
+  --color-brand-blue: #15548A;
+  --color-brand-orange: #F2A46F;
+
+  --color-card-papeleria: #E5F0FA;
+  --color-card-accesorios: #F8EDD9;
+  --color-card-vestuario: #E5F0E8;
+  --color-card-default: #F2E8E1;
+
+  --color-stock-high: #2F7D4A;
+  --color-stock-high-bg: #E1F1E5;
+  --color-stock-low: #9A5B00;
+  --color-stock-low-bg: #FFF0C7;
+  --color-stock-empty: #A12D2D;
+  --color-stock-empty-bg: #FCE7E7;
+}

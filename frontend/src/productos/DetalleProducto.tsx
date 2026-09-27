@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { listarProductos } from '../services/productos.service';
+import { comprarProductos, listarProductos } from '../services/productos.service';
 import type { Producto } from './Productos';
 import type { Usuario } from '../services/auth.service';
 import { useCarrito } from '../hooks/useCarrito';
 import { obtenerIniciales } from '../services/auth.service';
+import Carrito from '../carrito/Carrito';
 
 interface DetalleProductoProps {
   usuario: Usuario | null;
@@ -18,12 +19,21 @@ interface DetalleProductoProps {
 
 const categoriasConTalla = new Set(['polerones', 'poleras', 'pantalones']);
 
+function categoriaVisual(categoria: string): string {
+  const normalizada = categoria.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (normalizada.includes('papeleria')) return 'papeleria';
+  if (normalizada.includes('accesorio')) return 'accesorios';
+  if (normalizada.includes('polera') || normalizada.includes('poleron') || normalizada.includes('vestuario')) return 'vestuario';
+  return 'default';
+}
+
 export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: DetalleProductoProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [producto, setProducto] = useState<Producto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [zoomAbierto, setZoomAbierto] = useState(false);
   const [zoomActivo, setZoomActivo] = useState(false);
   const [zoomOrigen, setZoomOrigen] = useState('50% 50%');
@@ -107,23 +117,47 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
     setAgregado(true);
   };
 
+  const handleIrAPagar = async () => {
+    try {
+      const compra = await comprarProductos(
+        carrito.items.map(({ codigoProducto, cantidad }) => ({ codigoProducto, cantidad })),
+      );
+      carrito.vaciar();
+      setCarritoAbierto(false);
+      window.alert(`Compra registrada: ${compra.numeroDocumento}`);
+    } catch {
+      window.alert('No fue posible completar la compra. Revisa el stock disponible.');
+    }
+  };
+
   if (cargando) {
-    return <div className="grid min-h-screen place-items-center bg-slate-950 text-sm font-bold uppercase tracking-[0.18em] text-slate-100">Cargando producto...</div>;
+    return <div className="storefront-page storefront-detail-state grid min-h-screen place-items-center text-sm font-bold uppercase tracking-[0.18em]">Cargando producto...</div>;
   }
 
   if (!producto) {
     return (
-      <div className="grid min-h-screen place-items-center gap-4 bg-slate-950 text-slate-100">
+      <div className="storefront-page storefront-detail-state grid min-h-screen place-items-center gap-4">
         <h2 className="text-2xl font-bold">Producto no encontrado</h2>
-        <button className="rounded-xl bg-violet-600 px-4 py-3 font-semibold" onClick={() => navigate('/')}>Volver a la tienda</button>
+        <button className="storefront-detail-back-button rounded-xl px-4 py-3 font-semibold" onClick={() => navigate('/')}>Volver a la tienda</button>
       </div>
     );
   }
 
   return (
-    <div className={`flex min-h-screen flex-col bg-[var(--tienda-bg)] text-[var(--tienda-text-primary)] ${tema === 'light' ? '[--tienda-bg:#f0f4f8] [--tienda-surface-1:#fff] [--tienda-surface-2:#f8fafc] [--tienda-text-primary:#0f172a] [--tienda-text-secondary:#334155] [--tienda-text-muted:#64748b]' : '[--tienda-bg:#070b14] [--tienda-surface-1:#0f172a] [--tienda-surface-2:#111827] [--tienda-text-primary:#ebf1ff] [--tienda-text-secondary:#c0cbe0] [--tienda-text-muted:#8897b6]'}`}>
-      <header className="theme-dark-header sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-400/15 bg-[var(--tienda-bg)] px-6 py-4 max-[720px]:px-4">
-        <button className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 font-semibold shadow-sm transition hover:-translate-y-px ${tema === 'light' ? 'border-blue-300 bg-blue-100 text-slate-700 hover:border-blue-500 hover:bg-blue-200' : 'border-blue-400/40 bg-blue-500/20 text-blue-100 hover:border-blue-300 hover:bg-blue-500/35'}`} onClick={() => navigate('/')}>
+    <div className="storefront-page storefront-product-detail-page flex min-h-screen flex-col">
+      <Carrito
+        abierto={carritoAbierto}
+        items={carrito.items}
+        total={carrito.total}
+        onCerrar={() => setCarritoAbierto(false)}
+        onSumar={carrito.sumarUno}
+        onRestar={carrito.restarUno}
+        onEliminar={carrito.eliminar}
+        onCantidad={carrito.actualizarCantidad}
+        onIrAPagar={handleIrAPagar}
+      />
+      <header className="theme-dark-header storefront-detail-header sticky top-0 z-20 flex items-center justify-between gap-4 border-b px-6 py-4 max-[720px]:px-4">
+        <button className="storefront-detail-back-button inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold transition hover:-translate-y-px" onClick={() => navigate('/')}>
           <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
@@ -135,7 +169,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             type="button"
             className="relative grid h-11 w-11 place-items-center rounded-xl border border-slate-400/15 bg-slate-900/70 text-[var(--tienda-text-secondary)] transition hover:-translate-y-0.5 hover:border-violet-400/40"
             aria-label={`Carrito (${carrito.cantidadTotal})`}
-            onClick={() => {/* TODO handle carrito */}}
+            onClick={() => esInvitado ? onLogin() : setCarritoAbierto(true)}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M6 8h12l-1 12H7L6 8Z" />
@@ -152,7 +186,8 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             type="button"
             className="theme-toggle-control grid h-11 w-11 place-items-center rounded-full border border-slate-400/30 bg-slate-900 text-lg text-white shadow-lg transition hover:-translate-y-px hover:border-violet-400"
             onClick={onToggleTema}
-            aria-label="Cambiar tema"
+            aria-label={tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            title={tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}
           >
             {tema === 'dark' ? '☀' : '☾'}
           </button>
@@ -193,9 +228,9 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
       </header>
 
       <main className="flex flex-1 justify-center px-6 py-10 max-[900px]:py-6 max-[640px]:px-4">
-        <div className="theme-dark-surface grid w-full max-w-6xl grid-cols-2 gap-16 rounded-[22px] border border-slate-400/20 bg-[var(--tienda-surface-1)] p-10 shadow-2xl max-[900px]:grid-cols-1 max-[640px]:p-5">
+        <div className="storefront-detail-card grid w-full max-w-6xl grid-cols-2 gap-12 p-8 max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[640px]:p-5">
           <div
-            className="relative flex min-h-[420px] cursor-zoom-in items-center justify-center overflow-hidden rounded-[20px] border border-slate-400/20 bg-[var(--tienda-surface-2)] p-10"
+            className={`storefront-detail-media storefront-detail-media--${categoriaVisual(producto.categoria)} relative flex min-h-[420px] cursor-zoom-in items-center justify-center overflow-hidden p-10 max-[640px]:min-h-[300px] max-[640px]:p-6`}
             onClick={() => setZoomAbierto(true)}
             role="button"
             tabIndex={0}
@@ -205,60 +240,60 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             }}
           >
             <img src={producto.imagen} alt={producto.nombre} className="w-full max-w-[400px] object-contain drop-shadow-2xl transition hover:scale-105" />
-            <span className="absolute bottom-3.5 right-4 rounded-full bg-slate-900/75 px-2.5 py-1.5 text-xs text-white">Click para ampliar</span>
+            <span className="storefront-detail-zoom-hint absolute bottom-3.5 right-4 rounded-full px-2.5 py-1.5 text-xs">Click para ampliar</span>
           </div>
           <div className="flex flex-col justify-center">
-            <p className="mb-2 text-sm font-bold uppercase tracking-[0.1em] text-blue-400">{producto.categoria}</p>
+            <p className="storefront-detail-category mb-2 text-sm font-bold uppercase">{producto.categoria}</p>
             <h1 className="mb-2 text-4xl font-extrabold leading-tight max-[640px]:text-3xl">{producto.nombre}</h1>
-            <p className="mb-6 text-sm text-[var(--tienda-text-muted)]">SKU: {producto.sku}</p>
+            <p className="storefront-detail-muted mb-6 text-sm">SKU: {producto.sku}</p>
             
             <div className="mb-8 flex items-baseline gap-3">
-              <span className="text-4xl font-extrabold">
+              <span className="storefront-detail-price text-4xl font-extrabold">
                 {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(producto.precio)}
               </span>
-              <span className="text-sm text-[var(--tienda-text-muted)]">IVA incluido</span>
+              <span className="storefront-detail-muted text-sm">IVA incluido</span>
             </div>
 
-            <p className="mb-8 text-lg leading-relaxed text-[var(--tienda-text-secondary)]">
+            <p className="storefront-detail-secondary mb-8 text-lg leading-relaxed">
               {producto.descripcion || 'Sin descripción disponible para este producto.'}
             </p>
 
             <div className="mb-8 flex gap-6">
               {tieneTalla && producto.talla && !['única', 'unica', '??nica'].includes(producto.talla.toLowerCase()) && (
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--tienda-text-muted)]">Talla:</span>
-                  <span className="rounded-lg border border-slate-400/20 bg-[var(--tienda-surface-2)] px-4 py-2 text-lg font-bold">{producto.talla}</span>
+                  <span className="storefront-detail-muted text-xs font-semibold uppercase">Talla:</span>
+                  <span className="storefront-detail-option rounded-lg px-4 py-2 text-lg font-bold">{producto.talla}</span>
                 </div>
               )}
               {producto.color && (
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--tienda-text-muted)]">Color:</span>
-                  <span className="rounded-lg border border-slate-400/20 bg-[var(--tienda-surface-2)] px-4 py-2 text-lg font-bold">{producto.color}</span>
+                  <span className="storefront-detail-muted text-xs font-semibold uppercase">Color:</span>
+                  <span className="storefront-detail-option rounded-lg px-4 py-2 text-lg font-bold">{producto.color}</span>
                 </div>
               )}
             </div>
 
             <div className="mb-8">
-              <span className={`rounded-md px-3 py-1.5 text-sm font-semibold ${producto.stock > 0 ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'}`}>
-                {producto.stock > 0 ? `${producto.stock} unidades disponibles` : 'Sin stock'}
+              <span className={`storefront-stock-badge ${producto.stock <= 0 ? 'storefront-stock-badge--empty' : producto.stock <= 3 ? 'storefront-stock-badge--low' : 'storefront-stock-badge--high'}`}>
+                {producto.stock} {producto.stock === 1 ? 'unidad' : 'unidades'}
               </span>
             </div>
 
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--tienda-text-muted)]">Cantidad</span>
-              <div className="inline-flex items-center gap-4 rounded-xl border border-slate-400/20 bg-[var(--tienda-surface-2)] p-1">
-                <button className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-600 to-blue-400 text-xl leading-none text-white disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={() => cambiarCantidad(cantidad - 1)} disabled={cantidad <= 1}>−</button>
+              <span className="storefront-detail-muted text-xs font-semibold uppercase">Cantidad</span>
+              <div className="storefront-detail-quantity inline-flex items-center gap-4 rounded-xl p-1">
+                <button className="storefront-detail-quantity-button grid h-8 w-8 place-items-center rounded-lg text-xl leading-none text-white disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={() => cambiarCantidad(cantidad - 1)} disabled={cantidad <= 1}>−</button>
                 <output className="min-w-5 text-center font-extrabold" aria-live="polite">{cantidad}</output>
-                <button className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-600 to-blue-400 text-xl leading-none text-white disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={incrementarCantidad} disabled={producto.stock < 1}>+</button>
+                <button className="storefront-detail-quantity-button grid h-8 w-8 place-items-center rounded-lg text-xl leading-none text-white disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={incrementarCantidad} disabled={producto.stock < 1}>+</button>
               </div>
             </div>
 
-            {errorCantidad && <p className="mb-3 rounded-lg bg-red-900/40 px-3 py-2 text-sm font-semibold text-red-300" role="alert">{errorCantidad}</p>}
-            {agregado && <p className="mb-3 rounded-lg bg-green-900/40 px-3 py-2 text-sm font-semibold text-green-300" role="status">Producto agregado al carrito.</p>}
+            {errorCantidad && <p className="storefront-detail-message storefront-detail-message--error mb-3 rounded-lg px-3 py-2 text-sm font-semibold" role="alert">{errorCantidad}</p>}
+            {agregado && <p className="storefront-detail-message storefront-detail-message--success mb-3 rounded-lg px-3 py-2 text-sm font-semibold" role="status">Producto agregado al carrito.</p>}
 
             <button
               type="button"
-              className="w-full rounded-xl bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 px-4 py-4 font-extrabold text-white shadow-lg shadow-violet-900/30 transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+              className="storefront-detail-add w-full rounded-xl px-4 py-4 font-extrabold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={agregarCantidad}
               disabled={producto.stock < 1}
             >
@@ -269,9 +304,9 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
       </main>
 
       {zoomAbierto && (
-        <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/85 p-6" role="presentation" onClick={cerrarZoom}>
+        <div className="storefront-detail-zoom-overlay fixed inset-0 z-[120] grid place-items-center p-6" role="presentation" onClick={cerrarZoom}>
           <div
-            className="relative flex h-[min(820px,90vh)] w-[min(960px,94vw)] items-center justify-center overflow-hidden rounded-[20px] border border-white/15 bg-slate-900/95 shadow-2xl"
+            className="storefront-detail-zoom-dialog relative flex h-[min(820px,90vh)] w-[min(960px,94vw)] items-center justify-center overflow-hidden rounded-[20px] shadow-2xl"
             role="dialog"
             aria-modal="true"
             aria-label={`Imagen ampliada de ${producto.nombre}`}
@@ -280,7 +315,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             {/* Botón cerrar */}
             <button
               type="button"
-              className="absolute right-4 top-4 z-[140] grid h-10 w-10 cursor-pointer place-items-center rounded-full border border-slate-400/40 bg-slate-800/90 text-2xl font-bold leading-none text-slate-200 shadow-lg transition hover:bg-slate-700"
+              className="storefront-detail-zoom-close absolute right-4 top-4 z-[140] grid h-10 w-10 cursor-pointer place-items-center rounded-full text-2xl font-bold leading-none shadow-lg transition"
               onClick={cerrarZoom}
               aria-label="Cerrar imagen ampliada"
             >
@@ -315,7 +350,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
 
             {/* Instrucción */}
             {!zoomActivo && (
-              <span className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-slate-800/80 px-4 py-1.5 text-xs text-slate-300">
+              <span className="storefront-detail-zoom-hint pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs">
                 Pasa el mouse sobre la imagen para hacer zoom
               </span>
             )}

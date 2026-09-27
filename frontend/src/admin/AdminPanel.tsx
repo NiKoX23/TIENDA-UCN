@@ -47,7 +47,7 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
 
 export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
     const navigate = useNavigate();
-    const [tab, setTab] = useState<TabId>('inventario');
+    const [tab, setTab] = useState<TabId>('inicio');
     const [usuarios, setUsuarios] = useState<AdminUsuario[]>([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');

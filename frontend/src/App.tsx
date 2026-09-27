@@ -12,7 +12,7 @@ import AdminPanel from './admin/AdminPanel';
 type Theme = 'dark' | 'light';
 
 function cargarTema(): Theme {
-    return localStorage.getItem('tema') === 'light' ? 'light' : 'dark';
+    return localStorage.getItem('tema') === 'dark' ? 'dark' : 'light';
 }
 
 export default function App() {
@@ -40,7 +40,7 @@ export default function App() {
     };
 
     return (
-        <div className={`min-h-screen ${tema === 'light' ? 'bg-[#f7f9fc] text-[#172033]' : 'bg-[#050816] text-slate-100'}`}>
+        <div className="app-shell min-h-screen">
             {location.pathname !== '/' && !location.pathname.startsWith('/producto/') && (
                 <button
                     type="button"
