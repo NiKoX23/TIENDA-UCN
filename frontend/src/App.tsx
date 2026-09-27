@@ -33,7 +33,8 @@ export default function App() {
     const handleLogout = async () => {
         try {
             await logout();
-        } finally {
+            window.location.replace('/');
+        } catch {
             setUsuario(null);
             navigate('/', { replace: true });
         }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import escudoUcn from '../assets/icons/Escudo-UCN.png';
-import { obtenerIniciales, type Usuario } from '../services/auth.service';
+import { obtenerColorAvatar, obtenerIniciales, type Usuario } from '../services/auth.service';
 import type { Producto } from '../productos/Productos';
 import { categorias } from '../productos/Productos';
 import { listarProductos, comprarProductos } from '../services/productos.service';
@@ -174,7 +174,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
             <div className="mx-auto mb-4 grid h-[72px] w-[72px] place-items-center rounded-2xl border border-violet-300/30 bg-violet-500/15 text-3xl" aria-hidden="true">🔒</div>
             <h3 id="tienda-login-titulo" className="text-2xl font-bold">Inicia sesión para continuar</h3>
             <p className="mx-auto mb-5 max-w-xs text-sm leading-relaxed text-slate-300">Debes iniciar sesión para comprar y guardar tus favoritos.</p>
-            <button type="button" className="rounded-xl bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 px-5 py-3 font-extrabold text-white shadow-lg shadow-violet-900/30" onClick={abrirLogin}>
+            <button type="button" className="ucn-btn-primary w-full" onClick={abrirLogin}>
               Inicia sesión aquí
             </button>
           </div>
@@ -218,7 +218,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="grid h-11 w-11 place-items-center rounded-xl border border-slate-400/15 bg-slate-900/70 text-slate-300 transition hover:-translate-y-0.5 hover:border-violet-400/40"
+            className="grid h-11 w-11 place-items-center rounded-xl border border-slate-400/15 bg-slate-900/70 text-slate-900 dark:text-slate-100 font-bold transition hover:-translate-y-0.5 hover:border-violet-400/40"
             aria-label={`Favoritos (${favoritos.length})`}
             aria-pressed={categoriaActiva === 'favoritos'}
             onClick={handleFavoritos}
@@ -230,7 +230,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
 
           <button
             type="button"
-            className="relative grid h-11 w-11 place-items-center rounded-xl border border-slate-400/15 bg-slate-900/70 text-slate-300 transition hover:-translate-y-0.5 hover:border-violet-400/40"
+            className="relative grid h-11 w-11 place-items-center rounded-xl border border-slate-400/15 bg-slate-900/70 text-slate-900 dark:text-slate-100 font-bold transition hover:-translate-y-0.5 hover:border-violet-400/40"
             aria-label={`Carrito (${carrito.cantidadTotal})`}
             onClick={handleCarrito}
           >
@@ -247,7 +247,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
 
           <button
             type="button"
-            className="theme-toggle-control grid h-11 w-11 place-items-center rounded-full border border-slate-400/30 bg-slate-900 text-lg text-white shadow-lg transition hover:-translate-y-px hover:border-violet-400"
+            className="theme-toggle-control grid h-11 w-11 place-items-center rounded-full border border-slate-400/30 bg-slate-900 text-lg text-slate-900 dark:text-white font-bold shadow-lg transition hover:-translate-y-px hover:border-violet-400"
             onClick={onToggleTema}
             aria-label={tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             title={tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}
@@ -258,7 +258,8 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
           <div className="relative flex items-center" ref={menuRef}>
             <button
               type="button"
-              className={`grid h-11 w-11 place-items-center rounded-full border-2 text-xs font-bold text-white shadow-lg transition hover:-translate-y-0.5 ${esInvitado ? 'border-slate-400/40 bg-slate-600/50' : 'border-violet-300/50 bg-gradient-to-br from-violet-600/50 to-cyan-500/30'}`}
+              className={`ucn-avatar ${esInvitado ? 'ucn-avatar--guest' : 'ucn-avatar--account'}`}
+              style={usuario ? { backgroundColor: obtenerColorAvatar(usuario.uid) } : undefined}
               onClick={() => setMenuAbierto((actual) => !actual)}
               title={esInvitado ? 'Cuenta de invitado' : 'Ver perfil'}
               aria-label={esInvitado ? 'Cuenta de invitado' : 'Ver perfil'}
@@ -398,7 +399,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
 
                 <button
                   type="button"
-                  className={`absolute left-3 top-3 z-10 grid rounded-full bg-slate-900/65 p-2 text-slate-400 backdrop-blur ${favoritos.includes(producto.codigoProducto) ? 'text-pink-400' : ''}`}
+                  className={`absolute left-3 top-3 z-10 grid rounded-full bg-slate-900/65 p-2 text-slate-900 dark:text-slate-100 font-bold backdrop-blur ${favoritos.includes(producto.codigoProducto) ? 'text-pink-400' : ''}`}
                   aria-label={favoritos.includes(producto.codigoProducto) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
                   aria-pressed={favoritos.includes(producto.codigoProducto)}
                   onClick={(e) => { e.stopPropagation(); handleToggleFavorito(producto.codigoProducto); }}
@@ -425,7 +426,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                 </div>
                 <button
                   type="button"
-                  className="cart-add-button mt-4 w-full rounded-xl px-3 py-2.5 text-sm font-bold transition duration-200 enabled:hover:-translate-y-0.5 enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="ucn-btn-primary storefront-cart-button w-full mt-4 text-center"
                   onClick={() => handleAgregarAlCarrito(producto)}
                   disabled={producto.stock < 1}
                 >

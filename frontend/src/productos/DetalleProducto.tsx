@@ -4,7 +4,7 @@ import { comprarProductos, listarProductos } from '../services/productos.service
 import type { Producto } from './Productos';
 import type { Usuario } from '../services/auth.service';
 import { useCarrito } from '../hooks/useCarrito';
-import { obtenerIniciales } from '../services/auth.service';
+import { obtenerColorAvatar, obtenerIniciales } from '../services/auth.service';
 import Carrito from '../carrito/Carrito';
 
 interface DetalleProductoProps {
@@ -184,7 +184,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
 
           <button
             type="button"
-            className="theme-toggle-control grid h-11 w-11 place-items-center rounded-full border border-slate-400/30 bg-slate-900 text-lg text-white shadow-lg transition hover:-translate-y-px hover:border-violet-400"
+            className="theme-toggle-control grid h-11 w-11 place-items-center rounded-full border border-slate-400/30 bg-slate-900 text-lg text-slate-900 dark:text-white font-bold shadow-lg transition hover:-translate-y-px hover:border-violet-400"
             onClick={onToggleTema}
             aria-label={tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             title={tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}
@@ -195,8 +195,11 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
           <div className="relative flex items-center">
             <button
               type="button"
-              className={`grid h-11 w-11 place-items-center rounded-full border-2 text-xs font-bold text-white shadow-lg transition hover:-translate-y-0.5 ${esInvitado ? 'border-slate-400/40 bg-slate-600/50' : 'border-violet-300/50 bg-gradient-to-br from-violet-600/50 to-cyan-500/30'}`}
+              className={`ucn-avatar ${esInvitado ? 'ucn-avatar--guest' : 'ucn-avatar--account'}`}
+              style={usuario ? { backgroundColor: obtenerColorAvatar(usuario.uid) } : undefined}
               onClick={() => setMenuAbierto((a) => !a)}
+              title={esInvitado ? 'Cuenta de invitado' : 'Ver perfil'}
+              aria-label={esInvitado ? 'Cuenta de invitado' : 'Ver perfil'}
             >
               {avatarTexto}
             </button>
@@ -282,9 +285,9 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             <div className="mb-3 flex items-center justify-between">
               <span className="storefront-detail-muted text-xs font-semibold uppercase">Cantidad</span>
               <div className="storefront-detail-quantity inline-flex items-center gap-4 rounded-xl p-1">
-                <button className="storefront-detail-quantity-button grid h-8 w-8 place-items-center rounded-lg text-xl leading-none text-white disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={() => cambiarCantidad(cantidad - 1)} disabled={cantidad <= 1}>−</button>
+                <button className="storefront-detail-quantity-button grid h-8 w-8 place-items-center rounded-lg text-xl leading-none text-slate-900 dark:text-white font-bold disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={() => cambiarCantidad(cantidad - 1)} disabled={cantidad <= 1}>−</button>
                 <output className="min-w-5 text-center font-extrabold" aria-live="polite">{cantidad}</output>
-                <button className="storefront-detail-quantity-button grid h-8 w-8 place-items-center rounded-lg text-xl leading-none text-white disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={incrementarCantidad} disabled={producto.stock < 1}>+</button>
+                <button className="storefront-detail-quantity-button grid h-8 w-8 place-items-center rounded-lg text-xl leading-none text-slate-900 dark:text-white font-bold disabled:cursor-not-allowed disabled:opacity-40" type="button" onClick={incrementarCantidad} disabled={producto.stock < 1}>+</button>
               </div>
             </div>
 
@@ -293,7 +296,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
 
             <button
               type="button"
-              className="storefront-detail-add w-full rounded-xl px-4 py-4 font-extrabold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+              className="storefront-detail-add w-full rounded-xl px-4 py-4 font-extrabold text-slate-900 dark:text-white font-bold transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={agregarCantidad}
               disabled={producto.stock < 1}
             >

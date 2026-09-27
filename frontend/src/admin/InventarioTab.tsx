@@ -17,10 +17,10 @@ import {
 } from '../services/inventario.service';
 
 const inputCls =
-    'w-full rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-violet-400/60';
+    'admin-form-field w-full rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-400/60';
 const labelCls = 'mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400';
 const botonSecundarioCls =
-    'rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-xs font-bold text-slate-200 transition hover:border-violet-400/50 hover:text-slate-100';
+    'admin-secondary-button rounded-xl px-3 py-2 text-xs font-bold transition hover:border-violet-400/50';
 const botonPrimarioCls =
     'rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 px-4 py-2 text-xs font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
 
@@ -48,7 +48,7 @@ function badgeEstado(estado: EstadoInventario) {
     const estilos: Record<EstadoInventario, string> = {
         CRITICO: 'border-red-400/40 bg-red-500/20 text-red-200',
         BAJO: 'border-amber-400/40 bg-amber-500/20 text-amber-200',
-        NORMAL: 'border-emerald-400/40 bg-emerald-500/20 text-emerald-200',
+        NORMAL: 'border-emerald-400/40 bg-emerald-500/20 admin-inventory-status--normal',
         ALTO: 'border-cyan-400/40 bg-cyan-500/20 text-cyan-200',
     };
     return `rounded-full border px-2.5 py-1 text-xs font-bold ${estilos[estado]}`;
@@ -306,7 +306,7 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
                 </div>
 
                 {esNuevo && (
-                    <div className="rounded-2xl border border-slate-400/15 bg-slate-950/40 p-4">
+                    <div className="admin-variant-section rounded-2xl p-4">
                         <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Variante inicial</p>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>

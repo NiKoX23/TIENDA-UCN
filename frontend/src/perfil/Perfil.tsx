@@ -42,7 +42,7 @@ export default function Perfil({ tema, usuario, onLogout, onUpdated }: PerfilPro
 
     return (
         <main className={`flex min-h-screen flex-col items-center px-5 pb-12 pt-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.14),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
-            <button type="button" className="theme-dark-surface self-start rounded-full border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-200 transition hover:-translate-y-px hover:border-violet-400/50" onClick={() => navigate('/')}>
+            <button type="button" className="theme-dark-surface self-start rounded-full border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-900 dark:text-slate-100 font-bold transition hover:-translate-y-px hover:border-violet-400/50" onClick={() => navigate('/')}>
                 volver a la tienda
             </button>
             <form className="theme-dark-surface mt-8 w-full max-w-lg rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl" onSubmit={handleSubmit}>
@@ -65,7 +65,7 @@ export default function Perfil({ tema, usuario, onLogout, onUpdated }: PerfilPro
                 </label>
                 {error && <p className="mt-4 rounded-full border border-red-400/20 bg-red-950/30 px-4 py-3 text-center text-sm text-red-200">{error}</p>}
                 {successMessage && <p className="mt-4 rounded-full border border-green-400/20 bg-green-950/30 px-4 py-3 text-center text-sm text-green-200">{successMessage}</p>}
-                <button type="submit" className="mt-6 w-full rounded-xl bg-gradient-to-r from-violet-600 to-violet-400 px-4 py-3 font-bold text-white shadow-lg shadow-violet-900/30 transition hover:-translate-y-0.5 hover:brightness-105">Guardar cambios</button>
+                <button type="submit" className="ucn-btn-primary w-full mt-6">Guardar cambios</button>
             </form>
             <button type="button" className="mt-5 rounded-full border border-red-400/20 bg-red-950/20 px-4 py-3 text-red-200 transition hover:-translate-y-px hover:bg-red-950/40" onClick={onLogout}>Cerrar sesión</button>
         </main>

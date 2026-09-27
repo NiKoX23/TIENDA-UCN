@@ -7,13 +7,38 @@ export interface Usuario {
     esAdmin: boolean;
 }
 
+const coloresAvatar = [
+    '#9a3412',
+    '#9f1239',
+    '#6b21a8',
+    '#1e40af',
+    '#155e75',
+    '#166534',
+    '#713f12',
+    '#334155',
+];
+
+export function obtenerColorAvatar(uid: number): string {
+    return coloresAvatar[Math.abs(uid) % coloresAvatar.length];
+}
+
 export function obtenerIniciales(nombre?: string, email?: string): string {
     const partesNombre = nombre?.trim().split(/\s+/).filter(Boolean) ?? [];
     if (partesNombre.length >= 2) {
         return `${partesNombre[0][0]}${partesNombre[partesNombre.length - 1][0]}`.toUpperCase();
     }
 
-    return (partesNombre[0]?.[0] ?? email?.trim()[0] ?? 'U').toUpperCase();
+    if (partesNombre.length === 1) {
+        return partesNombre[0].slice(0, 2).toUpperCase();
+    }
+
+    const nombreCorreo = email?.trim().split('@')[0] ?? '';
+    const partesCorreo = nombreCorreo.split(/[._-]+/).filter(Boolean);
+    if (partesCorreo.length >= 2) {
+        return `${partesCorreo[0][0]}${partesCorreo[partesCorreo.length - 1][0]}`.toUpperCase();
+    }
+
+    return (nombreCorreo.slice(0, 2) || 'U').toUpperCase();
 }
 
 export async function login(email: string, password: string): Promise<Usuario> {
