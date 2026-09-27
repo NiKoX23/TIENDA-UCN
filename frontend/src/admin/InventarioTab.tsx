@@ -582,24 +582,30 @@ export default function InventarioTab() {
                 </div>
             ) : (
                 <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-400/15 bg-slate-950/30">
-                    <table className="w-full min-w-[1250px] text-left text-sm">
+                    <table className="w-full min-w-[640px] text-left text-sm sm:min-w-[900px] md:min-w-[1250px]">
                         <thead className="bg-slate-950/50 text-xs uppercase tracking-wider text-slate-400">
+                            {/*
+                              Prioridad de columnas (17 en total):
+                                - siempre: Producto, Categoría, Talla, P. venta, Stock, Estado, Acciones
+                                - desde sm (640px): + P. TAC, Vendidas, Stock mín., Margen
+                                - desde md (768px): + Color, SKU, Costo, Inicial, Ing. venta, Ing. TAC
+                            */}
                             <tr>
                                 <th className="px-3 py-3">Producto</th>
                                 <th className="px-3 py-3">Categoría</th>
                                 <th className="px-3 py-3">Talla</th>
-                                <th className="px-3 py-3">Color</th>
-                                <th className="px-3 py-3">SKU</th>
+                                <th className="hidden px-3 py-3 md:table-cell">Color</th>
+                                <th className="hidden px-3 py-3 md:table-cell">SKU</th>
                                 <th className="px-3 py-3 text-right">P. venta</th>
-                                <th className="px-3 py-3 text-right">P. TAC</th>
-                                <th className="px-3 py-3 text-right">Costo</th>
-                                <th className="px-3 py-3 text-right">Vendidas</th>
-                                <th className="px-3 py-3 text-right">Inicial</th>
+                                <th className="hidden px-3 py-3 text-right sm:table-cell">P. TAC</th>
+                                <th className="hidden px-3 py-3 text-right md:table-cell">Costo</th>
+                                <th className="hidden px-3 py-3 text-right sm:table-cell">Vendidas</th>
+                                <th className="hidden px-3 py-3 text-right md:table-cell">Inicial</th>
                                 <th className="px-3 py-3 text-right">Stock</th>
-                                <th className="px-3 py-3 text-right">Stock mín.</th>
-                                <th className="px-3 py-3 text-right">Margen</th>
-                                <th className="px-3 py-3 text-right">Ing. venta</th>
-                                <th className="px-3 py-3 text-right">Ing. TAC</th>
+                                <th className="hidden px-3 py-3 text-right sm:table-cell">Stock mín.</th>
+                                <th className="hidden px-3 py-3 text-right sm:table-cell">Margen</th>
+                                <th className="hidden px-3 py-3 text-right md:table-cell">Ing. venta</th>
+                                <th className="hidden px-3 py-3 text-right md:table-cell">Ing. TAC</th>
                                 <th className="px-3 py-3">Estado</th>
                                 <th className="px-3 py-3 text-right">Acciones</th>
                             </tr>
@@ -620,20 +626,20 @@ export default function InventarioTab() {
                                     </td>
                                     <td className="px-3 py-3 text-slate-300">{item.categoria}</td>
                                     <td className="px-3 py-3 text-slate-200">{item.talla}</td>
-                                    <td className="px-3 py-3 text-slate-300">{item.color ?? '—'}</td>
-                                    <td className="px-3 py-3 font-mono text-xs text-slate-200">{item.sku}</td>
+                                    <td className="hidden px-3 py-3 text-slate-300 md:table-cell">{item.color ?? '—'}</td>
+                                    <td className="hidden px-3 py-3 font-mono text-xs text-slate-200 md:table-cell">{item.sku}</td>
                                     <td className="px-3 py-3 text-right text-slate-200">{formatearCLP(item.precioVenta)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-300">{formatearCLP(item.precioTac)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-300">{formatearCLP(item.costoAdquisicion)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-200">{item.vendidas}</td>
-                                    <td className="px-3 py-3 text-right text-slate-300">{item.inicial}</td>
+                                    <td className="hidden px-3 py-3 text-right text-slate-300 sm:table-cell">{formatearCLP(item.precioTac)}</td>
+                                    <td className="hidden px-3 py-3 text-right text-slate-300 md:table-cell">{formatearCLP(item.costoAdquisicion)}</td>
+                                    <td className="hidden px-3 py-3 text-right text-slate-200 sm:table-cell">{item.vendidas}</td>
+                                    <td className="hidden px-3 py-3 text-right text-slate-300 md:table-cell">{item.inicial}</td>
                                     <td className={`px-3 py-3 text-right font-extrabold ${item.stock <= item.stockMinimo ? 'text-red-300' : item.stock <= 20 ? 'text-amber-200' : 'text-slate-100'}`}>
                                         {item.stock}
                                     </td>
-                                    <td className="px-3 py-3 text-right text-slate-400">{item.stockMinimo}</td>
-                                    <td className="px-3 py-3 text-right text-slate-200">{formatearCLP(item.margen)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-200">{formatearCLP(item.ingresoVenta)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-300">{formatearCLP(item.ingresoTac)}</td>
+                                    <td className="hidden px-3 py-3 text-right text-slate-400 sm:table-cell">{item.stockMinimo}</td>
+                                    <td className="hidden px-3 py-3 text-right text-slate-200 sm:table-cell">{formatearCLP(item.margen)}</td>
+                                    <td className="hidden px-3 py-3 text-right text-slate-200 md:table-cell">{formatearCLP(item.ingresoVenta)}</td>
+                                    <td className="hidden px-3 py-3 text-right text-slate-300 md:table-cell">{formatearCLP(item.ingresoTac)}</td>
                                     <td className="px-3 py-3">
                                         <span className={badgeEstado(item.estado)}>{item.estado}</span>
                                     </td>

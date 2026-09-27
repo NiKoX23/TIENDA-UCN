@@ -33,6 +33,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
   const [busqueda, setBusqueda] = useState('');
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [navMovilAbierta, setNavMovilAbierta] = useState(false);
   const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
   const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -76,6 +77,17 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, []);
+
+  useEffect(() => {
+    if (!navMovilAbierta) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavMovilAbierta(false);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [navMovilAbierta]);
 
   const productosFiltrados = useMemo(() => {
     return productos.filter((producto) => {
@@ -193,7 +205,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
         onIrAPagar={handleIrAPagar}
       />
 
-      <header className="theme-dark-header sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 border-b border-slate-400/15 bg-[#070b14] px-6 py-4 max-[720px]:px-4">
+      <header className="theme-dark-header sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 border-b border-slate-400/15 bg-[#070b14] px-6 py-4 nav:px-4">
         <a className="group flex items-center gap-3 whitespace-nowrap text-base font-bold lowercase tracking-wider text-slate-100" href="/">
           <span className="theme-brand-icon grid h-[52px] w-[52px] shrink-0 place-items-center overflow-hidden rounded-2xl border border-violet-400/40 bg-gradient-to-br from-violet-600 to-blue-500 shadow-lg shadow-violet-900/30 transition duration-200 group-hover:-translate-y-px group-hover:scale-[1.02]" aria-hidden="true">
             <img src={escudoUcn} alt="Escudo UCN" className="h-full w-full object-contain p-1.5" />
@@ -201,7 +213,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
           tienda ucn
         </a>
 
-        <div className="flex min-w-[220px] max-w-[520px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-400/15 bg-slate-900/80 px-4 py-3 transition focus-within:-translate-y-px focus-within:border-violet-400/70 focus-within:ring-4 focus-within:ring-violet-500/15 max-[720px]:order-3 max-[720px]:max-w-none">
+        <div className="flex min-w-[220px] max-w-[520px] flex-1 items-center gap-2.5 rounded-2xl border border-slate-400/15 bg-slate-900/80 px-4 py-3 transition focus-within:-translate-y-px focus-within:border-violet-400/70 focus-within:ring-4 focus-within:ring-violet-500/15 nav:order-3 nav:max-w-none">
           <svg className="h-[18px] w-[18px] shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3-3" />
@@ -215,7 +227,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 nav:flex">
           <button
             type="button"
             className="grid h-11 w-11 place-items-center rounded-xl border border-slate-400/15 bg-slate-900/70 text-slate-300 transition hover:-translate-y-0.5 hover:border-violet-400/40"
@@ -317,11 +329,141 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
             )}
           </div>
         </div>
+
+        {/* Botón de menú: solo bajo 720px, donde los 4 botones de acción no caben */}
+        <button
+          type="button"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-400/15 bg-slate-900/70 text-slate-200 transition hover:-translate-y-0.5 hover:border-violet-400/40 nav:hidden"
+          onClick={() => setNavMovilAbierta((actual) => !actual)}
+          aria-label="Abrir menú"
+          aria-expanded={navMovilAbierta}
+          aria-controls="menu-movil-tienda"
+        >
+          <svg className="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+            {navMovilAbierta ? (
+              <path d="M6 6l12 12M18 6L6 18" />
+            ) : (
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            )}
+          </svg>
+        </button>
       </header>
 
-      <section className="storefront-hero relative mx-6 my-6 flex items-center justify-between gap-8 overflow-hidden rounded-[22px] px-[60px] py-10 max-[768px]:flex-col max-[768px]:gap-8 max-[768px]:px-6 max-[768px]:py-8 max-[640px]:mx-4 max-[640px]:text-center">
+      {/* Panel de acciones para móvil. Mismo contrato que Carrito y los modales:
+          backdrop + Escape + tap fuera. `nav:hidden` lo oculta si el viewport crece. */}
+      {navMovilAbierta && (
+        <div
+          className="nav:hidden fixed inset-0 z-[65] bg-slate-950/70 backdrop-blur-md"
+          role="presentation"
+          onClick={() => setNavMovilAbierta(false)}
+        >
+          <div
+            id="menu-movil-tienda"
+            className="absolute inset-x-0 top-0 flex max-h-[85vh] flex-col gap-2 overflow-y-auto border-b border-slate-400/15 bg-slate-900/98 p-4 shadow-2xl"
+            role="menu"
+            aria-label="Acciones de la tienda"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="flex items-center justify-between gap-3 rounded-xl border border-slate-400/15 bg-slate-800/60 px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-violet-400/40"
+              onClick={() => {
+                setNavMovilAbierta(false);
+                handleFavoritos();
+              }}
+            >
+              Favoritos
+              <span className="rounded-full bg-slate-700/70 px-2.5 py-0.5 text-xs font-bold text-slate-200">{favoritos.length}</span>
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              className="flex items-center justify-between gap-3 rounded-xl border border-slate-400/15 bg-slate-800/60 px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-violet-400/40"
+              onClick={() => {
+                setNavMovilAbierta(false);
+                handleCarrito();
+              }}
+            >
+              Carrito
+              <span className="rounded-full bg-slate-700/70 px-2.5 py-0.5 text-xs font-bold text-slate-200">{carrito.cantidadTotal}</span>
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              className="flex items-center justify-between gap-3 rounded-xl border border-slate-400/15 bg-slate-800/60 px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-violet-400/40"
+              onClick={() => {
+                setNavMovilAbierta(false);
+                onToggleTema();
+              }}
+            >
+              {tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+              <span className="text-base" aria-hidden="true">{tema === 'dark' ? '☀' : '☾'}</span>
+            </button>
+
+            {esInvitado ? (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-400/15 bg-slate-800/60 px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-violet-400/40"
+                onClick={() => {
+                  setNavMovilAbierta(false);
+                  abrirLogin();
+                }}
+              >
+                Iniciar sesión
+                <span className="rounded-full bg-slate-700/70 px-2.5 py-0.5 text-xs font-bold text-slate-200">{avatarTexto}</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-400/15 bg-slate-800/60 px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-violet-400/40"
+                  onClick={() => {
+                    setNavMovilAbierta(false);
+                    onPerfil();
+                  }}
+                >
+                  Editar perfil
+                  <span className="rounded-full bg-slate-700/70 px-2.5 py-0.5 text-xs font-bold text-slate-200">{avatarTexto}</span>
+                </button>
+                {usuario?.esAdmin && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-400/15 bg-slate-800/60 px-4 py-3 text-left text-sm font-semibold text-slate-100 transition hover:border-violet-400/40"
+                    onClick={() => {
+                      setNavMovilAbierta(false);
+                      onAdmin();
+                    }}
+                  >
+                    Panel admin
+                  </button>
+                )}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-left text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+                  onClick={() => {
+                    setNavMovilAbierta(false);
+                    setCarritoAbierto(false);
+                    onLogout();
+                  }}
+                >
+                  Cerrar sesión
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <section className="storefront-hero relative mx-6 my-6 flex items-center justify-between gap-8 overflow-hidden rounded-[22px] px-[60px] py-10 max-md:flex-col max-md:gap-8 max-md:px-6 max-md:py-8 max-sm:mx-4 max-sm:text-center">
         <div className="relative z-[2] max-w-2xl">
-          <h1 className="mb-4 text-[2.5rem] font-extrabold leading-tight text-white max-[768px]:text-[2rem]">¡Bienvenido a la Tienda UCN!</h1>
+          <h1 className="mb-4 text-[2.5rem] font-extrabold leading-tight text-white max-md:text-[2rem]">¡Bienvenido a la Tienda UCN!</h1>
           <p className="mb-8 max-w-xl text-[1.1rem] leading-relaxed text-white/90">Descubre la mejor selección de merchandising oficial, ropa y accesorios exclusivos para nuestra comunidad.</p>
           <button 
             type="button" 
@@ -331,7 +473,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
             Explorar Colección
           </button>
         </div>
-        <div className="z-[2] grid h-[200px] w-[200px] shrink-0 rotate-[5deg] place-items-center rounded-3xl border border-white/20 bg-white/10 p-6 shadow-[0_0_55px_rgba(125,211,252,0.38)] backdrop-blur-md max-[768px]:h-[150px] max-[768px]:w-[150px]">
+        <div className="z-[2] grid h-[200px] w-[200px] shrink-0 rotate-[5deg] place-items-center rounded-3xl border border-white/20 bg-white/10 p-6 shadow-[0_0_55px_rgba(125,211,252,0.38)] backdrop-blur-md max-md:h-[150px] max-md:w-[150px]">
           <img src={escudoUcn} alt="Escudo UCN" className="h-full w-full object-contain drop-shadow-[0_0_24px_rgba(255,255,255,0.55)]" aria-hidden="true" />
         </div>
       </section>
@@ -369,7 +511,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 max-[768px]:grid-cols-2 max-[480px]:grid-cols-1">
+        <div className="grid grid-cols-3 gap-4 max-md:grid-cols-2 xs:grid-cols-1">
           {cargandoProductos && Array.from({ length: 3 }, (_, indice) => (
             <div className="ucn-skeleton h-[350px] rounded-2xl" key={`producto-cargando-${indice}`} aria-hidden="true" />
           ))}

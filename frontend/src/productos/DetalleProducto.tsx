@@ -68,7 +68,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
   const esInvitado = !usuario;
   const avatarTexto = esInvitado ? 'IN' : obtenerIniciales(usuario.nombre, usuario.email);
 
-  const moverZoom = (event: React.MouseEvent<HTMLDivElement>) => {
+  const moverZoom = (event: React.PointerEvent<HTMLDivElement>) => {
     const contenedor = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - contenedor.left) / contenedor.width) * 100;
     const y = ((event.clientY - contenedor.top) / contenedor.height) * 100;
@@ -156,7 +156,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
         onCantidad={carrito.actualizarCantidad}
         onIrAPagar={handleIrAPagar}
       />
-      <header className="theme-dark-header storefront-detail-header sticky top-0 z-20 flex items-center justify-between gap-4 border-b px-6 py-4 max-[720px]:px-4">
+      <header className="theme-dark-header storefront-detail-header sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 border-b px-6 py-4 nav:px-4">
         <button className="storefront-detail-back-button inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold transition hover:-translate-y-px" onClick={() => navigate('/')}>
           <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -227,10 +227,10 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
         </div>
       </header>
 
-      <main className="flex flex-1 justify-center px-6 py-10 max-[900px]:py-6 max-[640px]:px-4">
-        <div className="storefront-detail-card grid w-full max-w-6xl grid-cols-2 gap-12 p-8 max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[640px]:p-5">
+      <main className="flex flex-1 justify-center px-6 py-10 wide:py-6 max-sm:px-4">
+        <div className="storefront-detail-card grid w-full max-w-6xl grid-cols-2 gap-12 p-8 wide:grid-cols-1 wide:gap-8 max-sm:p-5">
           <div
-            className={`storefront-detail-media storefront-detail-media--${categoriaVisual(producto.categoria)} relative flex min-h-[420px] cursor-zoom-in items-center justify-center overflow-hidden p-10 max-[640px]:min-h-[300px] max-[640px]:p-6`}
+            className={`storefront-detail-media storefront-detail-media--${categoriaVisual(producto.categoria)} relative flex min-h-[420px] cursor-zoom-in items-center justify-center overflow-hidden p-10 max-sm:min-h-[300px] max-sm:p-6`}
             onClick={() => setZoomAbierto(true)}
             role="button"
             tabIndex={0}
@@ -244,7 +244,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
           </div>
           <div className="flex flex-col justify-center">
             <p className="storefront-detail-category mb-2 text-sm font-bold uppercase">{producto.categoria}</p>
-            <h1 className="mb-2 text-4xl font-extrabold leading-tight max-[640px]:text-3xl">{producto.nombre}</h1>
+            <h1 className="mb-2 text-4xl font-extrabold leading-tight max-sm:text-3xl">{producto.nombre}</h1>
             <p className="storefront-detail-muted mb-6 text-sm">SKU: {producto.sku}</p>
             
             <div className="mb-8 flex items-baseline gap-3">
@@ -322,12 +322,18 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
               ×
             </button>
 
-            {/* Contenedor de zoom: overflow hidden + cursor zoom */}
+            {/* Contenedor de zoom.
+                Pointer events para que funcione igual con mouse y con el dedo.
+                `touch-none` evita que el arrastre se interprete como scroll.
+                El cierre NO va en onClick: en táctil un toque simple llega como
+                click y cerraría el lightbox en vez de hacer zoom. Queda solo en
+                el backdrop, el botón de cerrar y Escape. */}
             <div
-              className="h-full w-full cursor-zoom-in overflow-hidden"
-              onMouseMove={moverZoom}
-              onMouseLeave={() => setZoomActivo(false)}
-              onClick={cerrarZoom}
+              className="h-full w-full touch-none cursor-zoom-in overflow-hidden"
+              onPointerMove={moverZoom}
+              onPointerLeave={() => setZoomActivo(false)}
+              onPointerUp={() => setZoomActivo(false)}
+              onPointerCancel={() => setZoomActivo(false)}
               role="button"
               tabIndex={0}
               aria-label="Cerrar vista ampliada"
@@ -351,7 +357,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             {/* Instrucción */}
             {!zoomActivo && (
               <span className="storefront-detail-zoom-hint pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs">
-                Pasa el mouse sobre la imagen para hacer zoom
+                Arrastra o pasa el mouse sobre la imagen para hacer zoom
               </span>
             )}
           </div>

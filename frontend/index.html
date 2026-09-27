@@ -1,10 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="es-CL">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Tienda UCN</title>
+    <meta
+      name="description"
+      content="Merchandising, ropa y accesorios oficiales de la Universidad Católica del Norte."
+    />
+
+    <!-- Barra de estado del navegador: sigue al tema de la app, sin destello blanco.
+         El valor es --bg-950 de index.css en sus dos modos. -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0D1520" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F8FA" />
+
+    <!-- iOS convierte automaticamente los numeros de telefono en enlaces -->
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Instalable en iOS: agregar a pantalla de inicio -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Tienda UCN" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Previsualizacion al compartir un link de la tienda -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tienda UCN" />
+    <meta property="og:locale" content="es_CL" />
+    <meta property="og:title" content="Tienda UCN" />
+    <meta
+      property="og:description"
+      content="Merchandising, ropa y accesorios oficiales de la Universidad Católica del Norte."
+    />
+    <meta property="og:image" content="/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
   </head>
   <body>
     <div id="root"></div>

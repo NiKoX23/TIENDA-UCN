@@ -3,6 +3,16 @@
 @import "./styles/variables.css";
 
 /* =========================================================
+   BREAKPOINTS RESPONSIVE
+   Umbrales SUPERIORES (tope) para adaptations mobile-first.
+   Los umbrales inferiores usan la escala nativa de Tailwind v4
+   (sm 640, md 768, lg 1024, xl 1280) con los prefijos max-sm:, max-md:.
+   ========================================================= */
+@custom-variant xs (@media (width < 480px));
+@custom-variant nav (@media (width < 720px));
+@custom-variant wide (@media (width < 900px));
+
+/* =========================================================
    PALETA UCN — Universidad Católica del Norte, Chile
    ========================================================= */
 :root {
@@ -79,10 +89,8 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 body {
-  min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  overflow-x: hidden;
   background: var(--bg-950);
   color: var(--text);
 }

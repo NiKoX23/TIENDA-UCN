@@ -168,16 +168,16 @@ export default function ControlTacTab() {
                 </div>
             ) : (
                 <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-400/15">
-                    <table className="w-full text-left text-sm">
+                    <table className="w-full min-w-[860px] text-left text-sm">
                         <thead className="theme-dark-surface bg-slate-950/50 text-xs uppercase tracking-wider text-slate-400">
                             <tr>
                                 <th className="px-4 py-3">N° TAC</th>
                                 <th className="px-4 py-3">Producto</th>
                                 <th className="px-4 py-3 text-right">Cantidad</th>
-                                <th className="px-4 py-3 text-right">Precio TAC</th>
+                                <th className="hidden px-4 py-3 text-right sm:table-cell">Precio TAC</th>
                                 <th className="px-4 py-3 text-right">Total</th>
-                                <th className="px-4 py-3">Firma comprador</th>
-                                <th className="px-4 py-3">Firma vendedor</th>
+                                <th className="hidden min-w-[150px] px-4 py-3 sm:table-cell">Firma comprador</th>
+                                <th className="hidden min-w-[150px] px-4 py-3 sm:table-cell">Firma vendedor</th>
                                 <th className="px-4 py-3">Estado</th>
                             </tr>
                         </thead>
@@ -198,16 +198,16 @@ export default function ControlTacTab() {
                                             </p>
                                         </td>
                                         <td className="px-4 py-3 text-right font-semibold text-slate-100">{d.cantidad}</td>
-                                        <td className="px-4 py-3 text-right text-slate-200">{formatearCLP(d.precioTac)}</td>
+                                        <td className="hidden px-4 py-3 text-right text-slate-200 sm:table-cell">{formatearCLP(d.precioTac)}</td>
                                         <td className="px-4 py-3 text-right font-semibold text-slate-100">{formatearCLP(d.total)}</td>
-                                        <td className="min-w-[150px] px-4 py-3">
+                                        <td className="hidden min-w-[150px] px-4 py-3 sm:table-cell">
                                             <FirmaSelect
                                                 valor={d.firmaComprador}
                                                 deshabilitado={ocupado}
                                                 onChange={(estado) => cambiarFirma(d.idTac, 'firmaComprador', estado)}
                                             />
                                         </td>
-                                        <td className="min-w-[150px] px-4 py-3">
+                                        <td className="hidden min-w-[150px] px-4 py-3 sm:table-cell">
                                             <FirmaSelect
                                                 valor={d.firmaVendedor}
                                                 deshabilitado={ocupado}

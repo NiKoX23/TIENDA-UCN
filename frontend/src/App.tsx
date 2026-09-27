@@ -44,7 +44,7 @@ export default function App() {
             {location.pathname !== '/' && !location.pathname.startsWith('/producto/') && (
                 <button
                     type="button"
-                    className="theme-toggle-control fixed right-[76px] top-[18px] z-[100] grid h-[42px] w-[42px] place-items-center rounded-full border border-slate-400/30 bg-slate-900 text-lg text-white shadow-lg transition hover:-translate-y-px hover:border-violet-400 max-[720px]:right-[68px] max-[720px]:top-3"
+                    className="theme-toggle-control fixed right-[76px] top-[18px] z-[100] grid h-[42px] w-[42px] place-items-center rounded-full border border-slate-400/30 bg-slate-900 text-lg text-white shadow-lg transition hover:-translate-y-px hover:border-violet-400 nav:right-[68px] nav:top-3"
                     onClick={() => setTema((actual) => (actual === 'dark' ? 'light' : 'dark'))}
                     aria-label={tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                     title={tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}

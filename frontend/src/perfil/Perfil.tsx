@@ -45,7 +45,7 @@ export default function Perfil({ tema, usuario, onLogout, onUpdated }: PerfilPro
             <button type="button" className="theme-dark-surface self-start rounded-full border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-200 transition hover:-translate-y-px hover:border-violet-400/50" onClick={() => navigate('/')}>
                 volver a la tienda
             </button>
-            <form className="theme-dark-surface mt-8 w-full max-w-lg rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl" onSubmit={handleSubmit}>
+            <form className="theme-dark-surface mt-8 w-full max-w-lg rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl xs:p-6" onSubmit={handleSubmit}>
                 <h1 className="mb-5 text-3xl font-extrabold tracking-tight">Mi perfil</h1>
                 <label className="mt-4 grid gap-2 font-semibold text-slate-200">
                     Nombre

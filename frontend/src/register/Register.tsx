@@ -45,7 +45,7 @@ export default function Register({ tema, onAuthenticated }: { tema: 'dark' | 'li
 
     return (
         <div className={`grid min-h-screen place-items-center px-5 py-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
-            <form className="theme-dark-surface flex w-full max-w-md flex-col gap-4 rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl max-[480px]:p-6" onSubmit={handleSubmit}>
+            <form className="theme-dark-surface flex w-full max-w-md flex-col gap-4 rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl xs:p-6" onSubmit={handleSubmit}>
                 <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-50">Crear cuenta</h1>
 
                 <input

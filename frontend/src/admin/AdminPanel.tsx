@@ -137,7 +137,7 @@ export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
                         {cargando ? (
                             <div className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-slate-100 before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:border-2 before:border-slate-400/20 before:border-r-violet-600 before:border-t-violet-300 before:animate-spin">Cargando usuarios...</div>
                         ) : (
-                            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-400/15">
+                            <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-400/15">
                                 <table className="w-full text-left text-sm">
                                     <thead className="theme-dark-surface bg-slate-950/50 text-xs uppercase tracking-wider text-slate-400">
                                         <tr>

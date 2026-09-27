@@ -1,9 +1,20 @@
-FROM node:20-alpine
+# Etapa 1: compilar el bundle de Vite
+FROM docker.io/library/node:20-alpine AS build
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm install
+RUN npm ci
+
 COPY . .
 RUN npm run build
 
-EXPOSE 5173
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]
+# Etapa 2: servir el dist/ estático con nginx.
+# Antes se usaba `vite preview`, que es un server de desarrollo: sin gzip,
+# sin cache de assets y sin fallback de history del SPA (todo deep link daba 404).
+FROM docker.io/library/nginx:alpine
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

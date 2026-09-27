@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { formatearCLP } from '../utils/precio';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { listarInventario, type ItemInventario } from '../services/inventario.service';
 import {
     listarRegistroVentas,
@@ -259,6 +260,10 @@ function ModalRegistrarVenta({ productos, onCerrar, onGuardar }: ModalRegistrarP
 }
 
 export default function VentasTab() {
+    // El colSpan de la fila de totales depende de cuántas columnas quedan
+    // visibles: 5 bajo sm (Venta, Producto, Cantidad, Subtotal, Ganancia) y 11
+    // desde sm. Es un atributo HTML, no una clase, así que no lo resuelve CSS.
+    const vistaMovil = useMediaQuery('(max-width: 639px)');
     const [registro, setRegistro] = useState<RegistroVentaItem[]>([]);
     const [productos, setProductos] = useState<ItemInventario[]>([]);
     const [cargando, setCargando] = useState(true);
@@ -365,20 +370,20 @@ export default function VentasTab() {
                 </div>
             ) : (
                 <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-400/15">
-                    <table className="w-full text-left text-sm">
+                    <table className="w-full min-w-[1100px] text-left text-sm">
                         <thead className="theme-dark-surface bg-slate-950/50 text-xs uppercase tracking-wider text-slate-400">
                             <tr>
                                 <th className="px-4 py-3">Venta</th>
                                 <th className="px-4 py-3">Producto</th>
                                 <th className="px-4 py-3 text-right">Cantidad</th>
-                                <th className="px-4 py-3">Pago</th>
-                                <th className="px-4 py-3">Tipo</th>
-                                <th className="px-4 py-3">N° TAC</th>
-                                <th className="px-4 py-3">TAC</th>
-                                <th className="px-4 py-3 text-right">Precio unit</th>
+                                <th className="hidden px-4 py-3 sm:table-cell">Pago</th>
+                                <th className="hidden px-4 py-3 sm:table-cell">Tipo</th>
+                                <th className="hidden px-4 py-3 sm:table-cell">N° TAC</th>
+                                <th className="hidden px-4 py-3 sm:table-cell">TAC</th>
+                                <th className="hidden px-4 py-3 text-right sm:table-cell">Precio unit</th>
                                 <th className="px-4 py-3 text-right">Subtotal</th>
                                 <th className="px-4 py-3 text-right">Ganancia total</th>
-                                <th className="px-4 py-3">Obs.</th>
+                                <th className="hidden px-4 py-3 sm:table-cell">Obs.</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-400/10">
@@ -399,21 +404,21 @@ export default function VentasTab() {
                                         </p>
                                     </td>
                                     <td className="px-4 py-3 text-right font-semibold text-slate-100">{r.cantidad}</td>
-                                    <td className="px-4 py-3 capitalize text-slate-300">{r.metodoPago}</td>
-                                    <td className="px-4 py-3">
+                                    <td className="hidden px-4 py-3 capitalize text-slate-300 sm:table-cell">{r.metodoPago}</td>
+                                    <td className="hidden px-4 py-3 sm:table-cell">
                                         <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${badgeTipo(r.tipoVenta)}`}>
                                             {r.tipoVenta === 'tac' ? 'TAC' : 'Normal'}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 font-mono text-xs text-slate-300">{r.numeroTac ?? '—'}</td>
-                                    <td className="px-4 py-3">
+                                    <td className="hidden px-4 py-3 font-mono text-xs text-slate-300 sm:table-cell">{r.numeroTac ?? '—'}</td>
+                                    <td className="hidden px-4 py-3 sm:table-cell">
                                         {r.tacAprobado ? (
                                             <span className={badgeAprobado(r.tacAprobado)}>{r.tacAprobado}</span>
                                         ) : (
                                             <span className="text-xs text-slate-500">—</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right text-slate-200">
+                                    <td className="hidden px-4 py-3 text-right text-slate-200 sm:table-cell">
                                         {formatearCLP(r.precioUnitarioAplicado)}
                                     </td>
                                     <td className="px-4 py-3 text-right font-semibold text-slate-100">
@@ -422,7 +427,7 @@ export default function VentasTab() {
                                     <td className={`px-4 py-3 text-right font-semibold ${r.tipoVenta === 'tac' ? 'text-slate-400' : 'text-emerald-200'}`}>
                                         {formatearCLP(r.gananciaTotal)}
                                     </td>
-                                    <td className="max-w-[140px] truncate px-4 py-3 text-xs text-slate-400" title={r.observaciones ?? ''}>
+                                    <td className="hidden max-w-[140px] truncate px-4 py-3 text-xs text-slate-400 sm:table-cell" title={r.observaciones ?? ''}>
                                         {r.observaciones || '—'}
                                     </td>
                                 </tr>
@@ -430,18 +435,18 @@ export default function VentasTab() {
                         </tbody>
                         <tfoot className="theme-dark-surface bg-slate-950/50 text-sm">
                             <tr>
-                                <td className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400" colSpan={6}>
+                                <td className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400" colSpan={vistaMovil ? 3 : 6}>
                                     Totales
                                 </td>
-                                <td className="px-4 py-3 text-xs font-bold text-slate-300" colSpan={1}></td>
-                                <td className="px-4 py-3"></td>
+                                <td className="hidden px-4 py-3 text-xs font-bold text-slate-300 sm:table-cell" colSpan={1}></td>
+                                <td className="hidden px-4 py-3 sm:table-cell"></td>
                                 <td className="px-4 py-3 text-right font-bold text-slate-100">
                                     {formatearCLP(totales.subtotal)}
                                 </td>
                                 <td className="px-4 py-3 text-right font-bold text-emerald-200">
                                     {formatearCLP(totales.ganancia)}
                                 </td>
-                                <td className="px-4 py-3"></td>
+                                <td className="hidden px-4 py-3 sm:table-cell"></td>
                             </tr>
                         </tfoot>
                     </table>
