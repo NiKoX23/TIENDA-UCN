@@ -3,10 +3,16 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-jwt';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Usuario } from '../usuario.entity';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    @InjectRepository(Usuario) private usuarioRepository: Repository<Usuario>,
+  ) {
     super({
       jwtFromRequest: (req: Request) => req?.cookies?.access_token ?? null,
       ignoreExpiration: false,
@@ -14,17 +20,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: {
+  async validate(payload: {
     sub: number;
     email: string;
     nombre?: string;
     esAdmin: boolean;
   }) {
+    const usuario = await this.usuarioRepository.findOne({
+      where: { uid: payload.sub },
+    });
+    if (!usuario) return null;
+
     return {
-      uid: payload.sub,
-      nombre: payload.nombre,
-      email: payload.email,
-      esAdmin: payload.esAdmin,
+      uid: usuario.uid,
+      nombre: usuario.nombre,
+      email: usuario.email,
+      esAdmin: usuario.esAdmin,
     };
   }
 }

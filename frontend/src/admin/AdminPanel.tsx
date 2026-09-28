@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Usuario } from '../services/auth.service';
-import { listarUsuarios, cambiarRol, type AdminUsuario } from '../services/admin.service';
+import { listarUsuarios, cambiarRol, eliminarUsuario, type AdminUsuario } from '../services/admin.service';
 import InventarioTab from './InventarioTab';
 import DashboardTab from './DashboardTab';
 import VentasTab from './VentasTab';
@@ -81,6 +81,22 @@ export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
             );
         } catch {
             setError(`No se pudo cambiar el rol de ${target.nombre}.`);
+        } finally {
+            setCambiandoUid(null);
+        }
+    };
+
+    const borrarUsuario = async (target: AdminUsuario) => {
+        const confirmado = window.confirm(`¿Eliminar permanentemente a ${target.nombre} (${target.email})?`);
+        if (!confirmado) return;
+
+        try {
+            setError('');
+            setCambiandoUid(target.uid);
+            await eliminarUsuario(target.uid);
+            setUsuarios((actuales) => actuales.filter((u) => u.uid !== target.uid));
+        } catch {
+            setError(`No se pudo eliminar a ${target.nombre}.`);
         } finally {
             setCambiandoUid(null);
         }
@@ -167,14 +183,24 @@ export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
                                                         {esTu ? (
                                                             <span className="text-xs text-slate-500">Tú</span>
                                                         ) : (
-                                                            <button
-                                                                type="button"
-                                                                className={`rounded-xl px-3 py-2 text-xs font-bold transition ${u.esAdmin ? 'bg-amber-500/15 text-amber-200 hover:bg-amber-500/25' : 'bg-violet-500/15 text-violet-200 hover:bg-violet-500/25'} disabled:cursor-not-allowed disabled:opacity-50`}
-                                                                disabled={deshabilitado}
-                                                                onClick={() => alternarRol(u)}
-                                                            >
-                                                                {cambiandoUid === u.uid ? '...' : u.esAdmin ? 'Revocar admin' : 'Hacer admin'}
-                                                            </button>
+                                                            <div className="flex justify-end gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-200 transition hover:border-red-400/40 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    disabled={deshabilitado}
+                                                                    onClick={() => void borrarUsuario(u)}
+                                                                >
+                                                                    {cambiandoUid === u.uid ? '...' : 'Borrar usuario'}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className={`rounded-xl px-3 py-2 text-xs font-bold transition ${u.esAdmin ? 'bg-amber-500/15 text-amber-200 hover:bg-amber-500/25' : 'bg-violet-500/15 text-violet-200 hover:bg-violet-500/25'} disabled:cursor-not-allowed disabled:opacity-50`}
+                                                                    disabled={deshabilitado}
+                                                                    onClick={() => alternarRol(u)}
+                                                                >
+                                                                    {cambiandoUid === u.uid ? '...' : u.esAdmin ? 'Revocar admin' : 'Hacer admin'}
+                                                                </button>
+                                                            </div>
                                                         )}
                                                     </td>
                                                 </tr>

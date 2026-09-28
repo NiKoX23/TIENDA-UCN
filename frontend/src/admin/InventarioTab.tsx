@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { formatearCLP } from '../utils/precio';
 import {
@@ -44,6 +45,11 @@ function esNumeroValido(s: string): boolean {
     return s !== '' && Number.isFinite(Number(s)) && Number(s) >= 0;
 }
 
+function categoriaUsaTallas(categoria: string | undefined): boolean {
+    const normalizada = (categoria ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return ['poleron', 'polera', 'pantalon', 'vestuario', 'ropa'].some((nombre) => normalizada.includes(nombre));
+}
+
 function badgeEstado(estado: EstadoInventario) {
     const estilos: Record<EstadoInventario, string> = {
         CRITICO: 'border-red-400/40 bg-red-500/20 text-red-200',
@@ -61,19 +67,26 @@ interface ModalProps {
 }
 
 function Modal({ titulo, onCerrar, children }: ModalProps) {
-    return (
+    return createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[150] grid place-items-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-md"
             onClick={onCerrar}
         >
             <div
-                className="theme-dark-surface max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-400/20 bg-slate-900 p-6 shadow-2xl"
+                role="dialog"
+                aria-modal="true"
+                aria-label={titulo}
+                className="theme-dark-surface my-auto max-h-[min(90vh,720px)] w-full max-w-md overflow-y-auto rounded-[28px] border border-slate-400/25 bg-slate-900 p-7 shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-white/10 max-[480px]:rounded-2xl max-[480px]:p-5"
                 onClick={(e) => e.stopPropagation()}
             >
-                <h2 className="text-lg font-extrabold tracking-tight">{titulo}</h2>
+                <div className="mb-5 flex items-center gap-3">
+                    <span className="h-8 w-1.5 rounded-full bg-gradient-to-b from-violet-500 to-cyan-400" aria-hidden="true" />
+                    <h2 className="text-xl font-extrabold tracking-tight text-slate-100">{titulo}</h2>
+                </div>
                 {children}
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
 
@@ -91,7 +104,7 @@ function ModalAjustarStock({ item, onCerrar, onGuardar }: ModalAjustarStockProps
     return (
         <Modal titulo={`Ajustar stock · ${item.sku}`} onCerrar={onCerrar}>
             <p className="mt-2 text-sm text-slate-400">
-                Registra el stock físico actual de la talla {item.talla || 'única'}
+                Registra el stock físico actual{categoriaUsaTallas(item.categoria) ? ` de la talla ${item.talla || 'única'}` : ''}
                 {item.color ? ` (${item.color})` : ''}. Stock mínimo declarado: <span className="font-semibold text-slate-200">{item.stockMinimo}</span>.
             </p>
             <div className="mt-4">
@@ -136,6 +149,7 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
         const coincidencia = categorias.find((c) => c.nombre === item?.categoria);
         return String(coincidencia?.idCategoria ?? categorias[0]?.idCategoria ?? '');
     });
+    const usaTallas = categoriaUsaTallas(categorias.find((categoria) => String(categoria.idCategoria) === idCategoria)?.nombre);
     const [marca, setMarca] = useState(item?.marca ?? '');
     const [descripcion, setDescripcion] = useState('');
     const [imagenUrl, setImagenUrl] = useState('');
@@ -160,7 +174,7 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
         (precioTac.trim() !== '' && !esNumeroValido(precioTac)) ||
         (esNuevo &&
             (codigoProducto.trim() === '' ||
-                talla.trim() === '' ||
+                (usaTallas && talla.trim() === '') ||
                 sku.trim() === '' ||
                 !esNumeroValido(stock) ||
                 !esNumeroValido(stockMinimo)));
@@ -181,7 +195,7 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
                     imagenUrl: imagenUrl.trim() || undefined,
                     activo: true,
                     variante: {
-                        talla: talla.trim() || 'unica',
+                        talla: usaTallas ? talla.trim() : 'unica',
                         color: color.trim() || undefined,
                         sku: sku.trim(),
                         stock: Number(stock),
@@ -309,12 +323,12 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
                     <div className="admin-variant-section rounded-2xl p-4">
                         <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Variante inicial</p>
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <div>
+                            {usaTallas && <div>
                                 <label htmlFor="talla" className={labelCls}>
                                     Talla *
                                 </label>
                                 <input id="talla" className={inputCls} value={talla} placeholder="EJ: M o unica" onChange={(e) => setTalla(e.target.value)} />
-                            </div>
+                            </div>}
                             <div>
                                 <label htmlFor="color" className={labelCls}>
                                     Color
@@ -378,14 +392,15 @@ function ModalVariante({ item, onCerrar, onGuardar }: ModalVarianteProps) {
     const [sku, setSku] = useState('');
     const [stock, setStock] = useState('0');
     const [stockMinimo, setStockMinimo] = useState('0');
+    const usaTallas = categoriaUsaTallas(item.categoria);
 
-    const invalido = talla.trim() === '' || sku.trim() === '' || !esNumeroValido(stock) || !esNumeroValido(stockMinimo);
+    const invalido = (usaTallas && talla.trim() === '') || sku.trim() === '' || !esNumeroValido(stock) || !esNumeroValido(stockMinimo);
 
     const guardar = async () => {
         setGuardando(true);
         try {
             await onGuardar(item.codigoProducto, {
-                talla: talla.trim() || 'unica',
+                talla: usaTallas ? talla.trim() : 'unica',
                 color: color.trim() || undefined,
                 sku: sku.trim(),
                 stock: Number(stock),
@@ -406,12 +421,12 @@ function ModalVariante({ item, onCerrar, onGuardar }: ModalVarianteProps) {
                 }}
             >
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
+                    {usaTallas && <div>
                         <label htmlFor="talla" className={labelCls}>
                             Talla *
                         </label>
                         <input id="talla" className={inputCls} value={talla} placeholder="EJ: M o unica" onChange={(e) => setTalla(e.target.value)} />
-                    </div>
+                    </div>}
                     <div>
                         <label htmlFor="color" className={labelCls}>
                             Color
@@ -619,7 +634,7 @@ export default function InventarioTab() {
                                         </p>
                                     </td>
                                     <td className="px-3 py-3 text-slate-300">{item.categoria}</td>
-                                    <td className="px-3 py-3 text-slate-200">{item.talla}</td>
+                                    <td className="px-3 py-3 text-slate-200">{categoriaUsaTallas(item.categoria) ? item.talla : '—'}</td>
                                     <td className="px-3 py-3 text-slate-300">{item.color ?? '—'}</td>
                                     <td className="px-3 py-3 font-mono text-xs text-slate-200">{item.sku}</td>
                                     <td className="px-3 py-3 text-right text-slate-200">{formatearCLP(item.precioVenta)}</td>
@@ -646,7 +661,7 @@ export default function InventarioTab() {
                                                 Editar
                                             </button>
                                             <button type="button" className={botonSecundarioCls} onClick={() => abrirModal('variante', item)}>
-                                                + Talla
+                                                + Variante
                                             </button>
                                         </div>
                                     </td>

@@ -2,6 +2,53 @@ ALTER TABLE productos ADD COLUMN IF NOT EXISTS precio_tac integer;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_url varchar(200);
 ALTER TABLE variantes_producto ADD COLUMN IF NOT EXISTS imagen_url varchar(200);
 
+CREATE OR REPLACE FUNCTION normalizar_talla_variante()
+RETURNS trigger AS $$
+DECLARE
+    categoria_nombre varchar(50);
+BEGIN
+    SELECT lower(c.nombre) INTO categoria_nombre
+    FROM productos p
+    JOIN categorias c ON c.id_categoria = p.id_categoria
+    WHERE p.codigo_producto = NEW.codigo_producto;
+
+    IF categoria_nombre NOT IN ('poleron', 'polerones', 'polera', 'poleras', 'pantalon', 'pantalones', 'vestuario', 'ropa') THEN
+        NEW.talla := 'unica';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION normalizar_tallas_por_categoria()
+RETURNS trigger AS $$
+DECLARE
+    categoria_nombre varchar(50);
+BEGIN
+    SELECT lower(nombre) INTO categoria_nombre FROM categorias WHERE id_categoria = NEW.id_categoria;
+    IF categoria_nombre NOT IN ('poleron', 'polerones', 'polera', 'poleras', 'pantalon', 'pantalones', 'vestuario', 'ropa') THEN
+        UPDATE variantes_producto SET talla = 'unica' WHERE codigo_producto = NEW.codigo_producto;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS variantes_sin_talla_fuera_de_ropa ON variantes_producto;
+CREATE TRIGGER variantes_sin_talla_fuera_de_ropa
+BEFORE INSERT OR UPDATE OF codigo_producto, talla ON variantes_producto
+FOR EACH ROW EXECUTE FUNCTION normalizar_talla_variante();
+
+DROP TRIGGER IF EXISTS producto_categoria_sin_tallas ON productos;
+CREATE TRIGGER producto_categoria_sin_tallas
+AFTER UPDATE OF id_categoria ON productos
+FOR EACH ROW EXECUTE FUNCTION normalizar_tallas_por_categoria();
+
+UPDATE variantes_producto v SET talla = 'unica'
+FROM productos p
+JOIN categorias c ON c.id_categoria = p.id_categoria
+WHERE p.codigo_producto = v.codigo_producto
+  AND lower(c.nombre) NOT IN ('poleron', 'polerones', 'polera', 'poleras', 'pantalon', 'pantalones', 'vestuario', 'ropa')
+  AND v.talla <> 'unica';
+
 INSERT INTO categorias (nombre) VALUES
     ('polerones'), ('accesorios'), ('papeleria')
 ON CONFLICT (nombre) DO NOTHING;

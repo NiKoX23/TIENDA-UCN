@@ -27,6 +27,27 @@ function categoriaVisual(categoria: string): string {
   return 'default';
 }
 
+function estiloColorProducto(color: string) {
+  const nombre = color.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const paleta: [string[], string, string][] = [
+    [['blanco', 'white', 'marfil', 'crema'], '#F1F5F9', '#1F2937'],
+    [['negro', 'black'], '#1F2937', '#FFFFFF'],
+    [['gris', 'gray', 'grey', 'plata'], '#9CA3AF', '#1F2937'],
+    [['rosa', 'rosado', 'pink', 'fucsia'], '#F9A8D4', '#831843'],
+    [['rojo', 'red', 'burdeo', 'granate', 'vino'], '#DC2626', '#FFFFFF'],
+    [['naranjo', 'naranja', 'orange', 'coral'], '#FB923C', '#431407'],
+    [['amarillo', 'yellow', 'dorado', 'oro'], '#FDE047', '#422006'],
+    [['verde', 'green', 'oliva', 'menta'], '#4ADE80', '#14532D'],
+    [['celeste', 'turquesa', 'cyan', 'agua'], '#67E8F9', '#164E63'],
+    [['azul', 'blue', 'navy', 'marino'], '#3B82F6', '#FFFFFF'],
+    [['morado', 'purpura', 'violeta', 'purple', 'lila'], '#A855F7', '#FFFFFF'],
+    [['cafe', 'marron', 'brown', 'beige', 'camel'], '#A16207', '#FFFFFF'],
+  ];
+  const coincidencia = paleta.find(([nombres]) => nombres.some((nombreColor) => nombre.includes(nombreColor)));
+  const [fondo, texto] = coincidencia ? [coincidencia[1], coincidencia[2]] : ['#E2E8F0', '#1F2937'];
+  return { backgroundColor: fondo, color: texto, borderColor: fondo };
+}
+
 export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: DetalleProductoProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -300,7 +321,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
                   <span className="storefront-detail-muted text-xs font-semibold uppercase">Color:</span>
                   <div className="flex flex-wrap gap-2">
                     {coloresDisponibles.map((color) => (
-                      <button key={color} type="button" onClick={() => seleccionarOpcion('color', color)} aria-pressed={producto.color === color} className={`storefront-detail-option rounded-lg px-4 py-2 text-sm font-bold ${producto.color === color ? 'ring-2 ring-pink-500' : ''}`}>
+                      <button key={color} type="button" onClick={() => seleccionarOpcion('color', color)} aria-pressed={producto.color === color} style={estiloColorProducto(color)} className={`storefront-detail-option rounded-lg px-4 py-2 text-sm font-bold ${producto.color === color ? 'ring-2 ring-pink-500' : ''}`}>
                         {color}
                       </button>
                     ))}
@@ -309,7 +330,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
               ) : coloresDisponibles.length === 1 && (
                 <div className="flex flex-col gap-1">
                   <span className="storefront-detail-muted text-xs font-semibold uppercase">Color:</span>
-                  <span className="storefront-detail-option rounded-lg px-4 py-2 text-lg font-bold">{coloresDisponibles[0]}</span>
+                  <span className="storefront-detail-option w-fit self-start rounded-lg px-5 py-2.5 text-xl font-bold" style={estiloColorProducto(coloresDisponibles[0])}>{coloresDisponibles[0]}</span>
                 </div>
               )}
             </div>

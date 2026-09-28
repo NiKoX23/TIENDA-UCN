@@ -18,3 +18,8 @@ export async function cambiarRol(uid: number, esAdmin: boolean): Promise<{ uid: 
     const { data } = await api.patch<{ uid: number; esAdmin: boolean }>(`/auth/admin/usuarios/${uid}/rol`, { esAdmin });
     return data;
 }
+
+export async function eliminarUsuario(uid: number): Promise<{ uid: number; eliminado: boolean }> {
+    const { data } = await api.delete<{ uid: number; eliminado: boolean }>(`/auth/admin/usuarios/${uid}`);
+    return data;
+}

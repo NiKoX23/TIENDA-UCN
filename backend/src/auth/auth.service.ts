@@ -191,6 +191,35 @@ export class AuthService implements OnModuleInit {
     return { uid: usuario.uid, esAdmin: usuario.esAdmin };
   }
 
+  async eliminarUsuarioAdmin(uid: number, usuarioUid: number) {
+    if (uid === usuarioUid) {
+      throw new ForbiddenException('No puedes eliminar tu propia cuenta');
+    }
+
+    const usuario = await this.usuarioRepository.findOne({
+      where: { uid: usuarioUid },
+    });
+    if (!usuario) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    if (usuario.esAdmin) {
+      const cantidadAdmins = await this.usuarioRepository.countBy({ esAdmin: true });
+      if (cantidadAdmins <= 1) {
+        throw new ForbiddenException('No puedes eliminar al único administrador');
+      }
+    }
+
+    await this.usuarioRepository.manager.transaction(async (manager) => {
+      // Conserva historial de clientes y alertas sin dejar referencias al usuario eliminado.
+      await manager.query('UPDATE clientes SET uid = NULL WHERE uid = $1', [usuarioUid]);
+      await manager.query('UPDATE alertas_stock SET uid_resuelve = NULL WHERE uid_resuelve = $1', [usuarioUid]);
+      await manager.delete(Usuario, { uid: usuarioUid });
+    });
+
+    return { uid: usuarioUid, eliminado: true };
+  }
+
   private generarToken(usuario: Usuario) {
     const payload = {
       sub: usuario.uid,

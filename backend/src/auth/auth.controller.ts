@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Body,
+  Delete,
   UseGuards,
   Req,
   Res,
@@ -127,5 +128,12 @@ export class AuthController {
       Number(uid),
       dto.esAdmin,
     );
+  }
+
+  @Delete('admin/usuarios/:uid')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  eliminarUsuarioAdmin(@Req() req: AuthRequest, @Param('uid') uid: string) {
+    return this.authService.eliminarUsuarioAdmin(req.user.uid, Number(uid));
   }
 }

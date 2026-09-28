@@ -166,7 +166,31 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
   const avatarTexto = esInvitado ? 'IN' : obtenerIniciales(usuario?.nombre, usuario?.email);
 
   const explorarProductos = () => {
-    document.getElementById('productos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const destino = document.getElementById('productos');
+    if (!destino) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      destino.scrollIntoView({ block: 'start' });
+      return;
+    }
+
+    const inicio = window.scrollY;
+    const fin = inicio + destino.getBoundingClientRect().top;
+    const duracion = 650;
+    let comienzo: number | undefined;
+
+    const animarDesplazamiento = (ahora: number) => {
+      comienzo ??= ahora;
+      const progreso = Math.min((ahora - comienzo) / duracion, 1);
+      const suavizado = progreso < 0.5
+        ? 4 * progreso ** 3
+        : 1 - (-2 * progreso + 2) ** 3 / 2;
+
+      window.scrollTo(0, inicio + (fin - inicio) * suavizado);
+      if (progreso < 1) window.requestAnimationFrame(animarDesplazamiento);
+    };
+
+    window.requestAnimationFrame(animarDesplazamiento);
   };
 
   return (
@@ -399,7 +423,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/producto/${producto.codigoProducto}`); } }}
                   style={{ cursor: 'pointer' }}
                 >
-                  <img src={producto.imagen} alt={producto.nombre} className="h-full w-full object-contain p-4 drop-shadow-lg" />
+                  <img src={producto.imagen} alt={producto.nombre} className="h-full w-full object-contain p-1 drop-shadow-lg" />
                 </div>
 
                 <span className={`storefront-stock-badge absolute right-3 top-3 z-10 ${producto.stock <= 0 ? 'storefront-stock-badge--empty' : producto.stock <= 3 ? 'storefront-stock-badge--low' : 'storefront-stock-badge--high'}`}>
