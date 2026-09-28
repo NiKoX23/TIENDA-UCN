@@ -63,7 +63,7 @@ export class ProductosService {
         categoria: producto.categoria.nombre,
         precio: producto.precioVenta,
         precioTac: producto.precioTac,
-        imagen: producto.imagenUrl,
+        imagen: variante.imagenUrl || producto.imagenUrl,
         idVariante: variante.idVariante,
         talla: variante.talla,
         color: variante.color,

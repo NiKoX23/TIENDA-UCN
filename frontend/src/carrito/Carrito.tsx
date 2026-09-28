@@ -7,10 +7,10 @@ interface CarritoProps {
   items: ItemCarrito[];
   total: number;
   onCerrar: () => void;
-  onSumar: (nombre: string) => void;
-  onRestar: (nombre: string) => void;
-  onEliminar: (nombre: string) => void;
-  onCantidad: (nombre: string, cantidad: number) => void;
+  onSumar: (idVariante: number) => void;
+  onRestar: (idVariante: number) => void;
+  onEliminar: (idVariante: number) => void;
+  onCantidad: (idVariante: number, cantidad: number) => void;
   onIrAPagar: () => void;
 }
 
@@ -70,11 +70,12 @@ export default function Carrito({
         ) : (
           <ul className="m-0 flex flex-1 list-none flex-col gap-2.5 overflow-y-auto p-3">
             {items.map((item) => (
-              <li className="theme-dark-surface flex flex-col gap-2.5 rounded-2xl border border-slate-400/10 bg-slate-800/75 p-3.5" key={item.codigoProducto}>
+              <li className="theme-dark-surface flex flex-col gap-2.5 rounded-2xl border border-slate-400/10 bg-slate-800/75 p-3.5" key={item.idVariante}>
                 <div className="flex items-center gap-3">
                 <img src={item.imagen} alt="" className="h-14 w-14 rounded-lg bg-white/5 object-contain" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-slate-100">{item.nombre}</p>
+                  {(item.color || item.talla !== 'unica') && <p className="text-xs text-slate-400">{[item.color, item.talla !== 'unica' ? item.talla : null].filter(Boolean).join(' / ')}</p>}
                   <p className="text-xs text-slate-500">{formatearCLP(item.precio)} c/u</p>
                 </div>
                 </div>
@@ -83,7 +84,7 @@ export default function Carrito({
                   <div className="flex items-center gap-1.5 rounded-lg border border-slate-400/15 bg-slate-950/60 p-1">
                     <button
                       type="button"
-                      onClick={() => onRestar(item.codigoProducto)}
+                      onClick={() => onRestar(item.idVariante)}
                       aria-label={`Quitar una unidad de ${item.nombre}`}
                     >
                       −
@@ -92,12 +93,12 @@ export default function Carrito({
                       type="number"
                       min={1}
                       value={item.cantidad}
-                      onChange={(e) => onCantidad(item.codigoProducto, Number(e.target.value))}
+                      onChange={(e) => onCantidad(item.idVariante, Number(e.target.value))}
                       aria-label={`Cantidad de ${item.nombre}`}
                     />
                     <button
                       type="button"
-                      onClick={() => onSumar(item.codigoProducto)}
+                      onClick={() => onSumar(item.idVariante)}
                       aria-label={`Agregar una unidad de ${item.nombre}`}
                     >
                       +
@@ -109,7 +110,7 @@ export default function Carrito({
                   <button
                     type="button"
                     className="grid place-items-center rounded-lg p-1.5 text-slate-500 hover:bg-red-900/20 hover:text-red-300"
-                    onClick={() => onEliminar(item.codigoProducto)}
+                    onClick={() => onEliminar(item.idVariante)}
                     aria-label={`Eliminar ${item.nombre} del carrito`}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">

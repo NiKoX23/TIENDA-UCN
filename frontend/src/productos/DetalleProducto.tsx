@@ -31,6 +31,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [producto, setProducto] = useState<Producto | null>(null);
+  const [variantes, setVariantes] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [carritoAbierto, setCarritoAbierto] = useState(false);
@@ -47,8 +48,9 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
     listarProductos()
       .then((productos) => {
         if (!Array.isArray(productos)) return;
-        const prod = productos.find((p) => p.codigoProducto === id);
-        setProducto(prod || null);
+        const grupo = productos.filter((p) => p.codigoProducto === id);
+        setVariantes(grupo);
+        setProducto(grupo[0] || null);
       })
       .finally(() => setCargando(false));
   }, [id]);
@@ -82,8 +84,27 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
   };
 
   const tieneTalla = categoriasConTalla.has((producto?.categoria ?? '').toLowerCase());
+  const coloresDisponibles = [...new Set(variantes.map((variante) => variante.color).filter((color): color is string => Boolean(color)))];
+  const tallasDisponibles = [...new Set(variantes
+    .map((variante) => variante.talla)
+    .filter((talla) => talla && !['única', 'unica', '??nica'].includes(talla.toLowerCase())))];
+  const seleccionarVariante = (variante: Producto) => {
+    setProducto(variante);
+    setCantidad(1);
+    setErrorCantidad('');
+    setAgregado(false);
+    setZoomAbierto(false);
+  };
+  const seleccionarOpcion = (dimension: 'color' | 'talla', valor: string) => {
+    if (!producto) return;
+    const variante = variantes.find((opcion) =>
+      opcion[dimension] === valor &&
+      (dimension === 'color' ? opcion.talla === producto.talla : opcion.color === producto.color),
+    ) ?? variantes.find((opcion) => opcion[dimension] === valor);
+    if (variante) seleccionarVariante(variante);
+  };
   const cantidadEnCarrito = producto
-    ? carrito.items.find((item) => item.codigoProducto === producto.codigoProducto)?.cantidad ?? 0
+    ? carrito.items.find((item) => item.idVariante === producto.idVariante)?.cantidad ?? 0
     : 0;
 
   const cambiarCantidad = (nuevaCantidad: number) => {
@@ -120,7 +141,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
   const handleIrAPagar = async () => {
     try {
       const compra = await comprarProductos(
-        carrito.items.map(({ codigoProducto, cantidad }) => ({ codigoProducto, cantidad })),
+        carrito.items.map(({ idVariante, cantidad }) => ({ idVariante, cantidad })),
       );
       carrito.vaciar();
       setCarritoAbierto(false);
@@ -261,17 +282,34 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
               {producto.descripcion || 'Sin descripción disponible para este producto.'}
             </p>
 
-            <div className="mb-8 flex gap-6">
-              {tieneTalla && producto.talla && !['única', 'unica', '??nica'].includes(producto.talla.toLowerCase()) && (
+            <div className="mb-8 flex flex-col gap-5">
+              {tieneTalla && tallasDisponibles.length > 0 && (
                 <div className="flex flex-col gap-1">
                   <span className="storefront-detail-muted text-xs font-semibold uppercase">Talla:</span>
-                  <span className="storefront-detail-option rounded-lg px-4 py-2 text-lg font-bold">{producto.talla}</span>
+                  <div className="flex flex-wrap gap-2">
+                    {tallasDisponibles.map((talla) => (
+                      <button key={talla} type="button" onClick={() => seleccionarOpcion('talla', talla)} aria-pressed={producto.talla === talla} className={`storefront-detail-option rounded-lg px-4 py-2 text-sm font-bold ${producto.talla === talla ? 'ring-2 ring-pink-500' : ''}`}>
+                        {talla}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-              {producto.color && (
+              {coloresDisponibles.length > 1 ? (
                 <div className="flex flex-col gap-1">
                   <span className="storefront-detail-muted text-xs font-semibold uppercase">Color:</span>
-                  <span className="storefront-detail-option rounded-lg px-4 py-2 text-lg font-bold">{producto.color}</span>
+                  <div className="flex flex-wrap gap-2">
+                    {coloresDisponibles.map((color) => (
+                      <button key={color} type="button" onClick={() => seleccionarOpcion('color', color)} aria-pressed={producto.color === color} className={`storefront-detail-option rounded-lg px-4 py-2 text-sm font-bold ${producto.color === color ? 'ring-2 ring-pink-500' : ''}`}>
+                        {color}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : coloresDisponibles.length === 1 && (
+                <div className="flex flex-col gap-1">
+                  <span className="storefront-detail-muted text-xs font-semibold uppercase">Color:</span>
+                  <span className="storefront-detail-option rounded-lg px-4 py-2 text-lg font-bold">{coloresDisponibles[0]}</span>
                 </div>
               )}
             </div>

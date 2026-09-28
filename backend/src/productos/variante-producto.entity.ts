@@ -27,6 +27,9 @@ export class VarianteProducto {
   @Column({ type: 'varchar', length: 30, nullable: true })
   color!: string | null;
 
+  @Column({ name: 'imagen_url', type: 'varchar', length: 200, nullable: true })
+  imagenUrl!: string | null;
+
   @Column({ type: 'varchar', length: 20, unique: true })
   sku!: string;
 

@@ -42,8 +42,15 @@ export default function Perfil({ tema, usuario, onLogout, onUpdated }: PerfilPro
 
     return (
         <main className={`flex min-h-screen flex-col items-center px-5 pb-12 pt-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.14),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
-            <button type="button" className="theme-dark-surface self-start rounded-full border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-900 dark:text-slate-100 font-bold transition hover:-translate-y-px hover:border-violet-400/50" onClick={() => navigate('/')}>
-                volver a la tienda
+            <button
+                type="button"
+                className="storefront-detail-back-button fixed left-5 top-5 z-10 inline-flex items-center gap-2 rounded-xl border px-4 py-2 font-semibold shadow-lg transition hover:-translate-y-px max-[480px]:left-3 max-[480px]:top-3"
+                onClick={() => navigate('/')}
+            >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Volver a la tienda
             </button>
             <form className="theme-dark-surface mt-8 w-full max-w-lg rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl" onSubmit={handleSubmit}>
                 <h1 className="mb-5 text-3xl font-extrabold tracking-tight">Mi perfil</h1>

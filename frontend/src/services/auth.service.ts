@@ -54,7 +54,7 @@ export async function register(nombre: string, email: string, password: string):
 export async function obtenerPerfil(): Promise<Usuario | null> {
     try {
         const { data } = await api.get('/auth/perfil');
-        return data;
+        return data && typeof data === 'object' ? data as Usuario : null;
     } catch {
         return null;
     }

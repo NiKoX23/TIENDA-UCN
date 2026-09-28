@@ -16,7 +16,10 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import {
+  JwtAuthGuard,
+  OptionalJwtAuthGuard,
+} from './guards/jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
@@ -71,9 +74,9 @@ export class AuthController {
   }
 
   @Get('perfil')
-  @UseGuards(JwtAuthGuard)
-  perfil(@Req() req: AuthRequest) {
-    return req.user;
+  @UseGuards(OptionalJwtAuthGuard)
+  perfil(@Req() req: Request & { user?: AuthRequest['user'] | null }) {
+    return req.user ?? null;
   }
 
   @Put('perfil')

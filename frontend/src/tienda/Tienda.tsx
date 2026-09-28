@@ -50,7 +50,16 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
       .then((datos) => {
         if (!activo) return;
         if (Array.isArray(datos)) {
-          setProductos(datos);
+          const agrupados = new Map<string, Producto>();
+          for (const producto of datos) {
+            const existente = agrupados.get(producto.codigoProducto);
+            if (existente) {
+              existente.stock += producto.stock;
+              continue;
+            }
+            agrupados.set(producto.codigoProducto, { ...producto });
+          }
+          setProductos([...agrupados.values()]);
         } else {
           setErrorProductos(true);
         }
@@ -144,7 +153,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
   const handleIrAPagar = async () => {
     try {
       const compra = await comprarProductos(
-        carrito.items.map(({ codigoProducto, cantidad }) => ({ codigoProducto, cantidad })),
+        carrito.items.map(({ idVariante, cantidad }) => ({ idVariante, cantidad })),
       );
       carrito.vaciar();
       setCarritoAbierto(false);

@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { Usuario } from './usuario.entity';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { OptionalJwtAuthGuard } from './guards/jwt-auth.guard';
 
 const googleProviders =
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -33,7 +34,7 @@ const googleProviders =
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, ...googleProviders],
+  providers: [AuthService, JwtStrategy, OptionalJwtAuthGuard, ...googleProviders],
   exports: [AuthService],
 })
 export class AuthModule {}

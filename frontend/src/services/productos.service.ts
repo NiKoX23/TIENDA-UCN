@@ -7,7 +7,7 @@ export async function listarProductos(): Promise<Producto[]> {
 }
 
 export async function comprarProductos(
-	lineas: Array<{ codigoProducto: string; cantidad: number }>,
+	lineas: Array<{ idVariante: number; cantidad: number }>,
 ) {
 	const { data } = await api.post<{ total: number; numeroDocumento: string }>('/productos/comprar', {
 		metodoPago: 'pendiente',

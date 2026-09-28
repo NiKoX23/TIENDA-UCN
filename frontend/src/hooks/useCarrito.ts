@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Producto } from '../productos/Productos';
 
 export interface ItemCarrito {
+  idVariante: number;
   codigoProducto: string;
   nombre: string;
   precio: number;
   imagen: string;
+  talla: string;
+  color: string | null;
   stock: number;
   cantidad: number;
 }
@@ -41,11 +44,11 @@ export function useCarrito(uid?: number) {
 
   const agregar = useCallback((producto: Producto) => {
     setItems((actuales) => {
-      const existente = actuales.find((item) => item.codigoProducto === producto.codigoProducto);
+      const existente = actuales.find((item) => item.idVariante === producto.idVariante);
       if (existente) {
         if (existente.cantidad >= producto.stock) return actuales;
         return actuales.map((item) =>
-          item.codigoProducto === producto.codigoProducto
+          item.idVariante === producto.idVariante
             ? { ...item, stock: producto.stock, cantidad: item.cantidad + 1 }
             : item,
         );
@@ -54,10 +57,13 @@ export function useCarrito(uid?: number) {
       return [
         ...actuales,
         {
+          idVariante: producto.idVariante,
           codigoProducto: producto.codigoProducto,
           nombre: producto.nombre,
           precio: producto.precio,
           imagen: producto.imagen,
+          talla: producto.talla,
+          color: producto.color,
           stock: producto.stock,
           cantidad: 1,
         },
@@ -65,39 +71,39 @@ export function useCarrito(uid?: number) {
     });
   }, []);
 
-  const sumarUno = useCallback((codigoProducto: string) => {
+  const sumarUno = useCallback((idVariante: number) => {
     setItems((actuales) =>
       actuales.map((item) =>
-        item.codigoProducto === codigoProducto && item.cantidad < item.stock
+        item.idVariante === idVariante && item.cantidad < item.stock
           ? { ...item, cantidad: item.cantidad + 1 }
           : item,
       ),
     );
   }, []);
 
-  const restarUno = useCallback((codigoProducto: string) => {
+  const restarUno = useCallback((idVariante: number) => {
     setItems((actuales) =>
       actuales
-        .map((item) => (item.codigoProducto === codigoProducto ? { ...item, cantidad: item.cantidad - 1 } : item))
+        .map((item) => (item.idVariante === idVariante ? { ...item, cantidad: item.cantidad - 1 } : item))
         .filter((item) => item.cantidad > 0),
     );
   }, []);
 
-  const actualizarCantidad = useCallback((codigoProducto: string, cantidad: number) => {
+  const actualizarCantidad = useCallback((idVariante: number, cantidad: number) => {
     setItems((actuales) => {
       if (!Number.isFinite(cantidad) || cantidad <= 0) {
-        return actuales.filter((item) => item.codigoProducto !== codigoProducto);
+        return actuales.filter((item) => item.idVariante !== idVariante);
       }
       return actuales.map((item) =>
-        item.codigoProducto === codigoProducto
+        item.idVariante === idVariante
           ? { ...item, cantidad: Math.min(Math.floor(cantidad), item.stock) }
           : item,
       );
     });
   }, []);
 
-  const eliminar = useCallback((codigoProducto: string) => {
-    setItems((actuales) => actuales.filter((item) => item.codigoProducto !== codigoProducto));
+  const eliminar = useCallback((idVariante: number) => {
+    setItems((actuales) => actuales.filter((item) => item.idVariante !== idVariante));
   }, []);
 
   const vaciar = useCallback(() => setItems([]), []);

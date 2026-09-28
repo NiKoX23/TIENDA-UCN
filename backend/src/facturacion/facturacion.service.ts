@@ -19,11 +19,11 @@ export class FacturacionService {
     if (!dto.lineas?.length)
       throw new BadRequestException('El carrito está vacío');
 
-    const cantidades = new Map<string, number>();
+    const cantidades = new Map<number, number>();
     for (const linea of dto.lineas) {
       cantidades.set(
-        linea.codigoProducto,
-        (cantidades.get(linea.codigoProducto) ?? 0) + linea.cantidad,
+        linea.idVariante,
+        (cantidades.get(linea.idVariante) ?? 0) + linea.cantidad,
       );
     }
 
@@ -52,19 +52,19 @@ export class FacturacionService {
         precio: number;
         subtotal: number;
       }> = [];
-      for (const [codigoProducto, cantidad] of cantidades) {
+      for (const [idVariante, cantidad] of cantidades) {
         const variante = await varianteRepository.findOne({
-          where: { producto: { codigoProducto } },
+          where: { idVariante },
           relations: { producto: true },
           lock: { mode: 'pessimistic_write' },
         });
         if (!variante || !variante.producto.activo)
           throw new NotFoundException(
-            `Producto no encontrado: ${codigoProducto}`,
+            `Variante no encontrada: ${idVariante}`,
           );
         if (variante.stock < cantidad)
           throw new BadRequestException(
-            `Stock insuficiente para ${codigoProducto}`,
+            `Stock insuficiente para ${variante.sku}`,
           );
         detalles.push({
           idVariante: variante.idVariante,
