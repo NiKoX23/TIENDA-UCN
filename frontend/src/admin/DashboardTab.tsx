@@ -44,6 +44,13 @@ function badgeEstado(estado: AlertaStock['estado'] | 'AGOTADO') {
     return `rounded-full border px-2.5 py-1 text-xs font-bold ${estilos[estado]}`;
 }
 
+function prioridadAlerta(alerta: AlertaStock): number {
+    if (alerta.stock === 0) return 0;
+    if (alerta.estado === 'CRITICO') return 1;
+    if (alerta.estado === 'BAJO') return 2;
+    return 3;
+}
+
 function TituloSeccion({ children }: { children: string }) {
     return <h2 className="mt-10 text-sm font-extrabold uppercase tracking-wider text-slate-400">{children}</h2>;
 }
@@ -208,7 +215,7 @@ export default function DashboardTab() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-red-400/10">
-                            {resumen.alertasStockBajo.map((alerta) => (
+                            {[...resumen.alertasStockBajo].sort((a, b) => prioridadAlerta(a) - prioridadAlerta(b)).map((alerta) => (
                                 <tr key={alerta.sku}>
                                     <td className="px-4 py-3">
                                         <p className="font-semibold text-slate-100">{alerta.nombre}</p>

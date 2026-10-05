@@ -637,9 +637,9 @@ export default function InventarioTab() {
     const subtablaVariantes = (variantes: ItemInventario[]) => (
         <div className="overflow-x-auto border-t border-slate-400/10 bg-slate-500/[0.035] px-4 py-2">
             <table className="w-full min-w-[560px] text-left text-xs">
-                <thead className="text-[11px] text-slate-400"><tr>
+                <thead className="text-center text-[11px] text-[var(--text-soft)]"><tr>
                     <th className="px-2 py-2 font-medium">Talla</th><th className="px-2 py-2 font-medium">Color</th><th className="px-2 py-2 font-medium">SKU</th>
-                    <th className="px-2 py-2 text-right font-medium">Stock</th><th className="px-2 py-2 text-right font-medium">Acciones</th>
+                    <th className="px-2 py-2 font-medium">Stock</th><th className="px-2 py-2 font-medium">Acciones</th>
                 </tr></thead>
                 <tbody className="divide-y divide-slate-400/10">{variantes.map((item) => <tr key={item.sku}>
                     <td className="whitespace-nowrap px-2 py-2.5">{item.talla && item.talla.toLowerCase() !== 'unica' ? item.talla : (!item.color ? 'Única' : '')}</td>
@@ -693,12 +693,12 @@ export default function InventarioTab() {
                 <div className="overflow-hidden rounded-lg border border-slate-400/15 bg-slate-950/10">
                     <table className="hidden w-full table-fixed text-left text-sm md:table">
                         <colgroup><col className="w-[27%]" /><col className="hidden w-[15%] lg:table-column" /><col className="hidden w-[9%] xl:table-column" /><col className="w-[17%]" /><col className="w-[14%]" /><col className="w-[10%]" /><col className="w-[8%]" /></colgroup>
-                        <thead className="border-b border-slate-400/15 text-xs text-slate-400">
+                        <thead className="border-b border-slate-400/15 text-center text-xs text-[var(--text-soft)]">
                             <tr>
                                 <th className="px-3 py-3 font-medium">Producto</th><th className="hidden px-3 py-3 font-medium lg:table-cell">Categoría</th>
-                                <th className="hidden px-3 py-3 text-right font-medium xl:table-cell">Variantes</th><th className="px-3 py-3 font-medium">Stock</th>
-                                <th className="px-3 py-3 text-right font-medium">Precio de venta</th><th className="px-3 py-3 font-medium">Estado</th>
-                                <th className="sticky right-0 bg-[var(--bg-950)] px-2 py-3 text-right font-medium">Acciones</th>
+                                <th className="hidden px-3 py-3 font-medium xl:table-cell">Variantes</th><th className="px-3 py-3 font-medium">Stock</th>
+                                <th className="px-3 py-3 font-medium">Precio de venta</th><th className="px-3 py-3 font-medium">Estado</th>
+                                <th className="sticky right-0 bg-[var(--bg-950)] px-2 py-3 font-medium">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-400/10">
