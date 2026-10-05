@@ -33,13 +33,14 @@ function KpiCard({ etiqueta, valor, acento }: KpiCardProps) {
     );
 }
 
-function badgeEstado(estado: AlertaStock['estado']) {
+function badgeEstado(estado: AlertaStock['estado'] | 'AGOTADO') {
     const estilos: Record<AlertaStock['estado'], string> = {
         CRITICO: 'border-red-400/40 bg-red-500/20 text-red-200',
         BAJO: 'border-amber-400/40 bg-amber-500/20 text-amber-200',
         NORMAL: 'border-emerald-400/40 bg-emerald-500/20 text-emerald-200',
         ALTO: 'border-cyan-400/40 bg-cyan-500/20 text-cyan-200',
     };
+    if (estado === 'AGOTADO') return 'rounded-full border px-2.5 py-1 text-xs font-bold admin-inventory-status--empty';
     return `rounded-full border px-2.5 py-1 text-xs font-bold ${estilos[estado]}`;
 }
 
@@ -203,7 +204,6 @@ export default function DashboardTab() {
                                 <th className="px-4 py-3">Talla</th>
                                 <th className="px-4 py-3">Color</th>
                                 <th className="px-4 py-3 text-right">Stock</th>
-                                <th className="px-4 py-3 text-right">Stock mín.</th>
                                 <th className="px-4 py-3">Estado</th>
                             </tr>
                         </thead>
@@ -218,9 +218,8 @@ export default function DashboardTab() {
                                     <td className="px-4 py-3 text-slate-300">{alerta.talla || 'unica'}</td>
                                     <td className="px-4 py-3 text-slate-300">{alerta.color ?? '—'}</td>
                                     <td className="px-4 py-3 text-right font-extrabold text-red-300">{num(alerta.stock)}</td>
-                                    <td className="px-4 py-3 text-right text-slate-400">{num(alerta.stockMinimo)}</td>
                                     <td className="px-4 py-3">
-                                        <span className={badgeEstado(alerta.estado)}>{alerta.estado}</span>
+                                        <span className={badgeEstado(alerta.stock === 0 ? 'AGOTADO' : alerta.estado)}>{alerta.stock === 0 ? 'Agotado' : alerta.estado}</span>
                                     </td>
                                 </tr>
                             ))}

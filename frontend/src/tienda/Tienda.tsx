@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import escudoUcn from '../assets/icons/Escudo-UCN.png';
-import { obtenerColorAvatar, obtenerIniciales, type Usuario } from '../services/auth.service';
+import type { Usuario } from '../services/auth.service';
 import type { Producto } from '../productos/Productos';
 import { categorias } from '../productos/Productos';
 import { listarProductos, comprarProductos } from '../services/productos.service';
 import { useCarrito } from '../hooks/useCarrito';
 import Carrito from '../carrito/Carrito';
+import UserAvatarMenu from '../components/UserAvatarMenu';
 import { formatearCLP } from '../utils/precio';
 
 interface TiendaProps {
@@ -32,13 +33,11 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
   const [categoriaActiva, setCategoriaActiva] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [favoritos, setFavoritos] = useState<string[]>([]);
-  const [menuAbierto, setMenuAbierto] = useState(false);
   const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
   const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargandoProductos, setCargandoProductos] = useState(true);
   const [errorProductos, setErrorProductos] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const esInvitado = !usuario;
 
@@ -75,17 +74,6 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
     };
   }, []);
 
-  useEffect(() => {
-    const handlePointerDown = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuAbierto(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    return () => document.removeEventListener('mousedown', handlePointerDown);
-  }, []);
-
   const productosFiltrados = useMemo(() => {
     return productos.filter((producto) => {
       const coincideCategoria =
@@ -101,13 +89,11 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
 
   const abrirLogin = () => {
     setModalLoginAbierto(false);
-    setMenuAbierto(false);
     onLogin();
   };
 
   const requiereLogin = () => {
     setModalLoginAbierto(true);
-    setMenuAbierto(false);
   };
 
   const handleFavoritos = () => {
@@ -162,8 +148,6 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
       window.alert('No fue posible completar la compra. Revisa el stock disponible.');
     }
   };
-
-  const avatarTexto = esInvitado ? 'IN' : obtenerIniciales(usuario?.nombre, usuario?.email);
 
   const explorarProductos = () => {
     const destino = document.getElementById('productos');
@@ -288,68 +272,16 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
             {tema === 'dark' ? '☀' : '☾'}
           </button>
 
-          <div className="relative flex items-center" ref={menuRef}>
-            <button
-              type="button"
-              className={`ucn-avatar ${esInvitado ? 'ucn-avatar--guest' : 'ucn-avatar--account'}`}
-              style={usuario ? { backgroundColor: obtenerColorAvatar(usuario.uid) } : undefined}
-              onClick={() => setMenuAbierto((actual) => !actual)}
-              title={esInvitado ? 'Cuenta de invitado' : 'Ver perfil'}
-              aria-label={esInvitado ? 'Cuenta de invitado' : 'Ver perfil'}
-            >
-              {avatarTexto}
-            </button>
-
-            {menuAbierto && (
-              <div className="absolute right-0 top-[calc(100%+12px)] z-30 flex min-w-44 flex-col gap-2 rounded-2xl border border-slate-400/15 bg-slate-900/95 p-3 shadow-2xl" role="menu" aria-label="Menú del usuario">
-                {esInvitado ? (
-                  <button
-                    type="button"
-                    className="rounded-xl bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-blue-200"
-                    onClick={abrirLogin}
-                  >
-                    Iniciar sesión
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="rounded-xl bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-blue-200"
-                      onClick={() => {
-                        setMenuAbierto(false);
-                        onPerfil();
-                      }}
-                    >
-                      Editar perfil
-                    </button>
-                    {usuario?.esAdmin && (
-                      <button
-                        type="button"
-                        className={`rounded-xl px-3 py-2 text-left text-sm font-semibold ${tema === 'light' ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' : 'bg-slate-500/15 text-slate-100 hover:bg-slate-500/25'}`}
-                        onClick={() => {
-                          setMenuAbierto(false);
-                          onAdmin();
-                        }}
-                      >
-                        Panel admin
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="rounded-xl bg-red-100 px-3 py-2 text-left text-sm font-semibold text-red-900 hover:bg-red-200"
-                      onClick={() => {
-                        setMenuAbierto(false);
-                        setCarritoAbierto(false);
-                        onLogout();
-                      }}
-                    >
-                      Cerrar sesión
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          <UserAvatarMenu
+            usuario={usuario}
+            onLogin={abrirLogin}
+            onPerfil={onPerfil}
+            onAdmin={onAdmin}
+            onLogout={() => {
+              setCarritoAbierto(false);
+              onLogout();
+            }}
+          />
         </div>
       </header>
 

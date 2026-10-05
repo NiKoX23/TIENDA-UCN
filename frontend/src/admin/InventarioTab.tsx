@@ -50,14 +50,38 @@ function categoriaUsaTallas(categoria: string | undefined): boolean {
     return ['poleron', 'polera', 'pantalon', 'vestuario', 'ropa'].some((nombre) => normalizada.includes(nombre));
 }
 
-function badgeEstado(estado: EstadoInventario) {
-    const estilos: Record<EstadoInventario, string> = {
-        CRITICO: 'border-red-400/40 bg-red-500/20 text-red-200',
-        BAJO: 'border-amber-400/40 bg-amber-500/20 text-amber-200',
-        NORMAL: 'border-emerald-400/40 bg-emerald-500/20 admin-inventory-status--normal',
-        ALTO: 'border-cyan-400/40 bg-cyan-500/20 text-cyan-200',
+type EstadoVisual = 'AGOTADO' | 'CRITICO' | 'BAJO' | 'NORMAL';
+
+function nivelEstado(variantes: ItemInventario[]): EstadoVisual {
+    if (variantes.every((item) => item.stock === 0)) return 'AGOTADO';
+    if (variantes.some((item) => item.stock > 0 && item.estado === 'CRITICO')) return 'CRITICO';
+    if (variantes.some((item) => item.estado === 'BAJO')) return 'BAJO';
+    return 'NORMAL';
+}
+
+function badgeEstado(estado: EstadoVisual) {
+    const estilos = {
+        AGOTADO: 'admin-inventory-status--empty',
+        CRITICO: 'admin-inventory-status--critical',
+        BAJO: 'admin-inventory-status--low',
+        NORMAL: 'admin-inventory-status--normal',
     };
-    return `rounded-full border px-2.5 py-1 text-xs font-bold ${estilos[estado]}`;
+    const etiqueta = estado === 'AGOTADO' ? 'Agotado' : estado === 'CRITICO' ? 'Crítico' : estado === 'BAJO' ? 'Bajo' : 'Normal';
+    return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${estilos[estado]}`}>
+        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />{etiqueta}
+    </span>;
+}
+
+function numero(valor: number) {
+    return <span className={valor === 0 ? 'text-slate-400/70 tabular-nums' : 'tabular-nums'}>{valor.toLocaleString('es-CL')}</span>;
+}
+
+function BotonExpandir({ abierto, onClick }: { abierto: boolean; onClick: () => void }) {
+    return <button type="button" aria-label={abierto ? 'Ocultar variantes' : 'Mostrar variantes'} aria-expanded={abierto}
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-slate-400/20 text-slate-500 transition hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+        onClick={onClick}>
+        <span aria-hidden="true" className={`transition-transform ${abierto ? 'rotate-90' : ''}`}>›</span>
+    </button>;
 }
 
 interface ModalProps {
@@ -105,7 +129,7 @@ function ModalAjustarStock({ item, onCerrar, onGuardar }: ModalAjustarStockProps
         <Modal titulo={`Ajustar stock · ${item.sku}`} onCerrar={onCerrar}>
             <p className="mt-2 text-sm text-slate-400">
                 Registra el stock físico actual{categoriaUsaTallas(item.categoria) ? ` de la talla ${item.talla || 'única'}` : ''}
-                {item.color ? ` (${item.color})` : ''}. Stock mínimo declarado: <span className="font-semibold text-slate-200">{item.stockMinimo}</span>.
+                {item.color ? ` (${item.color})` : ''}{item.stockMinimo > 0 && <>. Stock mínimo declarado: <span className="font-semibold text-slate-200">{item.stockMinimo}</span></>}.
             </p>
             <div className="mt-4">
                 <label htmlFor="stock" className={labelCls}>
@@ -476,6 +500,11 @@ export default function InventarioTab() {
     const [exito, setExito] = useState('');
     const [modal, setModal] = useState<'stock' | 'producto' | 'variante' | null>(null);
     const [seleccion, setSeleccion] = useState<ItemInventario | null>(null);
+    const [busqueda, setBusqueda] = useState('');
+    const [categoriaFiltro, setCategoriaFiltro] = useState('');
+    const [estadoFiltro, setEstadoFiltro] = useState('');
+    const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set());
+    const [detalle, setDetalle] = useState<ItemInventario[] | null>(null);
 
     const anunciarExito = (mensaje: string) => {
         setExito(mensaje);
@@ -568,21 +597,86 @@ export default function InventarioTab() {
         }
     };
 
+    const grupos = Array.from(items.reduce((mapa, item) => {
+        const variantes = mapa.get(item.codigoProducto) ?? [];
+        variantes.push(item);
+        mapa.set(item.codigoProducto, variantes);
+        return mapa;
+    }, new Map<string, ItemInventario[]>()).entries()).map(([codigo, variantes]) => ({
+        codigo,
+        variantes,
+        producto: variantes[0],
+        stock: variantes.reduce((total, item) => total + item.stock, 0),
+        stockMinimo: variantes.reduce((total, item) => total + item.stockMinimo, 0),
+        estado: nivelEstado(variantes),
+    }));
+    const gruposFiltrados = grupos.filter(({ producto, variantes, estado }) => {
+        const termino = busqueda.trim().toLocaleLowerCase('es-CL');
+        return (!termino || producto.nombre.toLocaleLowerCase('es-CL').includes(termino) || variantes.some((item) => item.sku.toLocaleLowerCase('es-CL').includes(termino)))
+            && (!categoriaFiltro || producto.categoria === categoriaFiltro)
+            && (!estadoFiltro || estado === estadoFiltro);
+    });
+    const variantesCriticas = items.filter((item) => item.stock > 0 && item.estado === 'CRITICO').length;
+    const stockTotal = items.reduce((total, item) => total + item.stock, 0);
+    const valorInventario = items.reduce((total, item) => total + item.costoAdquisicion * item.stock, 0);
+    const alternarExpandido = (codigo: string) => setExpandidos((actuales) => {
+        const siguientes = new Set(actuales);
+        if (siguientes.has(codigo)) siguientes.delete(codigo);
+        else siguientes.add(codigo);
+        return siguientes;
+    });
+
+    const acciones = (item: ItemInventario, compactas = false, esVariante = true) => (
+        <div className={`flex items-center justify-end gap-1 ${compactas ? 'mt-3' : ''}`}>
+            <button type="button" aria-label={esVariante ? `Ajustar stock de ${item.sku}` : `Ver stock de ${item.nombre}`} title="Stock" className="admin-secondary-button grid h-7 w-7 place-items-center rounded-md text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => esVariante ? abrirModal('stock', item) : alternarExpandido(item.codigoProducto)}>{esVariante ? '↕' : '▤'}</button>
+            <button type="button" aria-label={`Editar ${item.nombre}`} title="Editar producto" className="admin-secondary-button grid h-7 w-7 place-items-center rounded-md text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => abrirModal('producto', item)}>✎</button>
+            <button type="button" aria-label={`Agregar variante a ${item.nombre}`} title="Agregar variante" className="admin-secondary-button grid h-7 w-7 place-items-center rounded-md text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => abrirModal('variante', item)}>+</button>
+        </div>
+    );
+
+    const subtablaVariantes = (variantes: ItemInventario[]) => (
+        <div className="overflow-x-auto border-t border-slate-400/10 bg-slate-500/[0.035] px-4 py-2">
+            <table className="w-full min-w-[560px] text-left text-xs">
+                <thead className="text-[11px] text-slate-400"><tr>
+                    <th className="px-2 py-2 font-medium">Talla</th><th className="px-2 py-2 font-medium">Color</th><th className="px-2 py-2 font-medium">SKU</th>
+                    <th className="px-2 py-2 text-right font-medium">Stock</th><th className="px-2 py-2 text-right font-medium">Acciones</th>
+                </tr></thead>
+                <tbody className="divide-y divide-slate-400/10">{variantes.map((item) => <tr key={item.sku}>
+                    <td className="whitespace-nowrap px-2 py-2.5">{item.talla && item.talla.toLowerCase() !== 'unica' ? item.talla : (!item.color ? 'Única' : '')}</td>
+                    <td className="whitespace-nowrap px-2 py-2.5">{item.color || <span className="text-slate-400/60">Vacío</span>}</td>
+                    <td className="whitespace-nowrap px-2 py-2.5 font-mono">{item.sku}</td>
+                    <td className="px-2 py-2.5 text-right">{numero(item.stock)}{item.stock === 0 && <span className="ml-2 rounded-full border border-slate-400/25 bg-slate-400/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">Agotado</span>}</td>
+                    <td className="px-2 py-2.5">{acciones(item)}</td>
+                </tr>)}</tbody>
+            </table>
+        </div>
+    );
+
     return (
-        <div>
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex gap-2">
-                    <button type="button" className={botonPrimarioCls} onClick={() => abrirModal('producto')}>
-                        + Nuevo producto
-                    </button>
-                    <button type="button" className={botonSecundarioCls} onClick={() => void recargar()}>
-                        Refrescar
-                    </button>
-                </div>
-                <p className="text-xs text-slate-400">
-                    {items.length} {items.length === 1 ? 'fila' : 'filas'} · inicial = stock + vendidas (replica planilla)
-                </p>
-            </div>
+        <div className="mt-6 space-y-5">
+            <section aria-label="Resumen del inventario" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {[
+                    { etiqueta: 'Productos', valor: grupos.length.toLocaleString('es-CL') },
+                    { etiqueta: 'Variantes críticas', valor: variantesCriticas.toLocaleString('es-CL') },
+                    { etiqueta: 'Stock total', valor: stockTotal.toLocaleString('es-CL') },
+                    { etiqueta: 'Valor del inventario', valor: formatearCLP(valorInventario) },
+                ].map(({ etiqueta, valor }) => <div key={etiqueta} className="rounded-lg border border-slate-400/15 bg-slate-500/[0.035] px-4 py-3">
+                    <p className="text-xs text-slate-400">{etiqueta}</p><p className="mt-1 text-lg font-semibold tabular-nums text-[var(--text)]">{valor}</p>
+                </div>)}
+            </section>
+
+            <section aria-label="Herramientas de inventario" className="flex flex-wrap items-center gap-2">
+                <input aria-label="Buscar por nombre o SKU" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar producto o SKU" className={`${inputCls} min-w-[210px] flex-1 rounded-md`} />
+                <select aria-label="Filtrar por categoría" value={categoriaFiltro} onChange={(e) => setCategoriaFiltro(e.target.value)} className={`${inputCls} w-full rounded-md sm:w-auto`}>
+                    <option value="">Todas las categorías</option>{categorias.map((categoria) => <option key={categoria.idCategoria} value={categoria.nombre}>{categoria.nombre}</option>)}
+                </select>
+                <select aria-label="Filtrar por estado de stock" value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={`${inputCls} w-full rounded-md sm:w-auto`}>
+                    <option value="">Todos los estados</option><option value="AGOTADO">Agotado</option><option value="CRITICO">Crítico</option><option value="BAJO">Bajo</option><option value="NORMAL">Normal</option>
+                </select>
+                <button type="button" className={`${botonPrimarioCls} rounded-md`} onClick={() => abrirModal('producto')}>Nuevo producto</button>
+                <button type="button" className={`${botonSecundarioCls} rounded-md`} onClick={() => void recargar()}>Refrescar</button>
+                <p aria-live="polite" className="w-full text-xs text-slate-400 sm:ml-auto sm:w-auto">{gruposFiltrados.length} {gruposFiltrados.length === 1 ? 'producto' : 'productos'}</p>
+            </section>
 
             {error && (
                 <p className="mt-4 rounded-full border border-red-400/20 bg-red-950/30 px-4 py-3 text-center text-sm text-red-200">{error}</p>
@@ -592,88 +686,62 @@ export default function InventarioTab() {
             )}
 
             {cargando ? (
-                <div className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-slate-100 before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:border-2 before:border-slate-400/20 before:border-r-violet-600 before:border-t-violet-300 before:animate-spin">
-                    Cargando inventario...
+                <div role="status" aria-label="Cargando inventario" className="space-y-2 rounded-lg border border-slate-400/15 p-4">
+                    {[0, 1, 2, 3].map((fila) => <div key={fila} className="ucn-skeleton h-12 w-full" />)}
                 </div>
             ) : (
-                <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-400/15 bg-slate-950/30">
-                    <table className="w-full min-w-[1250px] text-left text-sm">
-                        <thead className="bg-slate-950/50 text-xs uppercase tracking-wider text-slate-400">
+                <div className="overflow-hidden rounded-lg border border-slate-400/15 bg-slate-950/10">
+                    <table className="hidden w-full table-fixed text-left text-sm md:table">
+                        <colgroup><col className="w-[27%]" /><col className="hidden w-[15%] lg:table-column" /><col className="hidden w-[9%] xl:table-column" /><col className="w-[17%]" /><col className="w-[14%]" /><col className="w-[10%]" /><col className="w-[8%]" /></colgroup>
+                        <thead className="border-b border-slate-400/15 text-xs text-slate-400">
                             <tr>
-                                <th className="px-3 py-3">Producto</th>
-                                <th className="px-3 py-3">Categoría</th>
-                                <th className="px-3 py-3">Talla</th>
-                                <th className="px-3 py-3">Color</th>
-                                <th className="px-3 py-3">SKU</th>
-                                <th className="px-3 py-3 text-right">P. venta</th>
-                                <th className="px-3 py-3 text-right">P. TAC</th>
-                                <th className="px-3 py-3 text-right">Costo</th>
-                                <th className="px-3 py-3 text-right">Vendidas</th>
-                                <th className="px-3 py-3 text-right">Inicial</th>
-                                <th className="px-3 py-3 text-right">Stock</th>
-                                <th className="px-3 py-3 text-right">Stock mín.</th>
-                                <th className="px-3 py-3 text-right">Margen</th>
-                                <th className="px-3 py-3 text-right">Ing. venta</th>
-                                <th className="px-3 py-3 text-right">Ing. TAC</th>
-                                <th className="px-3 py-3">Estado</th>
-                                <th className="px-3 py-3 text-right">Acciones</th>
+                                <th className="px-3 py-3 font-medium">Producto</th><th className="hidden px-3 py-3 font-medium lg:table-cell">Categoría</th>
+                                <th className="hidden px-3 py-3 text-right font-medium xl:table-cell">Variantes</th><th className="px-3 py-3 font-medium">Stock</th>
+                                <th className="px-3 py-3 text-right font-medium">Precio de venta</th><th className="px-3 py-3 font-medium">Estado</th>
+                                <th className="sticky right-0 bg-[var(--bg-950)] px-2 py-3 text-right font-medium">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-400/10">
-                            {items.map((item) => (
-                                <tr key={item.sku} className="align-top">
-                                    <td className="px-3 py-3">
-                                        <p className="font-semibold text-slate-100">{item.nombre}</p>
-                                        <p className="text-xs text-slate-400">
-                                            {item.codigoProducto}
-                                            {!item.activo && (
-                                                <span className="ml-1.5 rounded-full bg-slate-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-300">
-                                                    inactivo
-                                                </span>
-                                            )}
-                                        </p>
-                                    </td>
-                                    <td className="px-3 py-3 text-slate-300">{item.categoria}</td>
-                                    <td className="px-3 py-3 text-slate-200">{categoriaUsaTallas(item.categoria) ? item.talla : '—'}</td>
-                                    <td className="px-3 py-3 text-slate-300">{item.color ?? '—'}</td>
-                                    <td className="px-3 py-3 font-mono text-xs text-slate-200">{item.sku}</td>
-                                    <td className="px-3 py-3 text-right text-slate-200">{formatearCLP(item.precioVenta)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-300">{formatearCLP(item.precioTac)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-300">{formatearCLP(item.costoAdquisicion)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-200">{item.vendidas}</td>
-                                    <td className="px-3 py-3 text-right text-slate-300">{item.inicial}</td>
-                                    <td className={`px-3 py-3 text-right font-extrabold ${item.stock <= item.stockMinimo ? 'text-red-300' : item.stock <= 20 ? 'text-amber-200' : 'text-slate-100'}`}>
-                                        {item.stock}
-                                    </td>
-                                    <td className="px-3 py-3 text-right text-slate-400">{item.stockMinimo}</td>
-                                    <td className="px-3 py-3 text-right text-slate-200">{formatearCLP(item.margen)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-200">{formatearCLP(item.ingresoVenta)}</td>
-                                    <td className="px-3 py-3 text-right text-slate-300">{formatearCLP(item.ingresoTac)}</td>
-                                    <td className="px-3 py-3">
-                                        <span className={badgeEstado(item.estado)}>{item.estado}</span>
-                                    </td>
-                                    <td className="px-3 py-3">
-                                        <div className="flex justify-end gap-1.5">
-                                            <button type="button" className={botonSecundarioCls} onClick={() => abrirModal('stock', item)}>
-                                                Stock
-                                            </button>
-                                            <button type="button" className={botonSecundarioCls} onClick={() => abrirModal('producto', item)}>
-                                                Editar
-                                            </button>
-                                            <button type="button" className={botonSecundarioCls} onClick={() => abrirModal('variante', item)}>
-                                                + Variante
-                                            </button>
-                                        </div>
-                                    </td>
+                            {gruposFiltrados.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => <>
+                                <tr key={codigo} className="h-14 transition-colors hover:bg-slate-500/[0.04]">
+                                    <td className="px-3 py-2"><div className="flex min-w-0 items-center gap-2">
+                                        <BotonExpandir abierto={expandidos.has(codigo)} onClick={() => alternarExpandido(codigo)} />
+                                        <button type="button" className="min-w-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => setDetalle(variantes)}>
+                                            <span className="block truncate font-medium text-[var(--text)]">{producto.nombre}</span><span className="block truncate text-xs text-slate-400">{codigo}{!producto.activo && ' · Inactivo'}</span>
+                                        </button>
+                                    </div></td>
+                                    <td className="hidden truncate px-3 py-2 text-sm text-slate-400 lg:table-cell">{producto.categoria}</td>
+                                    <td className="hidden px-3 py-2 text-right text-slate-400 xl:table-cell">{numero(variantes.length)}</td>
+                                    <td className="px-3 py-2"><div className="flex items-center gap-2"><span className="w-8 text-right font-medium tabular-nums">{numero(stock)}</span>{stockMinimo > 0 && <span className="h-1.5 min-w-8 flex-1 overflow-hidden rounded-full bg-slate-400/15" aria-label={`Stock ${stock} respecto al mínimo ${stockMinimo}`}><span className={`block h-full rounded-full ${estado === 'AGOTADO' || estado === 'CRITICO' ? 'bg-red-400' : estado === 'BAJO' ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${Math.min(stock / stockMinimo * 100, 100)}%` }} /></span>}</div></td>
+                                    <td className="px-3 py-2 text-right"><span className="block whitespace-nowrap tabular-nums">{formatearCLP(producto.precioVenta)}</span><span className="block whitespace-nowrap text-xs text-slate-400">TAC {formatearCLP(producto.precioTac)}</span></td>
+                                    <td className="px-3 py-2">{badgeEstado(estado)}</td>
+                                    <td className="sticky right-0 bg-[var(--bg-950)] px-2 py-2">{acciones(producto, false, false)}</td>
                                 </tr>
-                            ))}
+                                {expandidos.has(codigo) && <tr key={`${codigo}-variants`}><td colSpan={7} className="p-0">{subtablaVariantes(variantes)}</td></tr>}
+                            </>)}
                         </tbody>
                     </table>
-                    {items.length === 0 && (
-                        <p className="px-4 py-8 text-center text-sm text-slate-400">Sin productos registrados.</p>
-                    )}
+                    <div className="space-y-3 p-3 md:hidden">{gruposFiltrados.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => <article key={codigo} className="rounded-md border border-slate-400/15 p-3">
+                        <div className="flex items-start gap-2"><BotonExpandir abierto={expandidos.has(codigo)} onClick={() => alternarExpandido(codigo)} /><button type="button" className="min-w-0 flex-1 text-left" onClick={() => setDetalle(variantes)}><span className="block truncate font-medium">{producto.nombre}</span><span className="block text-xs text-slate-400">{codigo} · {variantes.length} {variantes.length === 1 ? 'variante' : 'variantes'}</span></button>{badgeEstado(estado)}</div>
+                        <div className="mt-3 flex items-center justify-between gap-3 text-sm"><span className="text-slate-400">Stock</span><span className="tabular-nums">{numero(stock)}</span></div>
+                        {stockMinimo > 0 && <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-400/15"><span className={`block h-full ${estado === 'AGOTADO' || estado === 'CRITICO' ? 'bg-red-400' : estado === 'BAJO' ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${Math.min(stock / stockMinimo * 100, 100)}%` }} /></div>}
+                        <div className="mt-3 flex justify-between gap-3 text-sm"><span className="text-slate-400">{producto.categoria}</span><span className="text-right tabular-nums">{formatearCLP(producto.precioVenta)}<span className="block text-xs text-slate-400">TAC {formatearCLP(producto.precioTac)}</span></span></div>
+                        {acciones(producto, true, false)}{expandidos.has(codigo) && subtablaVariantes(variantes)}
+                    </article>)}</div>
+                    {gruposFiltrados.length === 0 && <p className="px-4 py-10 text-center text-sm text-slate-400">{items.length === 0 ? 'Aún no hay productos en el inventario.' : 'No hay productos que coincidan con estos filtros.'}</p>}
                 </div>
             )}
+
+            {detalle && detalle.length > 0 && createPortal(<div className="fixed inset-0 z-[140] flex justify-end bg-slate-950/45" onClick={() => setDetalle(null)}>
+                <aside role="dialog" aria-modal="true" aria-label={`Detalle de ${detalle[0].nombre}`} className="theme-dark-surface h-full w-full max-w-md overflow-y-auto border-l border-slate-400/20 bg-[var(--bg-900)] p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold">{detalle[0].nombre}</h2><p className="mt-1 text-sm text-slate-400">{detalle[0].codigoProducto}</p></div><button type="button" aria-label="Cerrar detalle" className="admin-secondary-button h-8 w-8 rounded-md" onClick={() => setDetalle(null)}>×</button></div>
+                    <dl className="mt-6 grid grid-cols-2 gap-3">{[
+                        ['Costo', formatearCLP(detalle[0].costoAdquisicion)], ['Margen', formatearCLP(detalle[0].margen)],
+                        ['Vendidas', detalle.reduce((total, item) => total + item.vendidas, 0).toLocaleString('es-CL')], ['Stock inicial', detalle.reduce((total, item) => total + item.inicial, 0).toLocaleString('es-CL')],
+                        ['Ingresos por venta', formatearCLP(detalle.reduce((total, item) => total + item.ingresoVenta, 0))], ['Ingresos por TAC', formatearCLP(detalle.reduce((total, item) => total + item.ingresoTac, 0))],
+                    ].map(([etiqueta, valor]) => <div key={etiqueta} className="rounded-md border border-slate-400/15 p-3"><dt className="text-xs text-slate-400">{etiqueta}</dt><dd className="mt-1 font-medium tabular-nums">{valor}</dd></div>)}</dl>
+                </aside>
+            </div>, document.body)}
 
             {modal === 'stock' && seleccion && (
                 <ModalAjustarStock item={seleccion} onCerrar={() => setModal(null)} onGuardar={(sku, stock) => void guardarStock(sku, stock)} />

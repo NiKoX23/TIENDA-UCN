@@ -278,20 +278,31 @@ button { cursor: pointer; }
   animation: slideDown 0.18s ease;
 }
 .ucn-dropdown-item {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
   border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 10px 13px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.35;
   text-align: left;
   color: var(--text);
   transition: all 0.15s ease;
   width: 100%;
 }
-.ucn-dropdown-item:hover { background: var(--primary-soft); color: var(--ucn-blue); }
-.ucn-dropdown-item--danger { color: #E05555; }
-.ucn-dropdown-item--danger:hover { background: rgba(224, 85, 85, 0.1); }
-.ucn-dropdown-item--admin  { color: var(--ucn-earth); }
-.ucn-dropdown-item--admin:hover  { background: var(--accent-soft); }
+.ucn-dropdown-item:focus-visible,
+.ucn-avatar:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.ucn-dropdown-item:hover { background: var(--primary-soft); color: var(--text); }
+.ucn-dropdown-item--guest { background: rgba(126, 155, 192, 0.16); color: #E8EFF8; }
+.ucn-dropdown-item--guest:hover { background: rgba(126, 155, 192, 0.28); }
+.ucn-dropdown-item--danger { color: #FDA4A4; }
+.ucn-dropdown-item--danger:hover { background: rgba(224, 85, 85, 0.12); color: #FECACA; }
+.ucn-dropdown-item--admin { color: #F1C27D; }
+.ucn-dropdown-item--admin:hover { background: var(--accent-soft); color: #F6D5A6; }
+.ucn-dropdown-role--guest { background: rgba(126, 155, 192, 0.18); color: #DCEAF5; }
+.ucn-dropdown-role--user { background: rgba(59, 175, 126, 0.16); color: #86E0B6; }
+.ucn-dropdown-role--admin { background: rgba(172, 109, 51, 0.2); color: #F1C27D; }
 
 /* --- Card de producto --- */
 .ucn-product-card {
@@ -453,6 +464,15 @@ html[data-theme='light'] .ucn-dropdown-item:hover {
   background: rgba(126, 155, 192, 0.1);
   color: var(--ucn-blue-dark);
 }
+html[data-theme='light'] .ucn-dropdown-item--guest { background: #EAF2F8; color: #24394F; }
+html[data-theme='light'] .ucn-dropdown-item--guest:hover { background: #DCEAF5; color: #1D3A56; }
+html[data-theme='light'] .ucn-dropdown-item--danger { color: #B42318; }
+html[data-theme='light'] .ucn-dropdown-item--danger:hover { background: #FEF2F2; color: #912018; }
+html[data-theme='light'] .ucn-dropdown-item--admin { color: #7A4A20; }
+html[data-theme='light'] .ucn-dropdown-item--admin:hover { background: #F7EBDD; color: #633A17; }
+html[data-theme='light'] .ucn-dropdown-role--guest { background: #EAF2F8; color: #365A7A; }
+html[data-theme='light'] .ucn-dropdown-role--user { background: #ECFDF3; color: #18794E; }
+html[data-theme='light'] .ucn-dropdown-role--admin { background: #F7EBDD; color: #7A4A20; }
 
 html[data-theme='light'] .ucn-input {
   background: #F7F8FA;
@@ -625,6 +645,10 @@ html[data-theme='light'] [class*='text-amber-200'] { color: #8A4B10 !important; 
   background: #1D3145;
 }
 .admin-inventory-status--normal { color: #A7F3D0 !important; }
+.admin-inventory-status--empty { border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(148, 163, 184, 0.14); color: #CBD5E1; }
+.admin-inventory-status--critical { border-color: rgba(248, 113, 113, 0.35); background: rgba(239, 68, 68, 0.12); color: #FECACA; }
+.admin-inventory-status--low { border-color: rgba(251, 191, 36, 0.35); background: rgba(245, 158, 11, 0.12); color: #FDE68A; }
+.admin-inventory-status--normal { border-color: rgba(52, 211, 153, 0.35); background: rgba(16, 185, 129, 0.12); }
 
 html[data-theme='light'] .admin-form-field {
   border-color: #9CB0C2;
@@ -645,6 +669,10 @@ html[data-theme='light'] .admin-variant-section {
   border-color: #C2D0DC;
   background: #EDF3F8;
 }
+html[data-theme='light'] .admin-inventory-status--critical { border-color: rgba(180, 35, 24, 0.25); background: #FEF2F2; color: #B42318; }
+html[data-theme='light'] .admin-inventory-status--empty { border-color: #CBD5E1; background: #F1F5F9; color: #475569; }
+html[data-theme='light'] .admin-inventory-status--low { border-color: rgba(138, 75, 16, 0.25); background: #FFFAEB; color: #8A4B10; }
+html[data-theme='light'] .admin-inventory-status--normal { border-color: rgba(24, 121, 78, 0.25); background: #ECFDF3; color: #18794E !important; }
 html[data-theme='light'] .admin-inventory-status--normal { color: #166534 !important; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { comprarProductos, listarProductos } from '../services/productos.service';
 import type { Producto } from './Productos';
 import type { Usuario } from '../services/auth.service';
 import { useCarrito } from '../hooks/useCarrito';
-import { obtenerColorAvatar, obtenerIniciales } from '../services/auth.service';
+import BackToStore from '../components/BackToStore';
+import UserAvatarMenu from '../components/UserAvatarMenu';
 import Carrito from '../carrito/Carrito';
 
 interface DetalleProductoProps {
@@ -50,11 +51,9 @@ function estiloColorProducto(color: string) {
 
 export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: DetalleProductoProps) {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [producto, setProducto] = useState<Producto | null>(null);
   const [variantes, setVariantes] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [menuAbierto, setMenuAbierto] = useState(false);
   const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [zoomAbierto, setZoomAbierto] = useState(false);
   const [zoomActivo, setZoomActivo] = useState(false);
@@ -71,7 +70,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
         if (!Array.isArray(productos)) return;
         const grupo = productos.filter((p) => p.codigoProducto === id);
         setVariantes(grupo);
-        setProducto(grupo[0] || null);
+        setProducto(grupo.find((variante) => variante.stock > 0) || grupo[0] || null);
       })
       .finally(() => setCargando(false));
   }, [id]);
@@ -89,8 +88,6 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
   }, [zoomAbierto]);
 
   const esInvitado = !usuario;
-  const avatarTexto = esInvitado ? 'IN' : obtenerIniciales(usuario.nombre, usuario.email);
-
   const moverZoom = (event: React.MouseEvent<HTMLDivElement>) => {
     const contenedor = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - contenedor.left) / contenedor.width) * 100;
@@ -105,8 +102,10 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
   };
 
   const tieneTalla = categoriasConTalla.has((producto?.categoria ?? '').toLowerCase());
-  const coloresDisponibles = [...new Set(variantes.map((variante) => variante.color).filter((color): color is string => Boolean(color)))];
-  const tallasDisponibles = [...new Set(variantes
+  const variantesDisponibles = variantes.filter((variante) => variante.stock > 0);
+  const coloresDisponibles = [...new Set(variantesDisponibles.map((variante) => variante.color).filter((color): color is string => Boolean(color)))];
+  const tallasDisponibles = [...new Set(variantesDisponibles
+    .filter((variante) => variante.color === producto?.color)
     .map((variante) => variante.talla)
     .filter((talla) => talla && !['única', 'unica', '??nica'].includes(talla.toLowerCase())))];
   const seleccionarVariante = (variante: Producto) => {
@@ -118,10 +117,11 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
   };
   const seleccionarOpcion = (dimension: 'color' | 'talla', valor: string) => {
     if (!producto) return;
-    const variante = variantes.find((opcion) =>
-      opcion[dimension] === valor &&
-      (dimension === 'color' ? opcion.talla === producto.talla : opcion.color === producto.color),
-    ) ?? variantes.find((opcion) => opcion[dimension] === valor);
+    const variantesConStock = variantes.filter((opcion) => opcion.stock > 0);
+    const variante = dimension === 'color'
+      ? variantesConStock.find((opcion) => opcion.color === valor && opcion.talla === producto.talla)
+        ?? variantesConStock.find((opcion) => opcion.color === valor)
+      : variantesConStock.find((opcion) => opcion.color === producto.color && opcion.talla === valor);
     if (variante) seleccionarVariante(variante);
   };
   const cantidadEnCarrito = producto
@@ -180,7 +180,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
     return (
       <div className="storefront-page storefront-detail-state grid min-h-screen place-items-center gap-4">
         <h2 className="text-2xl font-bold">Producto no encontrado</h2>
-        <button className="storefront-detail-back-button rounded-xl px-4 py-3 font-semibold" onClick={() => navigate('/')}>Volver a la tienda</button>
+        <BackToStore />
       </div>
     );
   }
@@ -199,12 +199,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
         onIrAPagar={handleIrAPagar}
       />
       <header className="theme-dark-header storefront-detail-header sticky top-0 z-20 flex items-center justify-between gap-4 border-b px-6 py-4 max-[720px]:px-4">
-        <button className="storefront-detail-back-button inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold transition hover:-translate-y-px" onClick={() => navigate('/')}>
-          <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Volver
-        </button>
+        <BackToStore />
 
         <div className="flex items-center gap-3">
           <button
@@ -234,41 +229,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             {tema === 'dark' ? '☀' : '☾'}
           </button>
 
-          <div className="relative flex items-center">
-            <button
-              type="button"
-              className={`ucn-avatar ${esInvitado ? 'ucn-avatar--guest' : 'ucn-avatar--account'}`}
-              style={usuario ? { backgroundColor: obtenerColorAvatar(usuario.uid) } : undefined}
-              onClick={() => setMenuAbierto((a) => !a)}
-              title={esInvitado ? 'Cuenta de invitado' : 'Ver perfil'}
-              aria-label={esInvitado ? 'Cuenta de invitado' : 'Ver perfil'}
-            >
-              {avatarTexto}
-            </button>
-            {menuAbierto && (
-              <div className="absolute right-0 top-[calc(100%+12px)] z-30 flex min-w-44 flex-col gap-2 rounded-2xl border border-slate-400/15 bg-slate-900/95 p-3 shadow-2xl">
-                {esInvitado ? (
-                  <button type="button" className="rounded-xl bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-blue-200" onClick={onLogin}>
-                    Iniciar sesión
-                  </button>
-                ) : (
-                  <>
-                    <button type="button" className="rounded-xl bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:bg-blue-200" onClick={onPerfil}>
-                      Editar perfil
-                    </button>
-                    {usuario?.esAdmin && (
-                      <button type="button" className="rounded-xl bg-slate-500/15 px-3 py-2 text-left text-sm font-semibold text-slate-100 hover:bg-slate-500/25" onClick={onAdmin}>
-                        Panel admin
-                      </button>
-                    )}
-                    <button type="button" className="rounded-xl bg-red-500/15 px-3 py-2 text-left text-sm font-semibold text-red-200 hover:bg-red-500/25" onClick={onLogout}>
-                      Cerrar sesión
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          <UserAvatarMenu usuario={usuario} onLogin={onLogin} onPerfil={onPerfil} onAdmin={onAdmin} onLogout={onLogout} />
         </div>
       </header>
 
@@ -318,11 +279,11 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
               )}
               {coloresDisponibles.length > 1 ? (
                 <div className="flex flex-col gap-1">
-                  <span className="storefront-detail-muted text-xs font-semibold uppercase">Color:</span>
+                  <span className="storefront-detail-muted text-xs font-semibold uppercase">Color: <span className="normal-case">{producto.color}</span></span>
                   <div className="flex flex-wrap gap-2">
                     {coloresDisponibles.map((color) => (
-                      <button key={color} type="button" onClick={() => seleccionarOpcion('color', color)} aria-pressed={producto.color === color} style={estiloColorProducto(color)} className={`storefront-detail-option rounded-lg px-4 py-2 text-sm font-bold ${producto.color === color ? 'ring-2 ring-pink-500' : ''}`}>
-                        {color}
+                      <button key={color} type="button" onClick={() => seleccionarOpcion('color', color)} aria-label={`Seleccionar color ${color}`} title={color} aria-pressed={producto.color === color} style={{ ...estiloColorProducto(color), borderColor: '#64748B' }} className={`storefront-detail-option h-9 w-9 rounded-full p-0 ${producto.color === color ? 'ring-2 ring-pink-500 ring-offset-2' : ''}`}>
+                        <span className="sr-only">{color}</span>
                       </button>
                     ))}
                   </div>

@@ -53,11 +53,14 @@ INSERT INTO categorias (nombre) VALUES
     ('polerones'), ('accesorios'), ('papeleria')
 ON CONFLICT (nombre) DO NOTHING;
 
+UPDATE productos SET activo = false
+WHERE codigo_producto = 'POLERON-UCN';
+
 INSERT INTO productos (
     codigo_producto, id_categoria, nombre, descripcion, marca,
     costo_adquisicion, precio_venta, precio_tac, imagen_url
 ) VALUES
-    ('POLERON-UCN', (SELECT id_categoria FROM categorias WHERE nombre = 'polerones'), 'Poler' || chr(243) || 'n UCN', 'Poler' || chr(243) || 'n oficial UCN', 'UCN', 21000, 24990, 21000, '/productos/poleron-ucn.png'),
+    ('POLERON-TALLAS', (SELECT id_categoria FROM categorias WHERE nombre = 'polerones'), 'Poler' || chr(243) || 'n UCN', 'Poler' || chr(243) || 'n UCN en colores azul y negro', 'UCN', 21000, 24990, 21000, '/productos/poleron-negro.png'),
     ('LAPIZ-COBRE', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Lapicera de cobre', 'Lapicera de cobre UCN', 'UCN', 15000, 16000, 15000, '/productos/lapicera-cobre.png'),
     ('LIBRETA-UCN', (SELECT id_categoria FROM categorias WHERE nombre = 'papeleria'), 'Libreta UCN', 'Libreta institucional UCN', 'UCN', 5000, 5950, 5000, '/productos/libreta-ucn.png'),
     ('TOTE-BAG-UCN', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Tote bag UCN', 'Bolsa reutilizable UCN', 'UCN', 6000, 6950, 6000, '/productos/tote-bag.png'),
@@ -78,7 +81,6 @@ ON CONFLICT (codigo_producto) DO UPDATE SET
 
 INSERT INTO variantes_producto (codigo_producto, talla, color, sku, stock, stock_minimo)
 VALUES
-    ('POLERON-UCN', 'unica', NULL, 'POLERON-UCN-UNI', 56, 5),
     ('LAPIZ-COBRE', 'unica', NULL, 'LAPIZ-COBRE-UNI', 36, 5),
     ('LIBRETA-UCN', 'unica', NULL, 'LIBRETA-UCN-UNI', 58, 5),
     ('TOTE-BAG-UCN', 'unica', NULL, 'TOTE-BAG-UCN-UNI', 29, 5),
@@ -93,6 +95,19 @@ VALUES
 ON CONFLICT (sku) DO UPDATE SET
     stock = EXCLUDED.stock,
     stock_minimo = EXCLUDED.stock_minimo;
+
+INSERT INTO variantes_producto (codigo_producto, talla, color, sku, stock, stock_minimo, imagen_url)
+VALUES
+    ('POLERON-TALLAS', 'M', 'negro', 'POL-TN-M', 1, 0, '/productos/poleron-negro.png'),
+    ('POLERON-TALLAS', 'L', 'negro', 'POL-TN-L', 13, 0, '/productos/poleron-negro.png'),
+    ('POLERON-TALLAS', 'L', 'azul', 'POL-TA-L', 12, 0, '/productos/poleron-azul.png')
+ON CONFLICT (sku) DO UPDATE SET
+    codigo_producto = EXCLUDED.codigo_producto,
+    talla = EXCLUDED.talla,
+    color = EXCLUDED.color,
+    stock = EXCLUDED.stock,
+    stock_minimo = EXCLUDED.stock_minimo,
+    imagen_url = EXCLUDED.imagen_url;
 
 UPDATE variantes_producto SET imagen_url = CASE sku
     WHEN 'TORTUGA-VERDE' THEN '/productos/llavero-tortuga-verde.png'

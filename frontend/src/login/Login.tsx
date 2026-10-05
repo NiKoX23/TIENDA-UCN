@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { login, loginConGoogle } from '../services/auth.service';
 import googleLogo from '../assets/icons/googleLogo.png';
 import type { Usuario } from '../services/auth.service';
+import BackToStore from '../components/BackToStore';
 
 export default function Login({ tema, onAuthenticated }: { tema: 'dark' | 'light'; onAuthenticated: (usuario: Usuario) => void }) {
     const [email, setEmail] = useState('');
@@ -30,16 +31,7 @@ export default function Login({ tema, onAuthenticated }: { tema: 'dark' | 'light
 
     return (
         <div className={`grid min-h-screen place-items-center px-5 py-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
-            <button
-                type="button"
-                className="storefront-detail-back-button fixed left-5 top-5 z-10 inline-flex items-center gap-2 rounded-xl border px-4 py-2 font-semibold shadow-lg transition hover:-translate-y-px max-[480px]:left-3 max-[480px]:top-3"
-                onClick={() => navigate('/')}
-            >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-                Volver a la tienda
-            </button>
+            <BackToStore className="fixed left-5 top-5 z-10 max-[480px]:left-3 max-[480px]:top-3" />
             <form className="theme-dark-surface flex w-full max-w-md flex-col gap-4 rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl max-[480px]:p-6" onSubmit={handleSubmit}>
                 <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-50">Iniciar sesión</h1>
 

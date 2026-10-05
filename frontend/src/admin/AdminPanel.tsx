@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import type { Usuario } from '../services/auth.service';
+import BackToStore from '../components/BackToStore';
 import { listarUsuarios, cambiarRol, eliminarUsuario, type AdminUsuario } from '../services/admin.service';
 import InventarioTab from './InventarioTab';
 import DashboardTab from './DashboardTab';
@@ -46,7 +46,6 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
 };
 
 export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
-    const navigate = useNavigate();
     const [tab, setTab] = useState<TabId>('inicio');
     const [usuarios, setUsuarios] = useState<AdminUsuario[]>([]);
     const [cargando, setCargando] = useState(true);
@@ -104,11 +103,9 @@ export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
 
     return (
         <main className={`flex min-h-screen flex-col items-center px-5 pb-12 pt-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.14),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
-            <button type="button" className="theme-dark-surface self-start rounded-full border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-200 transition hover:-translate-y-px hover:border-violet-400/50" onClick={() => navigate('/')}>
-                volver a la tienda
-            </button>
+            <BackToStore className="mb-8 self-start" />
 
-            <div className="theme-dark-surface mt-8 w-full max-w-6xl rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl">
+            <div className="theme-dark-surface w-full max-w-6xl rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-extrabold tracking-tight">{CONTENIDO_TAB[tab].titulo}</h1>
