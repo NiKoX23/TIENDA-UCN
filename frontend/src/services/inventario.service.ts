@@ -7,6 +7,10 @@ export interface ItemInventario {
     nombre: string;
     marca: string | null;
     categoria: string;
+    descripcion: string | null;
+    imagenUrl: string | null;
+    imagenVarianteUrl: string | null;
+    imagenUrlProducto: string | null;
     talla: string;
     color: string | null;
     sku: string;
@@ -35,6 +39,13 @@ export interface VariantePayload {
     sku: string;
     stock: number;
     stockMinimo: number;
+}
+
+export interface ActualizarVariantePayload {
+    talla: string;
+    color: string;
+    imagenUrl: string;
+    stock: number;
 }
 
 export interface NuevoProductoPayload {
@@ -84,4 +95,9 @@ export async function actualizarProducto(
 export async function agregarVariante(codigoProducto: string, payload: VariantePayload): Promise<{ idVariante: number; sku: string; stock: number }> {
     const { data } = await api.post(`/productos/admin/inventario/${encodeURIComponent(codigoProducto)}/variantes`, payload);
     return data;
+}
+
+export async function actualizarVariante(sku: string, payload: ActualizarVariantePayload) {
+    const { data } = await api.patch(`/productos/admin/inventario/variantes/${encodeURIComponent(sku)}`, payload);
+    return data as { sku: string; talla: string; color: string | null; imagenUrl: string | null; stock: number; stockMinimo: number };
 }

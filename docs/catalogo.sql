@@ -60,7 +60,7 @@ INSERT INTO productos (
     codigo_producto, id_categoria, nombre, descripcion, marca,
     costo_adquisicion, precio_venta, precio_tac, imagen_url
 ) VALUES
-    ('POLERON-TALLAS', (SELECT id_categoria FROM categorias WHERE nombre = 'polerones'), 'Poler' || chr(243) || 'n UCN', 'Poler' || chr(243) || 'n UCN en colores azul y negro', 'UCN', 21000, 24990, 21000, '/productos/poleron-negro.png'),
+    ('POLERON-TALLAS', (SELECT id_categoria FROM categorias WHERE nombre = 'polerones'), 'Poler' || chr(243) || 'n UCN', 'Polerones UCN Coquimbo en distintos colores', 'UCN', 21000, 24990, 21000, '/productos/poleron-negro.png'),
     ('LAPIZ-COBRE', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Lapicera de cobre', 'Lapicera de cobre UCN', 'UCN', 15000, 16000, 15000, '/productos/lapicera-cobre.png'),
     ('LIBRETA-UCN', (SELECT id_categoria FROM categorias WHERE nombre = 'papeleria'), 'Libreta UCN', 'Libreta institucional UCN', 'UCN', 5000, 5950, 5000, '/productos/libreta-ucn.png'),
     ('TOTE-BAG-UCN', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Tote bag UCN', 'Bolsa reutilizable UCN', 'UCN', 6000, 6950, 6000, '/productos/tote-bag.png'),

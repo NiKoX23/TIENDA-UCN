@@ -13,6 +13,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import {
   ActualizarProductoDto,
+  ActualizarVarianteDto,
   AjustarStockDto,
   CrearProductoDto,
   VarianteDto,
@@ -32,6 +33,14 @@ export class ProductosAdminController {
   @Patch('inventario/:sku/stock')
   ajustarStock(@Param('sku') sku: string, @Body() dto: AjustarStockDto) {
     return this.productosService.ajustarStock(sku, dto.stock);
+  }
+
+  @Patch('inventario/variantes/:sku')
+  actualizarVariante(
+    @Param('sku') sku: string,
+    @Body() dto: ActualizarVarianteDto,
+  ) {
+    return this.productosService.actualizarVariante(sku, dto);
   }
 
   @Post('inventario')

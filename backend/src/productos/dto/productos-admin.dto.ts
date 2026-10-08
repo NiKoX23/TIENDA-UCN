@@ -144,3 +144,26 @@ export class AjustarStockDto {
   @Min(0)
   stock!: number;
 }
+
+export class ActualizarVarianteDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  talla?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  color?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  imagenUrl?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  stock?: number;
+}

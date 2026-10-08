@@ -39,19 +39,23 @@ export default function Carrito({
   if (!abierto) return null;
 
   const vacio = items.length === 0;
+  const cantidadTotal = items.reduce((totalItems, item) => totalItems + item.cantidad, 0);
 
   return (
-    <div className="theme-dark-overlay fixed inset-0 z-[70] flex justify-end bg-slate-950/60 backdrop-blur-md" role="presentation" onClick={onCerrar}>
+    <div className="cart-overlay fixed inset-0 z-[70] flex justify-end" role="presentation" onClick={onCerrar}>
       <aside
-        className="theme-dark-surface flex h-full w-[min(420px,100%)] flex-col border-l border-slate-400/15 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl"
+        className="cart-panel flex h-full w-[min(420px,100%)] flex-col shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="carrito-titulo"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-slate-400/15 px-5 py-5">
-          <h2 id="carrito-titulo" className="text-base font-bold text-slate-100">tu carrito</h2>
-          <button type="button" className="grid h-9 w-9 place-items-center rounded-lg border border-slate-400/15 bg-slate-900/60 text-slate-300 hover:border-violet-400/40 hover:bg-violet-500/15" onClick={onCerrar} aria-label="Cerrar carrito">
+        <header className="cart-header flex items-center justify-between">
+          <div>
+            <h2 id="carrito-titulo" className="text-base font-bold">Tu carrito</h2>
+            <p className="cart-count">{cantidadTotal} {cantidadTotal === 1 ? 'producto' : 'productos'}</p>
+          </div>
+          <button type="button" className="cart-close grid place-items-center" onClick={onCerrar} aria-label="Cerrar carrito">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
               <path d="m6 6 12 12M18 6 6 18" />
             </svg>
@@ -59,39 +63,52 @@ export default function Carrito({
         </header>
 
         {vacio ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2.5 p-8 text-center text-slate-500">
+          <div className="cart-empty flex flex-1 flex-col items-center justify-center gap-2.5 p-8 text-center">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
               <path d="M6 8h12l-1 12H7L6 8Z" />
               <path d="M9 8V6a3 3 0 0 1 6 0v2" />
             </svg>
-            <p className="font-semibold text-slate-300">Tu carrito está vacío</p>
+            <p className="font-semibold">Tu carrito está vacío</p>
             <span className="max-w-60 text-xs">Agrega productos desde la tienda para verlos aquí.</span>
           </div>
         ) : (
-          <ul className="m-0 flex flex-1 list-none flex-col gap-2.5 overflow-y-auto p-3">
+          <ul className="cart-items m-0 flex flex-1 list-none flex-col gap-2.5 overflow-y-auto">
             {items.map((item) => (
-              <li className="theme-dark-surface flex flex-col gap-2.5 rounded-2xl border border-slate-400/10 bg-slate-800/75 p-3.5" key={item.idVariante}>
-                <div className="flex items-center gap-3">
-                <img src={item.imagen} alt="" className="h-14 w-14 rounded-lg bg-white/5 object-contain" />
+              <li className="cart-item flex items-center gap-3" key={item.idVariante}>
+                <img src={item.imagen} alt={item.nombre} className="cart-image h-14 w-14 shrink-0 rounded-xl object-contain" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-slate-100">{item.nombre}</p>
-                  {(item.color || item.talla !== 'unica') && <p className="text-xs text-slate-400">{[item.color, item.talla !== 'unica' ? item.talla : null].filter(Boolean).join(' / ')}</p>}
-                  <p className="text-xs text-slate-500">{formatearCLP(item.precio)} c/u</p>
-                </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-1.5 rounded-lg border border-slate-400/15 bg-slate-950/60 p-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{item.nombre}</p>
+                      {(item.color || item.talla !== 'unica') && <p className="cart-variant truncate">{[item.color, item.talla !== 'unica' ? item.talla : null].filter(Boolean).join(' / ')}</p>}
+                      <p className="cart-unit-price">{formatearCLP(item.precio)} c/u</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="cart-remove grid shrink-0 place-items-center"
+                      onClick={() => onEliminar(item.idVariante)}
+                      aria-label={`Eliminar ${item.nombre} del carrito`}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                        <path d="M4 7h16" />
+                        <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                        <path d="M6 7l1 13h10l1-13" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="cart-quantity flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => onRestar(item.idVariante)}
                       aria-label={`Quitar una unidad de ${item.nombre}`}
                     >
-                      −
+                      <span aria-hidden="true">−</span>
                     </button>
                     <input
                       type="number"
                       min={1}
+                      max={item.stock}
                       value={item.cantidad}
                       onChange={(e) => onCantidad(item.idVariante, Number(e.target.value))}
                       aria-label={`Cantidad de ${item.nombre}`}
@@ -101,37 +118,32 @@ export default function Carrito({
                       onClick={() => onSumar(item.idVariante)}
                       aria-label={`Agregar una unidad de ${item.nombre}`}
                     >
-                      +
+                      <span aria-hidden="true">+</span>
                     </button>
                   </div>
 
-                  <p className="whitespace-nowrap text-sm font-bold text-cyan-300">{formatearCLP(item.precio * item.cantidad)}</p>
-
-                  <button
-                    type="button"
-                    className="grid place-items-center rounded-lg p-1.5 text-slate-500 hover:bg-red-900/20 hover:text-red-300"
-                    onClick={() => onEliminar(item.idVariante)}
-                    aria-label={`Eliminar ${item.nombre} del carrito`}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-                      <path d="M4 7h16" />
-                      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-                      <path d="M6 7l1 13h10l1-13" />
-                    </svg>
-                  </button>
+                  <p className="cart-line-total whitespace-nowrap text-sm font-bold">{formatearCLP(item.precio * item.cantidad)}</p>
+                  </div>
                 </div>
               </li>
             ))}
           </ul>
         )}
 
-        <footer className="flex flex-col gap-3 border-t border-slate-400/15 px-5 pb-5 pt-4">
-          <div className="flex items-baseline justify-between text-slate-100">
-            <span className="text-xs font-semibold text-slate-500">total</span>
-            <strong className="text-xl">{formatearCLP(total)}</strong>
+        <footer className="cart-footer flex flex-col gap-3">
+          <div className="cart-subtotal flex items-baseline justify-between">
+            <span>Subtotal</span>
+            <span>{formatearCLP(total)}</span>
           </div>
-          <button type="button" className="rounded-xl bg-gradient-to-r from-violet-600 via-blue-500 to-cyan-400 px-4 py-3 font-extrabold text-white shadow-lg shadow-violet-900/30 transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none" onClick={onIrAPagar} disabled={vacio}>
-            ir a pagar
+          <div className="cart-total flex items-baseline justify-between">
+            <span>Total</span>
+            <strong>{formatearCLP(total)}</strong>
+          </div>
+          <button type="button" className="cart-checkout" onClick={onIrAPagar} disabled={vacio}>
+            Ir a pagar <span aria-hidden="true">→</span>
+          </button>
+          <button type="button" className="cart-continue" onClick={onCerrar}>
+            Seguir comprando
           </button>
         </footer>
       </aside>

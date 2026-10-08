@@ -11,6 +11,7 @@ import { Producto } from './producto.entity';
 import { VarianteProducto } from './variante-producto.entity';
 import {
   ActualizarProductoDto,
+  ActualizarVarianteDto,
   CrearProductoDto,
   VarianteDto,
 } from './dto/productos-admin.dto';
@@ -20,6 +21,10 @@ export interface ItemInventario {
   nombre: string;
   marca: string | null;
   categoria: string;
+  descripcion: string | null;
+  imagenUrl: string | null;
+  imagenVarianteUrl: string | null;
+  imagenUrlProducto: string | null;
   talla: string;
   color: string | null;
   sku: string;
@@ -122,6 +127,10 @@ export class ProductosService {
           nombre: producto.nombre,
           marca: producto.marca,
           categoria: producto.categoria.nombre,
+          descripcion: producto.descripcion,
+          imagenUrl: variante.imagenUrl || producto.imagenUrl,
+          imagenVarianteUrl: variante.imagenUrl,
+          imagenUrlProducto: producto.imagenUrl,
           talla: variante.talla,
           color: variante.color,
           sku: variante.sku,
@@ -156,6 +165,29 @@ export class ProductosService {
       idVariante: guardada.idVariante,
       sku: guardada.sku,
       stock: guardada.stock,
+    };
+  }
+
+  async actualizarVariante(sku: string, dto: ActualizarVarianteDto) {
+    const variante = await this.varianteRepository.findOne({ where: { sku } });
+    if (!variante) {
+      throw new NotFoundException(`Variante con SKU ${sku} no encontrada`);
+    }
+
+    if (dto.talla !== undefined) variante.talla = dto.talla.trim() || 'unica';
+    if (dto.color !== undefined) variante.color = dto.color.trim() || null;
+    if (dto.imagenUrl !== undefined)
+      variante.imagenUrl = dto.imagenUrl.trim() || null;
+    if (dto.stock !== undefined) variante.stock = dto.stock;
+
+    const guardada = await this.varianteRepository.save(variante);
+    return {
+      sku: guardada.sku,
+      talla: guardada.talla,
+      color: guardada.color,
+      imagenUrl: guardada.imagenUrl,
+      stock: guardada.stock,
+      stockMinimo: guardada.stockMinimo,
     };
   }
 
