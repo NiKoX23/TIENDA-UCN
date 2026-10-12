@@ -52,9 +52,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      ANALITICA_DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
-    depends_on:
-      - postgres
+      INVENTARIO_XLSX_PATH: /app/Inventario.xlsx
+    volumes:
+      - ./docs/Inventario.xlsx:/app/Inventario.xlsx:ro
     networks:
       - tienda-net
 

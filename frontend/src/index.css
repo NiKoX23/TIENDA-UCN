@@ -800,6 +800,19 @@ html[data-theme='light'] [class*='bg-green-950'] { background-color: #ECFDF3 !im
 html[data-theme='light'] [class*='text-green-200'] { color: #18794E !important; }
 html[data-theme='light'] [class*='text-amber-200'] { color: #8A4B10 !important; }
 
+.admin-sales-profit { color: #A7F3D0; }
+.admin-sales-profit-total {
+  border-color: rgba(52, 211, 153, 0.25);
+  background: rgba(16, 185, 129, 0.1);
+  color: #A7F3D0;
+}
+html[data-theme='light'] .admin-sales-profit,
+html[data-theme='light'] .admin-sales-profit-total { color: #166534; }
+html[data-theme='light'] .admin-sales-profit-total {
+  border-color: rgba(24, 121, 78, 0.24);
+  background: #ECFDF3;
+}
+
 .admin-form-field {
   border: 1px solid #58718A;
   background: #24394F;
@@ -1171,22 +1184,25 @@ html[data-theme='light'] .storefront-page {
 }
 
 .storefront-product-detail-page {
-  --detail-surface: #222A31;
-  --detail-outline: rgba(126, 155, 192, 0.2);
-  --detail-secondary: #C6D0D9;
-  --detail-muted: #9AA8B5;
+  --detail-page-background: #0B121C;
+  --detail-surface: #121C2A;
+  --detail-outline: #223248;
+  --detail-secondary: #D7E1ED;
+  --detail-muted: #93A4BA;
+  background: var(--detail-page-background);
 }
 
 html[data-theme='light'] .storefront-product-detail-page {
+  --detail-page-background: #F3F6FB;
   --detail-surface: #FFFFFF;
-  --detail-outline: rgba(21, 84, 138, 0.16);
+  --detail-outline: #E3E9F2;
   --detail-secondary: #40566A;
   --detail-muted: #63788A;
 }
 
 .storefront-detail-card {
   border: 1px solid var(--detail-outline);
-  border-radius: 14px;
+  border-radius: 24px;
   background: var(--detail-surface);
   color: var(--text);
   box-shadow: var(--shadow-soft);
@@ -1195,8 +1211,8 @@ html[data-theme='light'] .storefront-product-detail-page {
 .storefront-detail-media {
   --detail-media-tone: #29343D;
   border: 1px solid var(--detail-outline);
-  border-radius: 12px;
-  background: var(--detail-media-tone);
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--detail-media-tone) 76%, transparent), transparent 75%), var(--detail-media-tone);
 }
 
 .storefront-detail-media--papeleria { --detail-media-tone: var(--color-card-papeleria); }
@@ -1204,12 +1220,45 @@ html[data-theme='light'] .storefront-product-detail-page {
 .storefront-detail-media--vestuario { --detail-media-tone: var(--color-card-vestuario); }
 .storefront-detail-media--default { --detail-media-tone: var(--color-card-default); }
 
-.storefront-detail-category { color: var(--color-brand-orange); }
-html[data-theme='light'] .storefront-detail-category { color: var(--color-brand-blue); }
-.storefront-detail-price { color: var(--color-brand-orange); }
-html[data-theme='light'] .storefront-detail-price { color: var(--color-brand-blue); }
+.storefront-detail-category {
+  background: #16273B;
+  color: #7FBCF4;
+}
+html[data-theme='light'] .storefront-detail-category {
+  background: #E6F0FB;
+  color: #15508A;
+}
+.storefront-detail-price { color: #7FBCF4; }
+html[data-theme='light'] .storefront-detail-price { color: #15508A; }
 .storefront-detail-secondary { color: var(--detail-secondary); }
 .storefront-detail-muted { color: var(--detail-muted); }
+
+.storefront-detail-media-tag {
+  border-color: var(--detail-outline);
+  background: var(--detail-surface);
+  color: var(--detail-secondary);
+}
+
+.storefront-detail-stock {
+  border-color: var(--detail-outline);
+  background: color-mix(in srgb, var(--detail-surface) 70%, var(--detail-page-background));
+}
+.storefront-detail-stock--available { color: #6FDC9C; }
+.storefront-detail-stock--available .storefront-detail-stock-dot { background: #38A967; }
+.storefront-detail-stock--empty { color: #F4A0A0; }
+.storefront-detail-stock--empty .storefront-detail-stock-dot { background: #D24B4B; }
+.storefront-detail-stock-count { color: var(--detail-secondary); }
+
+.storefront-detail-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--detail-page-background) 55%, var(--detail-surface));
+  padding: 10px 12px;
+}
+.storefront-detail-facts strong { color: var(--detail-secondary); font-size: 12px; }
+.storefront-detail-facts span { color: var(--detail-muted); font-size: 11px; }
 
 .storefront-detail-option,
 .storefront-detail-quantity {
@@ -1217,23 +1266,63 @@ html[data-theme='light'] .storefront-detail-price { color: var(--color-brand-blu
   background: var(--detail-surface);
   color: var(--text);
 }
+.storefront-detail-option--selected {
+  border-color: #5AA6EE;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #5AA6EE 35%, transparent);
+}
+.storefront-detail-swatch--selected {
+  box-shadow: 0 0 0 2px var(--detail-surface), 0 0 0 4px #5AA6EE;
+}
 
 .storefront-detail-quantity-button {
-  background: var(--color-brand-blue);
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: #5AA6EE;
+  color: #07121F !important;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.16s ease, transform 0.16s ease;
 }
 
 .storefront-detail-quantity-button:hover:not(:disabled) {
+  background: #7FBCF4;
+  transform: scale(1.04);
+}
+
+.storefront-detail-quantity-button:disabled {
+  background: #35485A;
+  color: #EAF1FA !important;
+  box-shadow: none;
+}
+
+html[data-theme='light'] .storefront-detail-quantity-button {
+  background: #15508A;
+  color: #FFFFFF !important;
+}
+
+html[data-theme='light'] .storefront-detail-quantity-button:hover:not(:disabled) {
   background: #0D426F;
+}
+
+html[data-theme='light'] .storefront-detail-quantity-button:disabled {
+  background: #D7E1EA;
+  color: #35485A !important;
 }
 
 .storefront-detail-add {
   border: 0;
-  background: var(--color-brand-blue);
-  box-shadow: 0 8px 20px rgba(21, 84, 138, 0.24);
+  color: #FFFFFF !important;
+  background: linear-gradient(120deg, #A84212, #BC4812);
+  box-shadow: 0 9px 22px rgba(168, 66, 18, 0.28);
 }
 
-.storefront-detail-add:hover:not(:disabled) { background: #0D426F; }
-.storefront-detail-add:disabled { background: #9BA1A5; box-shadow: none; }
+html[data-theme='light'] .storefront-detail-add:not(:disabled) {
+  background: linear-gradient(120deg, #B34210, #C2480F);
+  box-shadow: 0 9px 22px rgba(179, 66, 16, 0.2);
+}
+.storefront-detail-add:hover:not(:disabled) { background: linear-gradient(120deg, #92370E, #A83E10); }
+.storefront-detail-add:focus-visible { outline: 3px solid #F2A46F; outline-offset: 3px; }
+.storefront-detail-add:disabled { background: #77818B; color: #FFFFFF !important; box-shadow: none; }
 
 .storefront-detail-back-button {
   background: color-mix(in srgb, var(--color-brand-blue) 16%, transparent);

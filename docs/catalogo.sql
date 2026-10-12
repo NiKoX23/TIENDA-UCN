@@ -98,9 +98,16 @@ ON CONFLICT (sku) DO UPDATE SET
 
 INSERT INTO variantes_producto (codigo_producto, talla, color, sku, stock, stock_minimo, imagen_url)
 VALUES
+    ('POLERON-TALLAS', 'S', 'negro', 'POL-TN-S', 0, 0, '/productos/poleron-negro.png'),
     ('POLERON-TALLAS', 'M', 'negro', 'POL-TN-M', 1, 0, '/productos/poleron-negro.png'),
     ('POLERON-TALLAS', 'L', 'negro', 'POL-TN-L', 13, 0, '/productos/poleron-negro.png'),
-    ('POLERON-TALLAS', 'L', 'azul', 'POL-TA-L', 12, 0, '/productos/poleron-azul.png')
+    ('POLERON-TALLAS', 'XL', 'negro', 'POL-TN-XL', 0, 0, '/productos/poleron-negro.png'),
+    ('POLERON-TALLAS', 'XXL', 'negro', 'POL-TN-XXL', 0, 0, '/productos/poleron-negro.png'),
+    ('POLERON-TALLAS', 'S', 'azul', 'POL-TA-S', 0, 0, '/productos/poleron-azul.png'),
+    ('POLERON-TALLAS', 'M', 'azul', 'POL-TA-M', 0, 0, '/productos/poleron-azul.png'),
+    ('POLERON-TALLAS', 'L', 'azul', 'POL-TA-L', 12, 0, '/productos/poleron-azul.png'),
+    ('POLERON-TALLAS', 'XL', 'azul', 'POL-TA-XL', 0, 0, '/productos/poleron-azul.png'),
+    ('POLERON-TALLAS', 'XXL', 'azul', 'POL-TA-XXL', 0, 0, '/productos/poleron-azul.png')
 ON CONFLICT (sku) DO UPDATE SET
     codigo_producto = EXCLUDED.codigo_producto,
     talla = EXCLUDED.talla,

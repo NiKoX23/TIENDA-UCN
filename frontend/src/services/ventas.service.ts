@@ -4,6 +4,20 @@ export type TipoVenta = 'normal' | 'tac';
 export type FirmaEstado = 'Firmado' | 'Pendiente' | 'Rechazado';
 export type EstadoTac = 'Aprobado' | 'Pendiente' | 'Rechazado';
 
+export interface RegistroVentaExcelItem {
+    id: number;
+    numeroVenta: number | null;
+    fecha: string;
+    producto: string;
+    sku: string;
+    variante: string;
+    cantidad: number;
+    metodoPago: string;
+    tipoVenta: TipoVenta;
+    subtotal: number;
+    ganancia: number;
+}
+
 export interface RegistroVentaItem {
     idSalida: number;
     idFactura: number;
@@ -67,6 +81,11 @@ export interface ResultadoRegistroVenta {
 
 export async function listarRegistroVentas(): Promise<RegistroVentaItem[]> {
     const { data } = await api.get<RegistroVentaItem[]>('/ventas/admin/registro');
+    return data;
+}
+
+export async function listarRegistroVentasExcel(): Promise<RegistroVentaExcelItem[]> {
+    const { data } = await api.get<RegistroVentaExcelItem[]>('/dashboard/admin/registro-ventas');
     return data;
 }
 

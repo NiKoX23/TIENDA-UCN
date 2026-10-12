@@ -92,7 +92,7 @@ export default function App() {
                     />
                     <Route
                         path="/admin"
-                        element={!usuario ? <Navigate to="/login" replace /> : usuario.esAdmin ? <AdminPanel tema={tema} usuario={usuario} /> : <Navigate to="/" replace />}
+                        element={!usuario ? <Navigate to="/login" replace /> : usuario.esAdmin ? <AdminPanel tema={tema} onToggleTema={() => setTema((actual) => (actual === 'dark' ? 'light' : 'dark'))} usuario={usuario} /> : <Navigate to="/" replace />}
                     />
                     <Route path="/login" element={<Login tema={tema} onAuthenticated={setUsuario} />} />
                     <Route path="/register" element={<Register tema={tema} onAuthenticated={setUsuario} />} />

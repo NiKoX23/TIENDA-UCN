@@ -53,3 +53,17 @@ export interface ResumenDashboard {
   resumenPorProducto: ResumenProducto[];
   alertasStockBajo: AlertaStock[];
 }
+
+export interface RegistroVentaExcel {
+  id: number;
+  numeroVenta: number | null;
+  fecha: string;
+  producto: string;
+  sku: string;
+  variante: string;
+  cantidad: number;
+  metodoPago: string;
+  tipoVenta: 'normal' | 'tac';
+  subtotal: number;
+  ganancia: number;
+}

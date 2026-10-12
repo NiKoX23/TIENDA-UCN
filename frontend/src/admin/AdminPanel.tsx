@@ -9,6 +9,7 @@ import ControlTacTab from './ControlTacTab';
 
 interface AdminPanelProps {
     tema: 'dark' | 'light';
+    onToggleTema: () => void;
     usuario: Usuario;
 }
 
@@ -25,7 +26,7 @@ const TABS: { id: TabId; label: string }[] = [
 const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
     inicio: {
         titulo: 'Panel de administración',
-        descripcion: 'Resumen del negocio: indicadores clave, resumen por producto y alertas de stock.',
+        descripcion: 'Indicadores del negocio, productos y alertas de inventario.',
     },
     inventario: {
         titulo: 'Inventario',
@@ -45,7 +46,7 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
     },
 };
 
-export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
+export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelProps) {
     const [tab, setTab] = useState<TabId>('inicio');
     const [usuarios, setUsuarios] = useState<AdminUsuario[]>([]);
     const [cargando, setCargando] = useState(true);
@@ -133,7 +134,7 @@ export default function AdminPanel({ tema, usuario }: AdminPanelProps) {
 
                 {tab === 'inicio' && (
                     <div className="mt-6">
-                        <DashboardTab />
+                        <DashboardTab tema={tema} onToggleTema={onToggleTema} />
                     </div>
                 )}
 
