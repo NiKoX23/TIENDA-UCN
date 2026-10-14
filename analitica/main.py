@@ -45,6 +45,21 @@ def resumen():
             total_stock = int(dashboard["B6"].value or 0)
             total_vendidas = int(dashboard["B7"].value or 0)
 
+            total_ventas = 0
+            ventas_normales = 0
+            ventas_tac = 0
+            registro_ventas = libro["Registro Ventas"]
+            for fila in registro_ventas.iter_rows(
+                min_row=3, max_row=503, min_col=3, max_col=6, values_only=True
+            ):
+                if not fila[0]:
+                    continue
+                total_ventas += 1
+                if "TAC" in str(fila[3] or "").upper():
+                    ventas_tac += 1
+                else:
+                    ventas_normales += 1
+
             resumen_lista = []
             alertas = []
             for fila in inventario.iter_rows(
@@ -93,18 +108,33 @@ def resumen():
                     )
 
             ventas = {
-                "totalVentas": int(dashboard["B11"].value or 0),
-                "ventasNormales": int(dashboard["B12"].value or 0),
-                "ventasTac": int(dashboard["B13"].value or 0),
+                "totalVentas": total_ventas,
+                "ventasNormales": ventas_normales,
+                "ventasTac": ventas_tac,
                 "ingresoNormal": int(dashboard["B14"].value or 0),
                 "ingresoTac": int(dashboard["B15"].value or 0),
                 "ingresoTotal": int(dashboard["B16"].value or 0),
                 "gananciaTotal": int(dashboard["B17"].value or 0),
             }
+            total_documentos_tac = 0
+            documentos_tac_aprobados = 0
+            hoja_control_tac = libro["Control TAC"]
+            for fila in hoja_control_tac.iter_rows(
+                min_row=5, max_row=199, min_col=1, max_col=8, values_only=True
+            ):
+                if fila[0] is None:
+                    continue
+                total_documentos_tac += 1
+                if (
+                    str(fila[6] or "").strip().casefold() == "firmado"
+                    and str(fila[7] or "").strip().casefold() == "firmado"
+                ):
+                    documentos_tac_aprobados += 1
+
             control_tac = {
-                "totalDocumentos": int(dashboard["B20"].value or 0),
-                "aprobados": int(dashboard["B21"].value or 0),
-                "pendientes": int(dashboard["B22"].value or 0),
+                "totalDocumentos": total_documentos_tac,
+                "aprobados": documentos_tac_aprobados,
+                "pendientes": total_documentos_tac - documentos_tac_aprobados,
                 "montoTotal": int(dashboard["B23"].value or 0),
             }
         finally:

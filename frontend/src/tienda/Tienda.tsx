@@ -38,10 +38,10 @@ const fondoPorCategoria: Record<string, string> = {
 };
 
 const claseChip = (activo: boolean) =>
-  `h-11 whitespace-nowrap rounded-full border px-5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f3d66] ${
+  `h-11 whitespace-nowrap rounded-full border px-5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
     activo
-      ? 'border-[#0f3d66] bg-[#0f3d66] text-white dark:border-blue-500 dark:bg-blue-600'
-      : 'border-slate-300 bg-white text-slate-800 hover:border-[#0f3d66] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-400'
+      ? 'border-[#c2570c] bg-[#c2570c] text-white hover:bg-[#a84a0a]'
+      : 'border-[#f2a46f] bg-[#fff4eb] text-[#7c2d12] hover:bg-[#f2a46f]'
   }`;
 
 export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: TiendaProps) {
