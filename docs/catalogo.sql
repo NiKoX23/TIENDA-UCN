@@ -1,6 +1,7 @@
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS precio_tac integer;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_url varchar(200);
 ALTER TABLE variantes_producto ADD COLUMN IF NOT EXISTS imagen_url varchar(200);
+ALTER TABLE documentos_tac ADD COLUMN IF NOT EXISTS responsable varchar(50);
 
 CREATE OR REPLACE FUNCTION normalizar_talla_variante()
 RETURNS trigger AS $$
@@ -129,3 +130,24 @@ WHERE sku IN ('TORTUGA-VERDE', 'TORTUGA-AMARILLO', 'ESTRELLA-AMARILLO',
 
 UPDATE productos SET activo = false
 WHERE codigo_producto = 'LLAVERO-MUSEO';
+
+INSERT INTO documentos_tac (
+    n_tac, fecha, id_variante, cantidad, precio_tac, total, responsable,
+    firma_comprador, firma_vendedor
+) VALUES
+    ('1', '2026-01-09', (SELECT id_variante FROM variantes_producto WHERE sku = 'LLAVERO-UCENIN-UNI'), 15, 5000, 75000, 'PAULA CAVIERES', 'Firmado', 'Firmado'),
+    ('2', '2026-01-12', (SELECT id_variante FROM variantes_producto WHERE sku = 'LLAVERO-UCENIN-UNI'), 10, 5000, 50000, 'CAROLINA SALINAS', 'Firmado', 'Firmado'),
+    ('3', '2026-03-19', (SELECT id_variante FROM variantes_producto WHERE sku = 'LIBRETA-UCN-UNI'), 3, 5000, 15000, 'CARLOS SOZA', 'Firmado', 'Firmado'),
+    ('3', '2026-03-19', (SELECT id_variante FROM variantes_producto WHERE sku = 'LAPIZ-COBRE-UNI'), 3, 15000, 45000, 'CARLOS SOZA', 'Firmado', 'Firmado'),
+    ('4', '2026-03-19', (SELECT id_variante FROM variantes_producto WHERE sku = 'PELUCHE-UCN-ROSA'), 19, 10085, 191615, 'GABRIELA LLEWELLYN', 'Pendiente', 'Pendiente'),
+    ('5', '2026-05-12', (SELECT id_variante FROM variantes_producto WHERE sku = 'PELUCHE-UCN-ROSA'), 2, 10085, 20170, 'ALEJANDRA VEGA', 'Firmado', 'Firmado'),
+    ('7', '2026-05-29', (SELECT id_variante FROM variantes_producto WHERE sku = 'LAPIZ-COBRE-UNI'), 1, 15000, 15000, 'LUIS LANAS', 'Firmado', 'Firmado'),
+    ('8', '2026-06-22', (SELECT id_variante FROM variantes_producto WHERE sku = 'PELUCHE-UCN-ROSA'), 1, 10085, 10085, 'CRISTINA MARAMBIO', 'Firmado', 'Firmado'),
+    ('9', '2026-06-22', (SELECT id_variante FROM variantes_producto WHERE sku = 'PELUCHE-UCN-ROSA'), 1, 10085, 10085, 'ALEJANDRA VEGA', 'Firmado', 'Firmado'),
+    ('10', '2026-08-20', (SELECT id_variante FROM variantes_producto WHERE sku = 'LAPIZ-COBRE-UNI'), 2, 15000, 30000, 'JOHANNA ROJAS', 'Pendiente', 'Pendiente'),
+    ('11', '2026-08-20', (SELECT id_variante FROM variantes_producto WHERE sku = 'TOTE-BAG-UCN-UNI'), 6, 6000, 36000, 'JOHANNA ROJAS', 'Pendiente', 'Pendiente'),
+    ('12', '2026-09-04', (SELECT id_variante FROM variantes_producto WHERE sku = 'PELUCHE-UCN-ROSA'), 1, 10085, 10085, 'CAROLINA SALINAS', 'Pendiente', 'Pendiente'),
+    ('13', '2026-09-04', (SELECT id_variante FROM variantes_producto WHERE sku = 'PELUCHE-UCN-ROSA'), 7, 10085, 70595, 'PAULA CAVIERES', 'Firmado', 'Firmado'),
+    ('14', '2026-10-07', (SELECT id_variante FROM variantes_producto WHERE sku = 'LAPIZ-COBRE-UNI'), 5, 15000, 75000, 'CLAUDIA ZULOAGA', 'Pendiente', 'Pendiente'),
+    ('14', '2026-10-07', (SELECT id_variante FROM variantes_producto WHERE sku = 'LLAVERO-UCENIN-UNI'), 5, 5000, 25000, 'CLAUDIA ZULOAGA', 'Pendiente', 'Pendiente'),
+    ('15', '2026-10-07', (SELECT id_variante FROM variantes_producto WHERE sku = 'LLAVERO-UCENIN-UNI'), 3, 5000, 15000, 'MONICA CASTILLO', 'Pendiente', 'Pendiente');

@@ -9,7 +9,12 @@ import { Factura } from '../facturacion/factura.entity';
 import { Salida } from '../facturacion/salida.entity';
 import { VarianteProducto } from '../productos/variante-producto.entity';
 import { DocumentoTac } from './documento-tac.entity';
-import { FirmasDto, RegistrarVentaDto } from './ventas.dto';
+import {
+  ActualizarDocumentoTacDto,
+  CrearDocumentoTacDto,
+  FirmasDto,
+  RegistrarVentaDto,
+} from './ventas.dto';
 
 function generarFolio(prefijo: string): string {
   const hora = Date.now().toString(36).toUpperCase();
@@ -27,6 +32,25 @@ function estadoTac(
 }
 
 const EMAIL_CLIENTE_RESPALDO = 'respaldo-admin@tienda.local';
+
+type DocumentoTacDetalle = {
+  idTac: number;
+  nTac: string;
+  fecha: Date;
+  producto: string;
+  codigoProducto: string;
+  sku: string;
+  talla: string;
+  color: string | null;
+  cantidad: number;
+  precioTac: number;
+  total: number;
+  responsable: string | null;
+  firmaComprador: DocumentoTac['firmaComprador'];
+  firmaVendedor: DocumentoTac['firmaVendedor'];
+  estado: 'Aprobado' | 'Pendiente' | 'Rechazado';
+  tieneVenta: boolean;
+};
 
 @Injectable()
 export class VentasService {
@@ -186,6 +210,39 @@ export class VentasService {
     });
   }
 
+  private async obtenerDetalleTac(idTac: number): Promise<DocumentoTacDetalle> {
+    const d = await this.dataSource
+      .getRepository(DocumentoTac)
+      .createQueryBuilder('d')
+      .innerJoinAndSelect('d.variante', 'v')
+      .innerJoinAndSelect('v.producto', 'p')
+      .where('d.id_tac = :idTac', { idTac })
+      .getOne();
+    if (!d) throw new NotFoundException('Documento TAC no encontrado');
+    const tieneVenta = await this.dataSource.getRepository(Factura).exists({
+      where: { documento: { idTac } },
+    });
+
+    return {
+      idTac: d.idTac,
+      nTac: d.nTac,
+      fecha: d.fecha,
+      producto: d.variante.producto.nombre,
+      codigoProducto: d.variante.producto.codigoProducto,
+      sku: d.variante.sku,
+      talla: d.variante.talla,
+      color: d.variante.color,
+      cantidad: d.cantidad,
+      precioTac: d.precioTac,
+      total: d.total,
+      responsable: d.responsable,
+      firmaComprador: d.firmaComprador,
+      firmaVendedor: d.firmaVendedor,
+      estado: estadoTac(d.firmaComprador, d.firmaVendedor),
+      tieneVenta,
+    };
+  }
+
   async listarDocumentosTac() {
     const documentos = await this.dataSource
       .getRepository(DocumentoTac)
@@ -195,6 +252,16 @@ export class VentasService {
       .orderBy('d.fecha', 'DESC')
       .addOrderBy('d.id_tac', 'DESC')
       .getMany();
+
+    const facturasVinculadas = await this.dataSource
+      .getRepository(Factura)
+      .createQueryBuilder('f')
+      .select('f.id_tac', 'idTac')
+      .where('f.id_tac IS NOT NULL')
+      .getRawMany<{ idTac: number }>();
+    const idsVinculados = new Set(
+      facturasVinculadas.map((factura) => Number(factura.idTac)),
+    );
 
     return documentos.map((d) => ({
       idTac: d.idTac,
@@ -208,10 +275,105 @@ export class VentasService {
       cantidad: d.cantidad,
       precioTac: d.precioTac,
       total: d.total,
+      responsable: d.responsable,
       firmaComprador: d.firmaComprador,
       firmaVendedor: d.firmaVendedor,
       estado: estadoTac(d.firmaComprador, d.firmaVendedor),
+      tieneVenta: idsVinculados.has(d.idTac),
     }));
+  }
+
+  async crearDocumentoTac(dto: CrearDocumentoTacDto) {
+    const variante = await this.dataSource
+      .getRepository(VarianteProducto)
+      .findOne({
+        where: { sku: dto.sku },
+        relations: { producto: true },
+      });
+    if (!variante)
+      throw new NotFoundException(`Variante no encontrada: ${dto.sku}`);
+
+    const precioTac = dto.precioTac ?? variante.producto.precioTac;
+    if (precioTac === null)
+      throw new BadRequestException('El producto no tiene precio TAC definido');
+
+    const documento = await this.dataSource.getRepository(DocumentoTac).save(
+      this.dataSource.getRepository(DocumentoTac).create({
+        nTac: dto.nTac?.trim() || generarFolio('TAC'),
+        fecha: dto.fecha ? new Date(dto.fecha) : new Date(),
+        variante,
+        cantidad: dto.cantidad,
+        precioTac,
+        total: dto.cantidad * precioTac,
+        responsable: dto.responsable?.trim() || null,
+        firmaComprador: dto.firmaComprador ?? 'Pendiente',
+        firmaVendedor: dto.firmaVendedor ?? 'Pendiente',
+      }),
+    );
+    return this.obtenerDetalleTac(documento.idTac);
+  }
+
+  async actualizarDocumentoTac(idTac: number, dto: ActualizarDocumentoTacDto) {
+    await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(DocumentoTac);
+      const documento = await repo.findOne({
+        where: { idTac },
+        relations: { variante: { producto: true } },
+      });
+      if (!documento)
+        throw new NotFoundException('Documento TAC no encontrado');
+      const tieneVenta = await manager.getRepository(Factura).exists({
+        where: { documento: { idTac } },
+      });
+      if (
+        tieneVenta &&
+        (dto.sku !== undefined ||
+          dto.cantidad !== undefined ||
+          dto.precioTac !== undefined)
+      ) {
+        throw new BadRequestException(
+          'No se puede cambiar producto, cantidad o precio de un TAC asociado a una venta',
+        );
+      }
+
+      if (dto.sku !== undefined) {
+        const variante = await manager.getRepository(VarianteProducto).findOne({
+          where: { sku: dto.sku },
+          relations: { producto: true },
+        });
+        if (!variante)
+          throw new NotFoundException(`Variante no encontrada: ${dto.sku}`);
+        documento.variante = variante;
+      }
+      if (dto.nTac !== undefined) documento.nTac = dto.nTac.trim();
+      if (dto.fecha !== undefined) documento.fecha = new Date(dto.fecha);
+      if (dto.cantidad !== undefined) documento.cantidad = dto.cantidad;
+      if (dto.precioTac !== undefined) documento.precioTac = dto.precioTac;
+      if (dto.responsable !== undefined)
+        documento.responsable = dto.responsable.trim() || null;
+      if (dto.firmaComprador !== undefined)
+        documento.firmaComprador = dto.firmaComprador;
+      if (dto.firmaVendedor !== undefined)
+        documento.firmaVendedor = dto.firmaVendedor;
+      documento.total = documento.cantidad * documento.precioTac;
+      await repo.save(documento);
+    });
+    return this.obtenerDetalleTac(idTac);
+  }
+
+  async eliminarDocumentoTac(idTac: number) {
+    const repo = this.dataSource.getRepository(DocumentoTac);
+    const documento = await repo.findOne({ where: { idTac } });
+    if (!documento) throw new NotFoundException('Documento TAC no encontrado');
+    const tieneVenta = await this.dataSource.getRepository(Factura).exists({
+      where: { documento: { idTac } },
+    });
+    if (tieneVenta)
+      throw new BadRequestException(
+        'No se puede eliminar un TAC asociado a una venta registrada',
+      );
+    await repo.remove(documento);
+    return { idTac, eliminado: true };
   }
 
   async actualizarFirmas(idTac: number, dto: FirmasDto) {

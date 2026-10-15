@@ -52,9 +52,22 @@ export interface DocumentoTac {
     cantidad: number;
     precioTac: number;
     total: number;
+    responsable: string | null;
     firmaComprador: FirmaEstado;
     firmaVendedor: FirmaEstado;
     estado: EstadoTac;
+    tieneVenta: boolean;
+}
+
+export interface PayloadDocumentoTac {
+    nTac?: string;
+    fecha?: string;
+    sku?: string;
+    cantidad?: number;
+    precioTac?: number;
+    responsable?: string;
+    firmaComprador?: FirmaEstado;
+    firmaVendedor?: FirmaEstado;
 }
 
 export interface PayloadRegistrarVenta {
@@ -102,4 +115,21 @@ export async function listarDocumentosTac(): Promise<DocumentoTac[]> {
 export async function actualizarFirmas(idTac: number, payload: PayloadFirmas): Promise<DocumentoTac> {
     const { data } = await api.patch<DocumentoTac>(`/ventas/admin/tac/${idTac}/firmas`, payload);
     return data;
+}
+
+export async function crearDocumentoTac(payload: PayloadDocumentoTac): Promise<DocumentoTac> {
+    const { data } = await api.post<DocumentoTac>('/ventas/admin/tac', payload);
+    return data;
+}
+
+export async function actualizarDocumentoTac(
+    idTac: number,
+    payload: PayloadDocumentoTac,
+): Promise<DocumentoTac> {
+    const { data } = await api.patch<DocumentoTac>(`/ventas/admin/tac/${idTac}`, payload);
+    return data;
+}
+
+export async function eliminarDocumentoTac(idTac: number): Promise<void> {
+    await api.delete(`/ventas/admin/tac/${idTac}`);
 }
