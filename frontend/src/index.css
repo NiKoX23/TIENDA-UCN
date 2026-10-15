@@ -1309,18 +1309,32 @@ html[data-theme='light'] .storefront-detail-quantity-button:disabled {
   color: #35485A !important;
 }
 
+.storefront-add-button:not(:disabled) {
+  background: #E8782A;
+  color: #1A1206;
+}
+
+.storefront-add-button:hover:not(:disabled) {
+  background: #F28C45;
+}
+
+html[data-theme='light'] .storefront-add-button:not(:disabled) {
+  background: #C2570C;
+  color: #FFFFFF;
+}
+
+html[data-theme='light'] .storefront-add-button:hover:not(:disabled) {
+  background: #A9480A;
+}
+
 .storefront-detail-add {
   border: 0;
-  color: #FFFFFF !important;
-  background: linear-gradient(120deg, #A84212, #BC4812);
   box-shadow: 0 9px 22px rgba(168, 66, 18, 0.28);
 }
 
 html[data-theme='light'] .storefront-detail-add:not(:disabled) {
-  background: linear-gradient(120deg, #B34210, #C2480F);
   box-shadow: 0 9px 22px rgba(179, 66, 16, 0.2);
 }
-.storefront-detail-add:hover:not(:disabled) { background: linear-gradient(120deg, #92370E, #A83E10); }
 .storefront-detail-add:focus-visible { outline: 3px solid #F2A46F; outline-offset: 3px; }
 .storefront-detail-add:disabled { background: #77818B; color: #FFFFFF !important; box-shadow: none; }
 

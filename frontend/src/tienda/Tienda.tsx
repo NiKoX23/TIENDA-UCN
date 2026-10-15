@@ -535,7 +535,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                     {/* Los productos con talla/color se eligen en el detalle */}
                     <button
                       type="button"
-                      className={`mt-auto h-11 w-full rounded-[10px] text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f3d66] ${
+                      className={`storefront-add-button mt-auto h-11 w-full rounded-[10px] text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f3d66] ${
                         agotado
                           ? 'cursor-not-allowed bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                           : 'bg-[#0f3d66] text-white hover:bg-[#0b2f4f] dark:bg-blue-600 dark:hover:bg-blue-500'

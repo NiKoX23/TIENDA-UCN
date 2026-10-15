@@ -344,7 +344,7 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
 
             <button
               type="button"
-              className="storefront-detail-add flex w-full items-center justify-between gap-3 rounded-xl px-5 py-4 font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+              className="storefront-detail-add storefront-add-button flex w-full items-center justify-between gap-3 rounded-xl px-5 py-4 font-bold transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label={producto.stock > 0 ? `Agregar ${cantidad} al carrito por ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(subtotalSeleccionado)}` : 'Producto agotado'}
               onClick={agregarCantidad}
               disabled={producto.stock < 1}
