@@ -30,7 +30,7 @@ export class VarianteProducto {
   @Column({ name: 'imagen_url', type: 'varchar', length: 200, nullable: true })
   imagenUrl!: string | null;
 
-  @Column({ type: 'varchar', length: 20, unique: true })
+  @Column({ type: 'varchar', length: 30, unique: true })
   sku!: string;
 
   @Column({ type: 'integer', default: 0 })

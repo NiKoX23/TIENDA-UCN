@@ -2,6 +2,7 @@ ALTER TABLE productos ADD COLUMN IF NOT EXISTS precio_tac integer;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_url varchar(200);
 ALTER TABLE variantes_producto ADD COLUMN IF NOT EXISTS imagen_url varchar(200);
 ALTER TABLE documentos_tac ADD COLUMN IF NOT EXISTS responsable varchar(50);
+ALTER TABLE variantes_producto ALTER COLUMN sku TYPE varchar(30);
 
 CREATE OR REPLACE FUNCTION normalizar_talla_variante()
 RETURNS trigger AS $$
@@ -57,79 +58,55 @@ ON CONFLICT (nombre) DO NOTHING;
 UPDATE productos SET activo = false
 WHERE codigo_producto = 'POLERON-UCN';
 
-INSERT INTO productos (
-    codigo_producto, id_categoria, nombre, descripcion, marca,
-    costo_adquisicion, precio_venta, precio_tac, imagen_url
-) VALUES
-    ('POLERON-TALLAS', (SELECT id_categoria FROM categorias WHERE nombre = 'polerones'), 'Poler' || chr(243) || 'n UCN', 'Polerones UCN Coquimbo en distintos colores', 'UCN', 21000, 24990, 21000, '/productos/poleron-negro.png'),
-    ('LAPIZ-COBRE', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Lapicera de cobre', 'Lapicera de cobre UCN', 'UCN', 15000, 16000, 15000, '/productos/lapicera-cobre.png'),
-    ('LIBRETA-UCN', (SELECT id_categoria FROM categorias WHERE nombre = 'papeleria'), 'Libreta UCN', 'Libreta institucional UCN', 'UCN', 5000, 5950, 5000, '/productos/libreta-ucn.png'),
-    ('TOTE-BAG-UCN', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Tote bag UCN', 'Bolsa reutilizable UCN', 'UCN', 6000, 6950, 6000, '/productos/tote-bag.png'),
-    ('LLAVERO-UCENIN', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Llavero UCENIN', 'Llavero UCENIN', 'UCN', 5000, 5950, 5000, '/productos/llavero-ucenin.png'),
-    ('PELUCHE-UCN', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Peluche UCN rosa', 'Peluche UCN color rosa', 'UCN', 10085, 12000, 10085, '/productos/peluche-ucn-rosa.png'),
-    ('LL-TORTUGA', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Llavero Tortuga', 'Llavero con diseño de tortuga', 'UCN', 2500, 2500, 2500, '/productos/llavero-tortuga-verde.png'),
-    ('LL-ESTRELLA', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Llavero Estrella', 'Llavero con diseño de estrella', 'UCN', 2500, 2500, 2500, '/productos/llavero-estrella-amarillo.png'),
-    ('LL-CANGREJO', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Llavero Cangrejo', 'Llavero con diseño de cangrejo', 'UCN', 2500, 2500, 2500, '/productos/llavero-cangrejo-rojo.png'),
-    ('LL-SOLDEMAR', (SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'), 'Llavero Soldemar', 'Llavero Soldemar', 'UCN', 2500, 2500, 2500, '/productos/llavero-soldemar-negro.png')
-ON CONFLICT (codigo_producto) DO UPDATE SET
-    id_categoria = EXCLUDED.id_categoria,
-    nombre = EXCLUDED.nombre,
-    descripcion = EXCLUDED.descripcion,
-    costo_adquisicion = EXCLUDED.costo_adquisicion,
-    precio_venta = EXCLUDED.precio_venta,
-    precio_tac = EXCLUDED.precio_tac,
-    imagen_url = EXCLUDED.imagen_url;
+-- Catálogo sincronizado con docs/Productos.xlsx (hoja Inventario).
+INSERT INTO productos (codigo_producto, id_categoria, nombre, descripcion, marca, costo_adquisicion, precio_venta, precio_tac, imagen_url) VALUES
+    ('POLERON-TALLAS',(SELECT id_categoria FROM categorias WHERE nombre = 'polerones'),'Polerón UCN','Polerones UCN Coquimbo en distintos colores','UCN',21000,24990,21000,'/productos/poleron-negro.png'),
+    ('LAPIZ-COBRE',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Lapicera de cobre','Lapicera de cobre UCN','UCN',15000,16000,15000,'/productos/lapicera-cobre.png'),
+    ('LIBRETA-UCN',(SELECT id_categoria FROM categorias WHERE nombre = 'papeleria'),'Libreta UCN','Libreta institucional UCN','UCN',5000,5950,5000,'/productos/libreta-ucn.png'),
+    ('TOTE-BAG-UCN',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Tote bag UCN','Bolsa reutilizable UCN','UCN',6000,6950,6000,'/productos/tote-bag.png'),
+    ('LLAVERO-UCENIN',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero UCENIN','Llavero UCENIN','UCN',5000,5950,5000,'/productos/llavero-ucenin.png'),
+    ('PELUCHE-UCN',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Peluche UCN rosa','Peluche UCN color rosa','UCN',10085,12000,10085,'/productos/peluche-ucn-rosa.png'),
+    ('LL-TORTUGA',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Tortuga','Llavero con diseño de tortuga','UCN',2500,2500,2500,NULL),
+    ('LL-ESTRELLA',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Estrella','Llavero con diseño de estrella','UCN',2500,2500,2500,NULL),
+    ('LL-CANGREJO',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Cangrejo','Llavero con diseño de cangrejo','UCN',2500,2500,2500,NULL),
+    ('LL-SOLDEMAR',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Soldemar','Llavero Soldemar','UCN',2500,2500,2500,NULL),
+    ('LL-PEZ-BALLESTA',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Pez ballesta','Llavero con diseño de pez ballesta','UCN',2500,2500,2500,NULL),
+    ('LL-GAVIOTA',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Gaviota','Llavero con diseño de gaviota','UCN',2500,2500,2500,NULL),
+    ('LL-CACHALOTE',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Cachalote','Llavero con diseño de cachalote','UCN',2500,2500,2500,NULL),
+    ('LL-ERM-CANGREJO',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Cangrejo ermitaño','Llavero con diseño de cangrejo ermitaño','UCN',2500,2500,2500,NULL),
+    ('LL-PINGUINO',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Pingüino','Llavero con diseño de pingüino','UCN',2500,2500,2500,NULL),
+    ('LL-TIBURON',(SELECT id_categoria FROM categorias WHERE nombre = 'accesorios'),'Llavero Tiburón','Llavero con diseño de tiburón','UCN',2500,2500,2500,NULL)
+ON CONFLICT (codigo_producto) DO UPDATE SET id_categoria=EXCLUDED.id_categoria,nombre=EXCLUDED.nombre,descripcion=EXCLUDED.descripcion,costo_adquisicion=EXCLUDED.costo_adquisicion,precio_venta=EXCLUDED.precio_venta,precio_tac=EXCLUDED.precio_tac,imagen_url=EXCLUDED.imagen_url,activo=true;
 
-INSERT INTO variantes_producto (codigo_producto, talla, color, sku, stock, stock_minimo)
-VALUES
-    ('LAPIZ-COBRE', 'unica', NULL, 'LAPIZ-COBRE-UNI', 36, 5),
-    ('LIBRETA-UCN', 'unica', NULL, 'LIBRETA-UCN-UNI', 58, 5),
-    ('TOTE-BAG-UCN', 'unica', NULL, 'TOTE-BAG-UCN-UNI', 29, 5),
-    ('LLAVERO-UCENIN', 'unica', NULL, 'LLAVERO-UCENIN-UNI', 3, 2),
-    ('PELUCHE-UCN', 'unica', 'rosa', 'PELUCHE-UCN-ROSA', 13, 3),
-    ('LL-TORTUGA', 'unica', 'verde', 'TORTUGA-VERDE', 0, 2),
-    ('LL-TORTUGA', 'unica', 'amarillo', 'TORTUGA-AMARILLO', 0, 2),
-    ('LL-ESTRELLA', 'unica', 'amarillo', 'ESTRELLA-AMARILLO', 0, 2),
-    ('LL-ESTRELLA', 'unica', 'rosa', 'ESTRELLA-ROSA', 0, 2),
-    ('LL-CANGREJO', 'unica', 'rojo', 'CANGREJO-ROJO', 0, 2),
-    ('LL-SOLDEMAR', 'unica', 'negro', 'SOLDEMAR-NEGRO', 0, 2)
-ON CONFLICT (sku) DO UPDATE SET
-    stock = EXCLUDED.stock,
-    stock_minimo = EXCLUDED.stock_minimo;
-
-INSERT INTO variantes_producto (codigo_producto, talla, color, sku, stock, stock_minimo, imagen_url)
-VALUES
-    ('POLERON-TALLAS', 'S', 'negro', 'POL-TN-S', 0, 0, '/productos/poleron-negro.png'),
-    ('POLERON-TALLAS', 'M', 'negro', 'POL-TN-M', 1, 0, '/productos/poleron-negro.png'),
-    ('POLERON-TALLAS', 'L', 'negro', 'POL-TN-L', 13, 0, '/productos/poleron-negro.png'),
-    ('POLERON-TALLAS', 'XL', 'negro', 'POL-TN-XL', 0, 0, '/productos/poleron-negro.png'),
-    ('POLERON-TALLAS', 'XXL', 'negro', 'POL-TN-XXL', 0, 0, '/productos/poleron-negro.png'),
-    ('POLERON-TALLAS', 'S', 'azul', 'POL-TA-S', 0, 0, '/productos/poleron-azul.png'),
-    ('POLERON-TALLAS', 'M', 'azul', 'POL-TA-M', 0, 0, '/productos/poleron-azul.png'),
-    ('POLERON-TALLAS', 'L', 'azul', 'POL-TA-L', 12, 0, '/productos/poleron-azul.png'),
-    ('POLERON-TALLAS', 'XL', 'azul', 'POL-TA-XL', 0, 0, '/productos/poleron-azul.png'),
-    ('POLERON-TALLAS', 'XXL', 'azul', 'POL-TA-XXL', 0, 0, '/productos/poleron-azul.png')
-ON CONFLICT (sku) DO UPDATE SET
-    codigo_producto = EXCLUDED.codigo_producto,
-    talla = EXCLUDED.talla,
-    color = EXCLUDED.color,
-    stock = EXCLUDED.stock,
-    stock_minimo = EXCLUDED.stock_minimo,
-    imagen_url = EXCLUDED.imagen_url;
-
-UPDATE variantes_producto SET imagen_url = CASE sku
-    WHEN 'TORTUGA-VERDE' THEN '/productos/llavero-tortuga-verde.png'
-    WHEN 'TORTUGA-AMARILLO' THEN '/productos/llavero-tortuga-amarillo.png'
-    WHEN 'ESTRELLA-AMARILLO' THEN '/productos/llavero-estrella-amarillo.png'
-    WHEN 'ESTRELLA-ROSA' THEN '/productos/llavero-estrella-rosa.png'
-    WHEN 'CANGREJO-ROJO' THEN '/productos/llavero-cangrejo-rojo.png'
-    WHEN 'SOLDEMAR-NEGRO' THEN '/productos/llavero-soldemar-negro.png'
-    ELSE imagen_url END
-WHERE sku IN ('TORTUGA-VERDE', 'TORTUGA-AMARILLO', 'ESTRELLA-AMARILLO',
-    'ESTRELLA-ROSA', 'CANGREJO-ROJO', 'SOLDEMAR-NEGRO');
-
-UPDATE productos SET activo = false
-WHERE codigo_producto = 'LLAVERO-MUSEO';
+INSERT INTO variantes_producto (codigo_producto,talla,color,sku,stock,stock_minimo,imagen_url) VALUES
+    ('POLERON-TALLAS','S','negro','POL-TN-S',0,0,'/productos/poleron-negro.png'),
+    ('POLERON-TALLAS','M','negro','POL-TN-M',2,0,'/productos/poleron-negro.png'),
+    ('POLERON-TALLAS','L','negro','POL-TN-L',19,0,'/productos/poleron-negro.png'),
+    ('POLERON-TALLAS','XL','negro','POL-TN-XL',6,0,'/productos/poleron-negro.png'),
+    ('POLERON-TALLAS','XXL','negro','POL-TN-XXL',0,0,'/productos/poleron-negro.png'),
+    ('POLERON-TALLAS','S','azul','POL-TA-S',0,0,'/productos/poleron-azul.png'),
+    ('POLERON-TALLAS','M','azul','POL-TA-M',1,0,'/productos/poleron-azul.png'),
+    ('POLERON-TALLAS','L','azul','POL-TA-L',18,0,'/productos/poleron-azul.png'),
+    ('POLERON-TALLAS','XL','azul','POL-TA-XL',5,0,'/productos/poleron-azul.png'),
+    ('POLERON-TALLAS','XXL','azul','POL-TA-XXL',0,0,'/productos/poleron-azul.png'),
+    ('LAPIZ-COBRE','unica',NULL,'LAPIZ-COBRE-UNI',24,5,'/productos/lapicera-cobre.png'),
+    ('LIBRETA-UCN','unica',NULL,'LIBRETA-UCN-UNI',45,5,'/productos/libreta-ucn.png'),
+    ('TOTE-BAG-UCN','unica',NULL,'TOTE-BAG-UCN-UNI',16,5,'/productos/tote-bag.png'),
+    ('LLAVERO-UCENIN','unica',NULL,'LLAVERO-UCENIN-UNI',53,2,'/productos/llavero-ucenin.png'),
+    ('PELUCHE-UCN','unica','rosa','PELUCHE-UCN-ROSA',1,3,'/productos/peluche-ucn-rosa.png'),
+    ('LL-TORTUGA','unica','verde','TORTUGA-VERDE',5,2,'/productos/llavero-tortuga-verde.png'),
+    ('LL-TORTUGA','unica','amarillo','TORTUGA-AMARILLO',0,2,'/productos/llavero-tortuga-amarillo.png'),
+    ('LL-ESTRELLA','unica','amarillo','ESTRELLA-AMARILLO',0,2,'/productos/llavero-estrella-amarillo.png'),
+    ('LL-ESTRELLA','unica','rosa','ESTRELLA-ROSA',8,2,'/productos/llavero-estrella-rosa.png'),
+    ('LL-CANGREJO','unica','rojo','CANGREJO-ROJO',3,2,'/productos/llavero-cangrejo-rojo.png'),
+    ('LL-SOLDEMAR','unica','negro','SOLDEMAR-NEGRO',7,2,'/productos/llavero-soldemar-negro.png'),
+    ('LL-PEZ-BALLESTA','unica','negro','PEZ-BALLESTA-NEGRO',8,2,NULL),
+    ('LL-GAVIOTA','unica','negro','GAVIOTA-NEGRO',9,2,NULL),
+    ('LL-CACHALOTE','unica','negro','CACHALOTE-NEGRO',10,2,NULL),
+    ('LL-ERM-CANGREJO','unica','negro','CANGREJO-ERMITANO-NEGRO',5,2,NULL),
+    ('LL-PINGUINO','unica','negro','PINGUINO-NEGRO',5,2,NULL),
+    ('LL-TIBURON','unica','negro','TIBURON-NEGRO',4,2,NULL)
+ON CONFLICT (sku) DO UPDATE SET codigo_producto=EXCLUDED.codigo_producto,talla=EXCLUDED.talla,color=EXCLUDED.color,stock=EXCLUDED.stock,stock_minimo=EXCLUDED.stock_minimo,imagen_url=EXCLUDED.imagen_url;
 
 INSERT INTO documentos_tac (
     n_tac, fecha, id_variante, cantidad, precio_tac, total, responsable,

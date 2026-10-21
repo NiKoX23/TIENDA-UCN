@@ -20,7 +20,7 @@ export class VarianteDto {
   color?: string;
 
   @IsString()
-  @MaxLength(20)
+  @MaxLength(30)
   sku!: string;
 
   @Type(() => Number)

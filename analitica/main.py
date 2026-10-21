@@ -1,17 +1,25 @@
 import os
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
-from openpyxl import load_workbook
 from fastapi import FastAPI, HTTPException
+from openpyxl import load_workbook
 
 app = FastAPI(title="Analitica Tienda UCN")
 RUTA_EXCEL = Path(
     os.environ.get(
         "INVENTARIO_XLSX_PATH",
-        str(Path(__file__).resolve().parent.parent / "docs" / "Inventario.xlsx"),
+        str(Path(__file__).resolve().parent.parent / "docs" / "Productos.xlsx"),
     )
 )
+
+
+def _numero(valor: Any) -> int:
+    try:
+        return int(valor or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _estado(stock: int) -> str:
@@ -24,6 +32,160 @@ def _estado(stock: int) -> str:
     return "ALTO"
 
 
+def _categoria(nombre: str) -> str:
+    nombre = nombre.upper()
+    if "POLERON" in nombre:
+        return "Polerones"
+    if "LIBRETA" in nombre or "LAPIZ" in nombre:
+        return "Papeler\u00eda"
+    return "Accesorios"
+
+
+def _codigo_producto(sku: str) -> str:
+    sku = sku.upper()
+    if sku.startswith("POL-"):
+        return "POLERON-TALLAS"
+    if sku.startswith("LAPIZ-"):
+        return "LAPIZ-COBRE"
+    if sku.startswith("LIBRETA-"):
+        return "LIBRETA-UCN"
+    if sku.startswith("TOTE-"):
+        return "TOTE-BAG-UCN"
+    if sku.startswith("PELUCHE-"):
+        return "PELUCHE-UCN"
+    if sku.startswith("LLAVERO-UCENIN-"):
+        return "LLAVERO-UCENIN"
+    for prefijo, codigo in (
+        ("TORTUGA-", "LL-TORTUGA"), ("ESTRELLA-", "LL-ESTRELLA"),
+        ("CANGREJO-ERMITANO-", "LL-ERM-CANGREJO"), ("CANGREJO-", "LL-CANGREJO"),
+        ("SOLDEMAR-", "LL-SOLDEMAR"), ("PEZ-BALLESTA-", "LL-PEZ-BALLESTA"),
+        ("GAVIOTA-", "LL-GAVIOTA"), ("CACHALOTE-", "LL-CACHALOTE"),
+        ("PINGUINO-", "LL-PINGUINO"), ("TIBURON-", "LL-TIBURON"),
+    ):
+        if sku.startswith(prefijo):
+            return codigo
+    return "OTRO"
+
+
+NOMBRES = {
+    "POLERON-TALLAS": "Poler\u00f3n UCN", "LAPIZ-COBRE": "Lapicera de cobre",
+    "LIBRETA-UCN": "Libreta UCN", "TOTE-BAG-UCN": "Tote bag UCN",
+    "LLAVERO-UCENIN": "Llavero UCENIN", "PELUCHE-UCN": "Peluche UCN rosa",
+    "LL-TORTUGA": "Llavero Tortuga", "LL-ESTRELLA": "Llavero Estrella",
+    "LL-ERM-CANGREJO": "Llavero Cangrejo ermita\u00f1o", "LL-CANGREJO": "Llavero Cangrejo",
+    "LL-SOLDEMAR": "Llavero Soldemar", "LL-PEZ-BALLESTA": "Llavero Pez ballesta",
+    "LL-GAVIOTA": "Llavero Gaviota", "LL-CACHALOTE": "Llavero Cachalote",
+    "LL-PINGUINO": "Llavero Ping\u00fcino", "LL-TIBURON": "Llavero Tibur\u00f3n",
+}
+
+
+def _leer_datos(libro):
+    inventario = libro["Inventario"]
+    productos: dict[str, dict[str, Any]] = {}
+    por_sku: dict[str, dict[str, Any]] = {}
+    for fila in inventario.iter_rows(min_row=3, min_col=1, max_col=7, values_only=True):
+        nombre, color, talla, precio, precio_tac, stock, sku = fila
+        if not nombre or not sku:
+            continue
+        nombre = str(nombre).strip()
+        sku = str(sku).strip()
+        codigo = _codigo_producto(sku)
+        variante = {
+            "nombre": NOMBRES.get(codigo, nombre.title()),
+            "codigoProducto": codigo,
+            "categoria": _categoria(nombre),
+            "color": str(color).strip().lower() if color else None,
+            "talla": str(talla).strip() if talla else "unica",
+            "precio": _numero(precio),
+            "precioTac": _numero(precio_tac),
+            "stock": _numero(stock),
+            "sku": sku,
+        }
+        por_sku[sku] = variante
+        producto = productos.setdefault(
+            codigo,
+            {"codigoProducto": codigo, "nombre": NOMBRES.get(codigo, nombre.title()), "categoria": _categoria(nombre),
+             "stock": 0, "vendidos": 0, "ingresoNormal": 0, "ingresoTac": 0,
+             "cantInicial": 0},
+        )
+        producto["stock"] += variante["stock"]
+
+    ventas = []
+    hoja_ventas = libro["Registro de ventas"]
+    ultimo_id = None
+    ultima_fecha = None
+    for numero_fila, fila in enumerate(
+        hoja_ventas.iter_rows(min_row=3, min_col=1, max_col=5, values_only=True), start=3
+    ):
+        folio, fecha, sku, cantidad, total = fila
+        if not sku or not cantidad:
+            continue
+        sku = str(sku).strip()
+        variante = por_sku.get(sku)
+        if not variante:
+            continue
+        folio_num = None
+        if isinstance(folio, (int, float)) and float(folio).is_integer():
+            folio_num = int(folio)
+        elif folio is None:
+            folio_num = ultimo_id
+        if folio_num is not None:
+            ultimo_id = folio_num
+        if isinstance(fecha, (datetime, date)):
+            fecha_str = fecha.isoformat()
+            ultima_fecha = fecha_str
+        elif fecha:
+            fecha_str = str(fecha)
+            ultima_fecha = fecha_str
+        else:
+            fecha_str = ultima_fecha or ""
+
+        unidades = _numero(cantidad)
+        subtotal = _numero(total)
+        ganancia = subtotal - unidades * variante["precioTac"]
+        ventas.append({
+            "id": numero_fila,
+            "numeroVenta": folio_num,
+            "fecha": fecha_str,
+            "producto": variante["nombre"],
+            "sku": sku,
+            "variante": " ".join(filter(None, [variante["color"], variante["talla"] if variante["talla"] != "unica" else ""])),
+            "cantidad": unidades,
+            "metodoPago": "",
+            "tipoVenta": "normal",
+            "subtotal": subtotal,
+            "ganancia": ganancia,
+        })
+
+    tac = []
+    hoja_tac = libro["CONTROL TAC"]
+    for numero_fila, fila in enumerate(
+        hoja_tac.iter_rows(min_row=3, min_col=1, max_col=8, values_only=True), start=3
+    ):
+        n_tac, fecha, sku, cantidad, total, firma_comprador, firma_vendedor, responsable = fila
+        if n_tac is None or not sku or not cantidad:
+            continue
+        sku = str(sku).strip()
+        variante = por_sku.get(sku)
+        if not variante:
+            continue
+        fecha_str = fecha.isoformat() if isinstance(fecha, (datetime, date)) else str(fecha or "")
+        tac.append({
+            "fila": numero_fila, "numero": str(n_tac).strip(), "fecha": fecha_str,
+            "sku": sku, "cantidad": _numero(cantidad), "total": _numero(total),
+            "firmaComprador": str(firma_comprador or "Pendiente").strip(),
+            "firmaVendedor": str(firma_vendedor or "Pendiente").strip(),
+            "responsable": str(responsable or "").strip(), "variante": variante,
+        })
+    return productos, por_sku, ventas, tac
+
+
+def _abrir():
+    if not RUTA_EXCEL.is_file():
+        raise FileNotFoundError(f"No existe el archivo {RUTA_EXCEL}")
+    return load_workbook(RUTA_EXCEL, data_only=True, read_only=True)
+
+
 @app.get("/")
 def estado():
     return {"servicio": "analitica", "estado": "activo"}
@@ -32,208 +194,90 @@ def estado():
 @app.get("/resumen")
 def resumen():
     try:
-        if not RUTA_EXCEL.is_file():
-            raise FileNotFoundError(f"No existe el archivo {RUTA_EXCEL}")
-
-        libro = load_workbook(RUTA_EXCEL, data_only=True, read_only=True)
+        libro = _abrir()
         try:
-            inventario = libro["Inventario"]
-            dashboard = libro["Dashboard"]
-
-            total_productos = int(dashboard["B4"].value or 0)
-            total_inicial = int(dashboard["B5"].value or 0)
-            total_stock = int(dashboard["B6"].value or 0)
-            total_vendidas = int(dashboard["B7"].value or 0)
-
-            total_ventas = 0
-            ventas_normales = 0
-            ventas_tac = 0
-            registro_ventas = libro["Registro Ventas"]
-            for fila in registro_ventas.iter_rows(
-                min_row=3, max_row=503, min_col=3, max_col=6, values_only=True
-            ):
-                if not fila[0]:
-                    continue
-                total_ventas += 1
-                if "TAC" in str(fila[3] or "").upper():
-                    ventas_tac += 1
-                else:
-                    ventas_normales += 1
-
-            resumen_lista = []
-            alertas = []
-            for fila in inventario.iter_rows(
-                min_row=3, max_row=62, min_col=1, max_col=16, values_only=True
-            ):
-                nombre = fila[1]
-                if not nombre:
-                    continue
-
-                nombre = str(nombre).strip()
-                codigo = str(fila[15] or nombre).strip()
-                cant_inicial = int(fila[4] or 0)
-                stock = int(fila[7] or 0)
-                vendidos = int(fila[13] or 0) + int(fila[14] or 0)
-                estado = str(fila[12] or _estado(stock)).upper()
-                resumen_lista.append(
-                    {
-                        "codigoProducto": codigo,
-                        "nombre": nombre,
-                        "categoria": _categoria(nombre),
-                        "cantInicial": cant_inicial,
-                        "stock": stock,
-                        "vendidos": vendidos,
-                        "porcentajeVendido": (
-                            round(vendidos / cant_inicial * 100, 1)
-                            if cant_inicial
-                            else 0
-                        ),
-                        "ingresoNormal": int(fila[10] or 0),
-                        "ingresoTac": int(fila[11] or 0),
-                    }
-                )
-
-                if estado != "HISTORICO" and stock <= 20:
-                    alertas.append(
-                        {
-                            "codigoProducto": codigo,
-                            "nombre": nombre,
-                            "sku": codigo,
-                            "talla": str(fila[3] or ""),
-                            "color": str(fila[2]) if fila[2] else None,
-                            "stock": stock,
-                            "stockMinimo": 0,
-                            "estado": estado,
-                        }
-                    )
-
-            ventas = {
-                "totalVentas": total_ventas,
-                "ventasNormales": ventas_normales,
-                "ventasTac": ventas_tac,
-                "ingresoNormal": int(dashboard["B14"].value or 0),
-                "ingresoTac": int(dashboard["B15"].value or 0),
-                "ingresoTotal": int(dashboard["B16"].value or 0),
-                "gananciaTotal": int(dashboard["B17"].value or 0),
-            }
-            total_documentos_tac = 0
-            documentos_tac_aprobados = 0
-            hoja_control_tac = libro["Control TAC"]
-            for fila in hoja_control_tac.iter_rows(
-                min_row=5, max_row=199, min_col=1, max_col=8, values_only=True
-            ):
-                if fila[0] is None:
-                    continue
-                total_documentos_tac += 1
-                if (
-                    str(fila[6] or "").strip().casefold() == "firmado"
-                    and str(fila[7] or "").strip().casefold() == "firmado"
-                ):
-                    documentos_tac_aprobados += 1
-
-            control_tac = {
-                "totalDocumentos": total_documentos_tac,
-                "aprobados": documentos_tac_aprobados,
-                "pendientes": total_documentos_tac - documentos_tac_aprobados,
-                "montoTotal": int(dashboard["B23"].value or 0),
-            }
+            productos, variantes, ventas, tac = _leer_datos(libro)
         finally:
             libro.close()
     except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo leer el resumen desde docs/Inventario.xlsx: {exc}",
-        ) from exc
+        raise HTTPException(status_code=503, detail=f"No se pudo leer docs/Productos.xlsx: {exc}") from exc
 
-    resumen_lista.sort(key=lambda producto: producto["nombre"].lower())
-    alertas.sort(key=lambda alerta: (alerta["estado"], alerta["stock"]))
+    vendidos_por_sku: dict[str, int] = {}
+    for venta in ventas:
+        sku = venta["sku"]
+        codigo = _codigo_producto(sku)
+        producto = productos[codigo]
+        producto["vendidos"] += venta["cantidad"]
+        producto["ingresoNormal"] += venta["subtotal"]
+        vendidos_por_sku[sku] = vendidos_por_sku.get(sku, 0) + venta["cantidad"]
+    for documento in tac:
+        codigo = documento["variante"]["codigoProducto"]
+        producto = productos[codigo]
+        producto["vendidos"] += documento["cantidad"]
+        producto["ingresoTac"] += documento["total"]
+        vendidos_por_sku[documento["sku"]] = vendidos_por_sku.get(documento["sku"], 0) + documento["cantidad"]
 
+    for producto in productos.values():
+        producto["cantInicial"] = producto["stock"] + producto["vendidos"]
+        producto["porcentajeVendido"] = round(producto["vendidos"] / producto["cantInicial"] * 100, 1) if producto["cantInicial"] else 0
+
+    unidades_normales = sum(v["cantidad"] for v in ventas)
+    unidades_tac = sum(t["cantidad"] for t in tac)
+    ingreso_normal = sum(v["subtotal"] for v in ventas)
+    ingreso_tac = sum(t["total"] for t in tac)
+    ganancia = sum(v["ganancia"] for v in ventas)
+    ids_normales = {v["numeroVenta"] for v in ventas if v["numeroVenta"] is not None}
+    ventas_sin_folio = sum(1 for v in ventas if v["numeroVenta"] is None)
+    ids_tac = {t["numero"] for t in tac}
+    tac_por_id = {}
+    for documento in tac:
+        tac_por_id.setdefault(documento["numero"], documento)
+    total_stock = sum(p["stock"] for p in productos.values())
+    total_vendidas = unidades_normales + unidades_tac
+    total_inicial = total_stock + total_vendidas
+
+    alertas = []
+    for sku, variante in variantes.items():
+        stock = variante["stock"]
+        if stock <= 20:
+            alertas.append({
+                "codigoProducto": variante["codigoProducto"], "nombre": variante["nombre"],
+                "sku": sku, "talla": variante["talla"], "color": variante["color"],
+                "stock": stock, "stockMinimo": 0, "estado": _estado(stock),
+            })
+    resumen_lista = list(productos.values())
+    resumen_lista.sort(key=lambda p: p["nombre"].lower())
+    alertas.sort(key=lambda a: (a["estado"], a["stock"]))
     return {
         "general": {
-            "totalProductos": total_productos,
-            "totalUnidadesIniciales": total_inicial,
-            "stockActualTotal": total_stock,
-            "unidadesVendidas": total_vendidas,
-            "porcentajeVendido": (
-                round(total_vendidas / total_inicial * 100, 1) if total_inicial else 0
-            ),
+            "totalProductos": len(productos), "totalUnidadesIniciales": total_inicial,
+            "stockActualTotal": total_stock, "unidadesVendidas": total_vendidas,
+            "porcentajeVendido": round(total_vendidas / total_inicial * 100, 1) if total_inicial else 0,
         },
-        "ventas": ventas,
-        "controlTac": control_tac,
-        "resumenPorProducto": resumen_lista,
-        "alertasStockBajo": alertas,
+        "ventas": {
+            "totalVentas": len(ids_normales) + ventas_sin_folio + len(ids_tac),
+            "ventasNormales": len(ids_normales) + ventas_sin_folio, "ventasTac": len(ids_tac),
+            "ingresoNormal": ingreso_normal, "ingresoTac": ingreso_tac,
+            "ingresoTotal": ingreso_normal + ingreso_tac, "gananciaTotal": ganancia,
+        },
+        "controlTac": {
+            "totalDocumentos": len(ids_tac),
+            "aprobados": sum(1 for t in tac_por_id.values() if t["firmaComprador"].casefold() == "firmado" and t["firmaVendedor"].casefold() == "firmado"),
+            "pendientes": len(ids_tac) - sum(1 for t in tac_por_id.values() if t["firmaComprador"].casefold() == "firmado" and t["firmaVendedor"].casefold() == "firmado"),
+            "montoTotal": ingreso_tac,
+        },
+        "resumenPorProducto": resumen_lista, "alertasStockBajo": alertas,
     }
 
 
 @app.get("/registro-ventas")
 def registro_ventas():
     try:
-        if not RUTA_EXCEL.is_file():
-            raise FileNotFoundError(f"No existe el archivo {RUTA_EXCEL}")
-
-        libro = load_workbook(RUTA_EXCEL, data_only=True, read_only=True)
+        libro = _abrir()
         try:
-            inventario = libro["Inventario"]
-            ventas = libro["Registro Ventas"]
-            sku_por_producto = {
-                str(fila[0]).strip(): str(fila[14]).strip()
-                for fila in inventario.iter_rows(
-                    min_row=3, max_row=62, min_col=2, max_col=16, values_only=True
-                )
-                if fila[0] and fila[14]
-            }
-
-            registros = []
-            for numero_fila, fila in enumerate(
-                ventas.iter_rows(
-                    min_row=3, max_row=503, min_col=1, max_col=14, values_only=True
-                ),
-                start=3,
-            ):
-                producto = str(fila[2] or "").strip()
-                if not producto:
-                    continue
-
-                fecha = fila[1]
-                if isinstance(fecha, (datetime, date)):
-                    fecha = fecha.isoformat()
-                else:
-                    fecha = str(fecha or "")
-
-                registros.append(
-                    {
-                        "id": numero_fila,
-                        "numeroVenta": int(fila[0]) if fila[0] is not None else None,
-                        "fecha": fecha,
-                        "producto": producto,
-                        "sku": sku_por_producto.get(producto, ""),
-                        "variante": str(fila[13] or "").strip(),
-                        "cantidad": int(fila[3] or 0),
-                        "metodoPago": str(fila[4] or "").strip(),
-                        "tipoVenta": "tac" if "TAC" in str(fila[5] or "").upper() else "normal",
-                        "subtotal": int(fila[9] or 0),
-                        "ganancia": int(fila[11] or 0),
-                    }
-                )
+            _, _, ventas, _ = _leer_datos(libro)
         finally:
             libro.close()
+        return ventas
     except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo leer el historial desde docs/Inventario.xlsx: {exc}",
-        ) from exc
-
-    return registros
-
-
-def _categoria(nombre: str) -> str:
-    nombre = nombre.upper()
-    if "POLERON" in nombre:
-        return "Polerones"
-    if "PELUCHE" in nombre:
-        return "Peluches"
-    if "LIBRETA" in nombre or "LAPIZ" in nombre:
-        return "Papelería"
-    if "LLAVERO" in nombre or "TOTE BAG" in nombre:
-        return "Accesorios"
-    return "Otros"
+        raise HTTPException(status_code=503, detail=f"No se pudo leer el registro de ventas: {exc}") from exc

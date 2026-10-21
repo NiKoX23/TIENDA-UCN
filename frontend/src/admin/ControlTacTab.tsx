@@ -14,11 +14,13 @@ import {
 } from '../services/ventas.service';
 
 const inputCls =
-    'w-full rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-violet-400/60';
+    'tac-filter-input w-full';
 const botonSecundarioCls =
-    'rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-xs font-bold text-slate-200 transition hover:border-violet-400/50 hover:text-slate-100';
+    'tac-secondary-button';
+const botonPrimarioCls =
+    'tac-primary-button';
 const botonPeligroCls =
-    'rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-200 transition hover:bg-red-500/20';
+    'tac-filter-chip tac-filter-chip--danger min-h-9 rounded-lg px-3 text-xs';
 
 function mensajeError(e: unknown): string {
     if (axios.isAxiosError(e)) {
@@ -32,6 +34,12 @@ function mensajeError(e: unknown): string {
 function badgeEstado(estado: DocumentoTac['estado']) {
     const clave = estado === 'Aprobado' ? 'approved' : estado === 'Pendiente' ? 'pending' : 'rejected';
     return `tac-state-badge tac-state-badge--${clave} rounded-full border px-2.5 py-1 text-xs font-bold`;
+}
+
+function inicialesResponsable(nombre: string): string {
+    const partes = nombre.trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return '';
+    return `${partes[0][0]}${partes.length > 1 ? partes[partes.length - 1][0] : ''}`.toLocaleUpperCase('es-CL');
 }
 
 function badgeFirma(estado: FirmaEstado) {
@@ -269,49 +277,49 @@ export default function ControlTacTab() {
     };
 
     return (
-        <div className="mt-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap gap-2 text-xs font-bold">
-                    <span className="rounded-full border border-slate-400/15 bg-slate-950/50 px-3 py-1.5 text-slate-300">
-                        {documentos.length} documentos
-                    </span>
-                    <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300">
-                        {resumen.aprobados} aprobados
-                    </span>
-                    <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1.5 text-amber-200">
-                        {resumen.pendientes} pendientes
-                    </span>
-                    <span className="rounded-full border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-red-200">
-                        {resumen.rechazados} rechazados
-                    </span>
+        <div className="tac-control-panel mt-6">
+            <div className="tac-panel-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4">
+                <div className="flex flex-wrap gap-2.5 text-sm font-semibold">
+                    <button type="button" aria-pressed={filtroEstado === 'todos'} onClick={() => setFiltroEstado('todos')} className="tac-filter-chip tac-filter-chip--primary">
+                        <strong className="text-base tabular-nums">{documentos.length}</strong><span>documentos</span>
+                    </button>
+                    <button type="button" aria-pressed={filtroEstado === 'Aprobado'} onClick={() => setFiltroEstado(filtroEstado === 'Aprobado' ? 'todos' : 'Aprobado')} className="tac-filter-chip tac-filter-chip--success">
+                        <strong className="text-base tabular-nums">{resumen.aprobados}</strong><span>aprobados</span>
+                    </button>
+                    <button type="button" aria-pressed={filtroEstado === 'Pendiente'} onClick={() => setFiltroEstado(filtroEstado === 'Pendiente' ? 'todos' : 'Pendiente')} className="tac-filter-chip tac-filter-chip--warning">
+                        <strong className="text-base tabular-nums">{resumen.pendientes}</strong><span>pendientes</span>
+                    </button>
+                    <button type="button" aria-pressed={filtroEstado === 'Rechazado'} onClick={() => setFiltroEstado(filtroEstado === 'Rechazado' ? 'todos' : 'Rechazado')} className="tac-filter-chip tac-filter-chip--danger">
+                        <strong className="text-base tabular-nums">{resumen.rechazados}</strong><span>rechazados</span>
+                    </button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button type="button" className={botonSecundarioCls} onClick={cargar} disabled={cargando}>
                         {cargando ? 'Cargando...' : 'Refrescar'}
                     </button>
-                    <button type="button" className={botonSecundarioCls} onClick={abrirNuevo}>
+                    <button type="button" className={botonPrimarioCls} onClick={abrirNuevo}>
                         + Nuevo TAC
                     </button>
                 </div>
             </div>
 
             {error && (
-                <p className="mt-4 rounded-full border border-red-400/20 bg-red-950/30 px-4 py-3 text-center text-sm text-red-200">
+                <p className="tac-feedback--error mt-4 rounded-xl px-4 py-3 text-center text-sm">
                     {error}
                 </p>
             )}
             {exito && (
-                <p className="mt-4 rounded-full border border-emerald-400/20 bg-emerald-950/30 px-4 py-3 text-center text-sm text-emerald-200">
+                <p className="tac-feedback--success mt-4 rounded-xl px-4 py-3 text-center text-sm">
                     {exito}
                 </p>
             )}
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-slate-500">{documentosFiltrados.length} de {documentos.length} documentos TAC</p>
-                <div className="flex flex-wrap gap-2">
+            <div className="tac-panel-surface mt-5 flex flex-col gap-3 rounded-2xl border p-4 lg:flex-row lg:items-center lg:justify-between">
+                <p className="text-sm text-[var(--text-soft)]">{documentosFiltrados.length} de {documentos.length} documentos TAC</p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]">
                     <input
                         aria-label="Buscar documentos TAC"
-                        className="w-full rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-slate-400/50 sm:w-48"
+                        className="tac-filter-input sm:w-64"
                         onChange={(event) => setBusqueda(event.target.value)}
                         placeholder="Buscar TAC o producto"
                         type="search"
@@ -319,7 +327,7 @@ export default function ControlTacTab() {
                     />
                     <select
                         aria-label="Filtrar documentos TAC por estado"
-                        className="w-full rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none sm:w-auto"
+                        className="tac-filter-input sm:w-auto"
                         onChange={(event) => setFiltroEstado(event.target.value as typeof filtroEstado)}
                         value={filtroEstado}
                     >
@@ -330,7 +338,7 @@ export default function ControlTacTab() {
                     </select>
                     <select
                         aria-label="Ordenar documentos TAC"
-                        className="w-full rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none sm:w-auto"
+                        className="tac-filter-input sm:w-auto"
                         onChange={(event) => setOrden(event.target.value as typeof orden)}
                         value={orden}
                     >
@@ -344,7 +352,7 @@ export default function ControlTacTab() {
 
             {formularioAbierto && createPortal(
                 <div
-                    className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-md"
+                    className="tac-dialog-overlay fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto p-4 backdrop-blur-md"
                     onClick={cerrarFormulario}
                 >
                     <form
@@ -353,34 +361,34 @@ export default function ControlTacTab() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="tac-form-title"
-                        className="my-auto max-h-[min(90vh,720px)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-400/25 bg-slate-900 p-5 shadow-2xl ring-1 ring-white/10"
+                        className="tac-dialog my-auto max-h-[min(90vh,720px)] w-full max-w-2xl overflow-y-auto rounded-2xl p-5 shadow-2xl"
                     >
-                        <header className="mb-5 flex items-start justify-between gap-4 border-b border-slate-400/15 pb-4">
+                        <header className="tac-dialog-header mb-5 flex items-start justify-between gap-4 border-b pb-4">
                             <div>
-                                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Control administrativo</p>
-                                <h2 id="tac-form-title" className="mt-1 text-lg font-bold text-slate-100">
+                                <p className="tac-dialog-label text-[11px] font-bold uppercase tracking-wider">Control administrativo</p>
+                                <h2 id="tac-form-title" className="tac-dialog-title mt-1 text-lg font-bold">
                                     {editando ? `Documento TAC ${editando.nTac}` : 'Nuevo documento TAC'}
                                 </h2>
                                 {editando?.tieneVenta && (
-                                    <p className="mt-1 text-xs text-amber-200">Asociado a venta: producto, cantidad y precio protegidos.</p>
+                                    <p className="tac-dialog-label mt-1 text-xs">Asociado a venta: producto, cantidad y precio protegidos.</p>
                                 )}
                             </div>
                             <button type="button" aria-label="Cerrar documento" className={botonSecundarioCls} onClick={cerrarFormulario}>Cerrar</button>
                         </header>
 
-                        {error && <p className="mb-4 rounded-lg border border-red-400/25 bg-red-950/40 px-3 py-2 text-sm text-red-200">{error}</p>}
+                        {error && <p className="tac-feedback--error mb-4 rounded-lg px-3 py-2 text-sm">{error}</p>}
 
                         {modoEdicion ? (
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <label className="text-xs font-bold text-slate-300">
+                                <label className="tac-dialog-label text-xs font-bold">
                                     N° TAC
                                     <input className={`${inputCls} mt-1`} maxLength={30} value={formulario.nTac} placeholder="Se genera automáticamente" onChange={(e) => setFormulario({ ...formulario, nTac: e.target.value })} />
                                 </label>
-                                <label className="text-xs font-bold text-slate-300">
+                                <label className="tac-dialog-label text-xs font-bold">
                                     Fecha
                                     <input className={`${inputCls} mt-1`} type="date" required value={formulario.fecha} onChange={(e) => setFormulario({ ...formulario, fecha: e.target.value })} />
                                 </label>
-                                <label className="text-xs font-bold text-slate-300 sm:col-span-2">
+                                <label className="tac-dialog-label text-xs font-bold sm:col-span-2">
                                     Producto / variante
                                     <select
                                         className={`${inputCls} mt-1`}
@@ -396,25 +404,25 @@ export default function ControlTacTab() {
                                         {inventario.map((item) => <option key={item.sku} value={item.sku}>{item.nombre} · {item.sku} · {item.talla || 'única'}{item.color ? ` · ${item.color}` : ''}</option>)}
                                     </select>
                                 </label>
-                                <label className="text-xs font-bold text-slate-300">
+                                <label className="tac-dialog-label text-xs font-bold">
                                     Cantidad
                                     <input className={`${inputCls} mt-1`} type="number" min="1" step="1" required disabled={Boolean(editando?.tieneVenta)} value={formulario.cantidad} onChange={(e) => setFormulario({ ...formulario, cantidad: e.target.value })} />
                                 </label>
-                                <label className="text-xs font-bold text-slate-300">
+                                <label className="tac-dialog-label text-xs font-bold">
                                     Precio TAC unitario
                                     <input className={`${inputCls} mt-1`} type="number" min="0" step="1" required disabled={Boolean(editando?.tieneVenta)} value={formulario.precioTac} onChange={(e) => setFormulario({ ...formulario, precioTac: e.target.value })} />
                                 </label>
-                                <label className="text-xs font-bold text-slate-300">
+                                <label className="tac-dialog-label text-xs font-bold">
                                     Responsable
                                     <input className={`${inputCls} mt-1`} maxLength={50} value={formulario.responsable} onChange={(e) => setFormulario({ ...formulario, responsable: e.target.value })} />
                                 </label>
-                                <label className="text-xs font-bold text-slate-300">
+                                <label className="tac-dialog-label text-xs font-bold">
                                     Firma comprador
                                     <select className={`${inputCls} mt-1`} value={formulario.firmaComprador} onChange={(e) => setFormulario({ ...formulario, firmaComprador: e.target.value as FirmaEstado })}>
                                         {ESTADOS_FIRMA.map((estado) => <option key={estado}>{estado}</option>)}
                                     </select>
                                 </label>
-                                <label className="text-xs font-bold text-slate-300">
+                                <label className="tac-dialog-label text-xs font-bold">
                                     Firma vendedor
                                     <select className={`${inputCls} mt-1`} value={formulario.firmaVendedor} onChange={(e) => setFormulario({ ...formulario, firmaVendedor: e.target.value as FirmaEstado })}>
                                         {ESTADOS_FIRMA.map((estado) => <option key={estado}>{estado}</option>)}
@@ -432,27 +440,27 @@ export default function ControlTacTab() {
                                     ['Total', formatearCLP(editando.total)],
                                     ['Responsable', editando.responsable || 'Sin responsable'],
                                 ].map(([etiqueta, valor]) => (
-                                    <div key={etiqueta} className="rounded-lg border border-slate-400/15 bg-slate-500/[0.035] px-3 py-2">
-                                        <dt className="text-[11px] text-slate-400">{etiqueta}</dt>
-                                        <dd className="mt-1 text-sm font-medium text-slate-100">{valor}</dd>
+                                    <div key={etiqueta} className="tac-dialog-card rounded-lg px-3 py-2">
+                                        <dt className="tac-dialog-muted text-[11px]">{etiqueta}</dt>
+                                        <dd className="tac-dialog-strong mt-1 text-sm font-medium">{valor}</dd>
                                     </div>
                                 ))}
-                                <div className="rounded-lg border border-slate-400/15 bg-slate-500/[0.035] px-3 py-2">
-                                    <dt className="text-[11px] text-slate-400">Firma comprador</dt>
+                                <div className="tac-dialog-card rounded-lg px-3 py-2">
+                                    <dt className="tac-dialog-muted text-[11px]">Firma comprador</dt>
                                     <dd className="mt-1"><span className={badgeFirma(editando.firmaComprador)}>{editando.firmaComprador}</span></dd>
                                 </div>
-                                <div className="rounded-lg border border-slate-400/15 bg-slate-500/[0.035] px-3 py-2">
-                                    <dt className="text-[11px] text-slate-400">Firma vendedor</dt>
+                                <div className="tac-dialog-card rounded-lg px-3 py-2">
+                                    <dt className="tac-dialog-muted text-[11px]">Firma vendedor</dt>
                                     <dd className="mt-1"><span className={badgeFirma(editando.firmaVendedor)}>{editando.firmaVendedor}</span></dd>
                                 </div>
                             </dl>
                         ) : null}
 
-                        {modoEdicion && <div className="mt-4 border-t border-slate-400/15 pt-4 text-sm text-slate-300">
-                            Total del documento <strong className="ml-2 text-slate-100">{formatearCLP(Number(formulario.cantidad) * Number(formulario.precioTac))}</strong>
+                        {modoEdicion && <div className="tac-dialog-divider tac-dialog-label mt-4 border-t pt-4 text-sm">
+                            Total del documento <strong className="tac-dialog-strong ml-2">{formatearCLP(Number(formulario.cantidad) * Number(formulario.precioTac))}</strong>
                         </div>}
 
-                        <footer className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-400/15 pt-4">
+                        <footer className="tac-dialog-divider mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
                             <div>
                                 {editando && !editando.tieneVenta && !modoEdicion && <button type="button" className={botonPeligroCls} onClick={() => borrarDocumento(editando)}>Eliminar documento</button>}
                             </div>
@@ -473,45 +481,54 @@ export default function ControlTacTab() {
             )}
 
             {cargando ? (
-                <div className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-slate-100 before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:border-2 before:border-slate-400/20 before:border-r-violet-600 before:border-t-violet-300 before:animate-spin">
+                <div className="tac-loading mt-8 text-xs font-bold uppercase tracking-[0.18em] before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:animate-spin">
                     Cargando documentos TAC...
                 </div>
             ) : (
-                <div className="mt-4 overflow-x-auto rounded-lg border border-slate-400/15 bg-slate-950/10">
-                    <table className="w-full min-w-[620px] text-sm">
-                        <thead className="border-b border-slate-400/15 text-center text-xs text-slate-400">
+                <div className="tac-table-shell mt-4 overflow-x-auto rounded-2xl border shadow-sm">
+                    <table className="tac-document-table w-full min-w-[900px] text-sm">
+                        <thead className="sticky top-0 z-10 text-xs uppercase tracking-wide">
                             <tr>
-                                <th className="px-3 py-3 font-medium">Documento</th>
-                                <th className="px-3 py-3 font-medium">Producto</th>
-                                <th className="px-3 py-3 font-medium">Total</th>
-                                <th className="px-3 py-3 font-medium">Estado</th>
-                                <th className="px-3 py-3 font-medium">Acción</th>
+                                <th className="px-5 py-4 text-left font-semibold">Documento</th>
+                                <th className="px-5 py-4 text-left font-semibold">Producto</th>
+                                <th className="px-5 py-4 text-left font-semibold">Responsable</th>
+                                <th className="px-5 py-4 text-right font-semibold">Total</th>
+                                <th className="px-5 py-4 text-left font-semibold">Estado</th>
+                                <th className="px-5 py-4 text-left font-semibold">Acción</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-400/10">
+                        <tbody className="divide-y divide-slate-100">
                             {documentosFiltrados.map((d) => (
-                                    <tr key={d.idTac} className="h-14 transition-colors hover:bg-slate-500/[0.04]">
-                                        <td className="px-3 py-2 text-center">
-                                            <span className="block font-mono text-xs font-bold text-slate-100">{d.nTac}</span>
-                                            <span className="text-xs text-slate-400">{fechaCorta(d.fecha)}</span>
+                                    <tr key={d.idTac} className="transition-colors">
+                                        <td className="whitespace-nowrap px-5 py-4 text-left">
+                                            <span className="font-mono text-sm font-bold tac-doc-number">TAC #{d.nTac}</span>
                                         </td>
-                                        <td className="px-3 py-2 text-center">
-                                            <span className="block max-w-[260px] truncate font-medium text-slate-100">{d.producto}</span>
-                                            <span className="block truncate text-xs text-slate-400">{d.sku} · {d.talla || 'única'}{d.color ? ` · ${d.color}` : ''}</span>
+                                        <td className="max-w-[300px] px-5 py-4 text-left">
+                                            <span className="block truncate tac-product-name">{d.producto}</span>
                                         </td>
-                                        <td className="px-3 py-2 text-center font-medium tabular-nums text-slate-100">{formatearCLP(d.total)}</td>
-                                        <td className="px-3 py-2 text-center"><span className={badgeEstado(d.estado)}>{d.estado}</span></td>
-                                        <td className="px-3 py-2 text-center">
-                                            <button type="button" className={botonSecundarioCls} onClick={() => verDocumento(d)}>Ver documento</button>
+                                        <td className="px-5 py-4 text-left">
+                                            {d.responsable?.trim() ? (
+                                                <div className="flex items-center gap-2.5 whitespace-nowrap">
+                                                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full tac-avatar text-[11px] font-bold" aria-hidden="true">{inicialesResponsable(d.responsable)}</span>
+                                                    <span className="tac-responsible font-medium">{d.responsable}</span>
+                                                </div>
+                                            ) : <span className="tac-unassigned">Sin asignar</span>}
+                                        </td>
+                                        <td className="whitespace-nowrap px-5 py-4 text-right font-semibold tabular-nums tac-total">{formatearCLP(d.total)}</td>
+                                        <td className="px-5 py-4 text-left"><span className={`${badgeEstado(d.estado)} inline-flex items-center gap-2`}><span className={`tac-status-dot tac-status-dot--${d.estado === 'Aprobado' ? 'approved' : d.estado === 'Pendiente' ? 'pending' : 'rejected'}`} aria-hidden="true" />{d.estado}</span></td>
+                                        <td className="px-5 py-4 text-left">
+                                            <button type="button" className="tac-secondary-button min-h-9 rounded-lg px-3 text-xs" onClick={() => verDocumento(d)}>Ver documento</button>
                                         </td>
                                     </tr>
                             ))}
                         </tbody>
                     </table>
                     {documentosFiltrados.length === 0 && (
-                        <p className="px-4 py-6 text-center text-sm text-slate-400">
-                            {documentos.length === 0 ? 'No hay documentos TAC registrados.' : 'No hay TAC que coincidan con esos filtros.'}
-                        </p>
+                        <div className="tac-empty-state px-6 py-12 text-center">
+                            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--bg-800)] text-xl text-[var(--text-soft)]" aria-hidden="true">⌕</div>
+                            <p className="mt-3 font-semibold">{documentos.length === 0 ? 'Aún no hay documentos TAC' : 'No encontramos documentos con esos filtros'}</p>
+                            <p className="mt-1 text-sm">{documentos.length === 0 ? 'Crea un documento nuevo para verlo aquí.' : 'Prueba con otra búsqueda o estado.'}</p>
+                        </div>
                     )}
                 </div>
             )}
