@@ -1,74 +1,69 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { login, loginConGoogle } from '../services/auth.service';
-import googleLogo from '../assets/icons/googleLogo.png';
-import type { Usuario } from '../services/auth.service';
-import BackToStore from '../components/BackToStore';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { login, loginConGoogle } from "../services/auth.service";
+import googleLogo from "../assets/icons/googleLogo.png";
+import type { Usuario } from "../services/auth.service";
+import AuthShell from "../components/brand/AuthShell";
 
-export default function Login({ tema, onAuthenticated }: { tema: 'dark' | 'light'; onAuthenticated: (usuario: Usuario) => void }) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+export default function Login({ onAuthenticated }: { tema: "dark" | "light"; onAuthenticated: (usuario: Usuario) => void }) {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!email || !password) {
-            setError('Completa correo y contraseña');
+            setError("Completa correo y contraseña");
             return;
         }
 
         try {
-            setError('');
+            setError("");
             const usuario = await login(email, password);
             onAuthenticated(usuario);
-            navigate('/');
+            navigate("/");
         } catch {
-            setError('Correo o contraseña incorrectos');
+            setError("Correo o contraseña incorrectos");
         }
     };
 
     return (
-        <div className={`grid min-h-screen place-items-center px-5 py-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
-            <BackToStore className="fixed left-5 top-5 z-10 max-[480px]:left-3 max-[480px]:top-3" />
-            <form className="theme-dark-surface flex w-full max-w-md flex-col gap-4 rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl max-[480px]:p-6" onSubmit={handleSubmit}>
-                <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-50">Iniciar sesión</h1>
+        <AuthShell title="Iniciar sesión" onSubmit={handleSubmit}>
+            <input
+                className="vcm-input"
+                type="email"
+                placeholder="Correo electrónico"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+            />
 
-                <input 
-                    className="rounded-xl border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15"
-                    type="email"
-                    placeholder="Correo electrónico"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
+            <input
+                className="vcm-input"
+                type="password"
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+            />
 
-                <input
-                    className="rounded-xl border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15"
-                    type="password"
-                    placeholder="Contraseña"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
+            {error && <p className="vcm-alert" role="alert">{error}</p>}
 
-                {error && <p className="rounded-xl border border-red-400/20 bg-red-950/30 px-3 py-2 text-sm font-semibold text-red-200">{error}</p>}
+            <button className="vcm-btn vcm-btn--primary w-full" type="submit">Ingresar</button>
 
-                <button className="ucn-btn-primary w-full" type="submit">Ingresar</button>
+            <div className="h-px bg-[var(--border)]" aria-hidden="true" />
 
-                <div className="h-px bg-slate-400/15" aria-hidden="true" />
+            <button type="button" className="vcm-btn vcm-btn--surface w-full" onClick={loginConGoogle}>
+                <img src={googleLogo} alt="" className="h-5 w-5" />
+                Continuar con Google
+            </button>
 
-                <button type="button" className="flex items-center justify-center gap-2 rounded-xl border border-slate-400/20 bg-slate-800/70 px-4 py-3 font-semibold text-slate-900 dark:text-slate-100 font-bold transition hover:bg-slate-700" onClick={loginConGoogle}>
-                    <img src={googleLogo} alt="Google" className="h-5 w-5"/>
-                    Continuar con Google
-                </button>
-
-                <p className="text-center text-sm text-slate-400">
-                    ¿No tienes cuenta?{' '}
-                    <Link to="/register" className="font-semibold text-violet-300 hover:text-violet-200">
-                        Regístrate aquí
-                    </Link>
-                </p>
-            </form>
-        </div>
+            <p className="text-center text-sm text-[var(--text-soft)]">
+                ¿No tienes cuenta?{" "}
+                <Link to="/register" className="font-bold text-[var(--primary)] underline-offset-2 hover:underline">
+                    Regístrate aquí
+                </Link>
+            </p>
+        </AuthShell>
     );
 }
