@@ -71,9 +71,9 @@ export class ExportService {
     // Calcular vendidos por variante
     const vendidosPorVariante = await this.salidaRepo
       .createQueryBuilder('s')
-      .select('s.variante_id_variante', 'idVariante')
+      .select('s.id_variante', 'idVariante')
       .addSelect('SUM(s.cantidad)', 'vendidas')
-      .groupBy('s.variante_id_variante')
+      .groupBy('s.id_variante')
       .getRawMany();
 
     const vendidosMap = new Map<number, number>();

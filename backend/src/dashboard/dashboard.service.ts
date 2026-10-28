@@ -1,6 +1,6 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { RegistroVentaExcel, ResumenDashboard } from './resumen.types';
+import type { RegistroVentaAnalitica, ResumenDashboard } from './resumen.types';
 
 @Injectable()
 export class DashboardService {
@@ -32,7 +32,7 @@ export class DashboardService {
     }
   }
 
-  async obtenerRegistroVentas(): Promise<RegistroVentaExcel[]> {
+  async obtenerRegistroVentas(): Promise<RegistroVentaAnalitica[]> {
     const control = new AbortController();
     const timeout = setTimeout(() => control.abort(), 5000);
     try {
@@ -42,10 +42,10 @@ export class DashboardService {
       if (!response.ok) {
         throw new Error(`analitica respondió ${response.status}`);
       }
-      return (await response.json()) as RegistroVentaExcel[];
+      return (await response.json()) as RegistroVentaAnalitica[];
     } catch (error) {
       throw new ServiceUnavailableException(
-        `No se pudo obtener el historial de ventas desde el Excel: ${
+        `No se pudo obtener el historial de ventas desde analítica: ${
           (error as Error).message
         }`,
       );

@@ -52,9 +52,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      INVENTARIO_XLSX_PATH: /app/Productos.xlsx
-    volumes:
-      - ./docs/Productos.xlsx:/app/Productos.xlsx:ro
+      DB_HOST: postgres
+    depends_on:
+      - postgres
     networks:
       - tienda-net
 

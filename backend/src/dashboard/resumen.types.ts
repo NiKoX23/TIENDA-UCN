@@ -54,9 +54,9 @@ export interface ResumenDashboard {
   alertasStockBajo: AlertaStock[];
 }
 
-export interface RegistroVentaExcel {
+export interface RegistroVentaAnalitica {
   id: number;
-  numeroVenta: number | null;
+  numeroVenta: number | string | null;
   fecha: string;
   producto: string;
   sku: string;
