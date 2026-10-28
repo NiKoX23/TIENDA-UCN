@@ -10,9 +10,6 @@ import VentasTab from './VentasTab';
 import ControlTacTab from './ControlTacTab';
 import { exportarTodo, exportarUsuarios } from '../services/export.service';
 
-const botonSecundarioCls =
-    'rounded-xl border border-slate-400/20 bg-slate-950/60 px-4 py-2 text-xs font-bold text-slate-200 transition hover:border-violet-400/50 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50';
-
 interface AdminPanelProps {
     tema: 'dark' | 'light';
     onToggleTema: () => void;
@@ -159,7 +156,17 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                         <span className="vcm-eyebrow">Tienda UCN · Administración</span>
                         <h1 className="mt-3 text-3xl font-extrabold tracking-tight max-[480px]:text-2xl">{CONTENIDO_TAB[tab].titulo}</h1>
                         <p className="mt-2 text-sm opacity-90">{CONTENIDO_TAB[tab].descripcion}</p>
-                        <p className="mt-3 text-xs opacity-80">Sesión: {usuario.email}</p>
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <p className="text-xs opacity-80">Sesión: {usuario.email}</p>
+                            <button
+                                type="button"
+                                className="vcm-btn vcm-btn--surface vcm-btn--sm"
+                                onClick={() => void manejarExportarTodo()}
+                                disabled={exportandoTodo}
+                            >
+                                {exportandoTodo ? 'Exportando...' : 'Exportar todo'}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div className="vcm-bar" aria-hidden="true" />
@@ -180,6 +187,9 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                         ))}
                     </div>
 
+                    {error && <p className="vcm-alert mt-4 text-center" role="alert">{error}</p>}
+                    {exito && <p className="vcm-alert vcm-alert--success mt-4 text-center" role="status">{exito}</p>}
+
                     <div key={tab} className="vcm-tab-panel" role="tabpanel">
                         {tab === 'inicio' && (
                             <div className="mt-6">
@@ -195,7 +205,16 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
 
                         {tab === 'usuarios' && (
                             <>
-                                {error && <p className="vcm-alert mt-4 text-center" role="alert">{error}</p>}
+                                <div className="mt-6 flex justify-end">
+                                    <button
+                                        type="button"
+                                        className="vcm-btn vcm-btn--surface vcm-btn--sm"
+                                        onClick={() => void manejarExportarUsuarios()}
+                                        disabled={exportandoUsuarios}
+                                    >
+                                        {exportandoUsuarios ? 'Exportando...' : 'Exportar Excel'}
+                                    </button>
+                                </div>
 
                                 {cargando ? (
                                     <div className="vcm-spinner mt-8">Cargando usuarios...</div>
