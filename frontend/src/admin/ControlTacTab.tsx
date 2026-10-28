@@ -12,6 +12,7 @@ import {
     type FirmaEstado,
     type PayloadDocumentoTac,
 } from '../services/ventas.service';
+import { exportarTac } from '../services/export.service';
 
 const inputCls =
     'tac-filter-input w-full';
@@ -104,6 +105,7 @@ export default function ControlTacTab() {
     const [guardando, setGuardando] = useState(false);
     const [error, setError] = useState('');
     const [exito, setExito] = useState('');
+    const [exportando, setExportando] = useState(false);
     const [busqueda, setBusqueda] = useState('');
     const [filtroEstado, setFiltroEstado] = useState<'todos' | DocumentoTac['estado']>('todos');
     const [orden, setOrden] = useState<'fecha-desc' | 'fecha-asc' | 'total' | 'producto'>('fecha-desc');
@@ -111,6 +113,20 @@ export default function ControlTacTab() {
     const [formularioAbierto, setFormularioAbierto] = useState(false);
     const [modoEdicion, setModoEdicion] = useState(false);
     const [formulario, setFormulario] = useState<FormularioDocumento>(formularioVacio);
+
+    const manejarExportar = async () => {
+        try {
+            setError('');
+            setExito('');
+            setExportando(true);
+            await exportarTac();
+            setExito('Documentos TAC exportados correctamente.');
+        } catch (e: unknown) {
+            setError(mensajeError(e));
+        } finally {
+            setExportando(false);
+        }
+    };
 
     const cargar = async () => {
         try {
@@ -294,6 +310,9 @@ export default function ControlTacTab() {
                     </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                    <button type="button" className={botonSecundarioCls} onClick={() => void manejarExportar()} disabled={exportando}>
+                        {exportando ? 'Exportando...' : 'Exportar Excel'}
+                    </button>
                     <button type="button" className={botonSecundarioCls} onClick={cargar} disabled={cargando}>
                         {cargando ? 'Cargando...' : 'Refrescar'}
                     </button>

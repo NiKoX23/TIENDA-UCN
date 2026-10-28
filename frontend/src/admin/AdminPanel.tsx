@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import type { Usuario } from '../services/auth.service';
 import BackToStore from '../components/BackToStore';
 import { listarUsuarios, cambiarRol, eliminarUsuario, type AdminUsuario } from '../services/admin.service';
@@ -6,6 +7,10 @@ import InventarioTab from './InventarioTab';
 import DashboardTab from './DashboardTab';
 import VentasTab from './VentasTab';
 import ControlTacTab from './ControlTacTab';
+import { exportarTodo, exportarUsuarios } from '../services/export.service';
+
+const botonSecundarioCls =
+    'rounded-xl border border-slate-400/20 bg-slate-950/60 px-4 py-2 text-xs font-bold text-slate-200 transition hover:border-violet-400/50 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50';
 
 interface AdminPanelProps {
     tema: 'dark' | 'light';
@@ -46,12 +51,52 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
     },
 };
 
+function mensajeError(e: unknown): string {
+    if (axios.isAxiosError(e)) {
+        const msg = (e.response?.data as { message?: string | string[] })?.message;
+        if (Array.isArray(msg)) return msg.join(', ');
+        if (msg) return msg;
+    }
+    return 'Ocurrió un error inesperado.';
+}
+
 export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelProps) {
     const [tab, setTab] = useState<TabId>('inicio');
     const [usuarios, setUsuarios] = useState<AdminUsuario[]>([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
+    const [exito, setExito] = useState('');
     const [cambiandoUid, setCambiandoUid] = useState<number | null>(null);
+    const [exportandoTodo, setExportandoTodo] = useState(false);
+    const [exportandoUsuarios, setExportandoUsuarios] = useState(false);
+
+    const manejarExportarTodo = async () => {
+        try {
+            setError('');
+            setExito('');
+            setExportandoTodo(true);
+            await exportarTodo();
+            setExito('Reporte unificado exportado correctamente.');
+        } catch (e: unknown) {
+            setError(mensajeError(e));
+        } finally {
+            setExportandoTodo(false);
+        }
+    };
+
+    const manejarExportarUsuarios = async () => {
+        try {
+            setError('');
+            setExito('');
+            setExportandoUsuarios(true);
+            await exportarUsuarios();
+            setExito('Usuarios exportados correctamente.');
+        } catch (e: unknown) {
+            setError(mensajeError(e));
+        } finally {
+            setExportandoUsuarios(false);
+        }
+    };
 
     useEffect(() => {
         let activo = true;
@@ -112,7 +157,12 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                         <h1 className="text-3xl font-extrabold tracking-tight">{CONTENIDO_TAB[tab].titulo}</h1>
                         <p className="mt-2 text-sm text-slate-400">{CONTENIDO_TAB[tab].descripcion}</p>
                     </div>
-                    <p className="text-xs text-slate-500">Sesión: {usuario.email}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" className={botonSecundarioCls} onClick={() => void manejarExportarTodo()} disabled={exportandoTodo}>
+                            {exportandoTodo ? 'Exportando...' : 'Exportar todo'}
+                        </button>
+                        <p className="text-xs text-slate-500">Sesión: {usuario.email}</p>
+                    </div>
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-2">
@@ -146,7 +196,16 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
 
                 {tab === 'usuarios' && (
                     <>
-                        {error && <p className="mt-4 rounded-full border border-red-400/20 bg-red-950/30 px-4 py-3 text-center text-sm text-red-200">{error}</p>}
+                        {(error || exito) && (
+                            <p className={`mt-4 rounded-full px-4 py-3 text-center text-sm ${error ? 'border border-red-400/20 bg-red-950/30 text-red-200' : 'border border-emerald-400/20 bg-emerald-950/30 text-emerald-200'}`}>
+                                {error || exito}
+                            </p>
+                        )}
+                        <div className="mt-4 flex justify-end">
+                            <button type="button" className={botonSecundarioCls} onClick={() => void manejarExportarUsuarios()} disabled={exportandoUsuarios}>
+                                {exportandoUsuarios ? 'Exportando...' : 'Exportar Excel'}
+                            </button>
+                        </div>
 
                         {cargando ? (
                             <div className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-slate-100 before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:border-2 before:border-slate-400/20 before:border-r-violet-600 before:border-t-violet-300 before:animate-spin">Cargando usuarios...</div>

@@ -18,6 +18,7 @@ import {
     type NuevoProductoPayload,
     type VariantePayload,
 } from '../services/inventario.service';
+import { exportarInventario } from '../services/export.service';
 
 const inputCls =
     'admin-form-field w-full rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-400/60';
@@ -581,6 +582,7 @@ export default function InventarioTab() {
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
     const [exito, setExito] = useState('');
+    const [exportando, setExportando] = useState(false);
     const [modal, setModal] = useState<'stock' | 'producto' | 'variante' | 'editar-variante' | null>(null);
     const [seleccion, setSeleccion] = useState<ItemInventario | null>(null);
     const [busqueda, setBusqueda] = useState('');
@@ -590,6 +592,20 @@ export default function InventarioTab() {
     const [detalle, setDetalle] = useState<ItemInventario[] | null>(null);
     const [detalleSkuSeleccionado, setDetalleSkuSeleccionado] = useState('');
     const [selectorVariantesAbierto, setSelectorVariantesAbierto] = useState(false);
+
+    const manejarExportar = async () => {
+        try {
+            setError('');
+            setExito('');
+            setExportando(true);
+            await exportarInventario();
+            anunciarExito('Inventario exportado correctamente.');
+        } catch (e: unknown) {
+            setError(mensajeError(e));
+        } finally {
+            setExportando(false);
+        }
+    };
 
     const anunciarExito = (mensaje: string) => {
         setExito(mensaje);
@@ -810,6 +826,9 @@ export default function InventarioTab() {
                 <select aria-label="Filtrar por estado de stock" value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={`${inputCls} w-full rounded-md sm:w-auto`}>
                     <option value="">Todos los estados</option><option value="AGOTADO">Agotado</option><option value="CRITICO">Crítico</option><option value="BAJO">Bajo</option><option value="NORMAL">Normal</option>
                 </select>
+                <button type="button" className={`${botonSecundarioCls} rounded-md`} onClick={() => void manejarExportar()} disabled={exportando}>
+                    {exportando ? 'Exportando...' : 'Exportar Excel'}
+                </button>
                 <button type="button" className={`${botonPrimarioCls} rounded-md`} onClick={() => abrirModal('producto')}>Nuevo producto</button>
                 <button type="button" className={`${botonSecundarioCls} rounded-md`} onClick={() => void recargar()}>Refrescar</button>
                 <p aria-live="polite" className="w-full text-xs text-slate-400 sm:ml-auto sm:w-auto">{gruposFiltrados.length} {gruposFiltrados.length === 1 ? 'producto' : 'productos'}</p>

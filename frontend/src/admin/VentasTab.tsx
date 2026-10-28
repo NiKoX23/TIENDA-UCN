@@ -11,6 +11,7 @@ import {
     type RegistroVentaItem,
     type TipoVenta,
 } from '../services/ventas.service';
+import { exportarVentas } from '../services/export.service';
 
 const inputCls =
     'w-full rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-violet-400/60';
@@ -411,12 +412,27 @@ export default function VentasTab() {
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
     const [exito, setExito] = useState('');
+    const [exportando, setExportando] = useState(false);
     const [modal, setModal] = useState(false);
     const [busqueda, setBusqueda] = useState('');
     const [filtroTipo, setFiltroTipo] = useState('todos');
     const [orden, setOrden] = useState('fecha-desc');
     const [ventasVisibles, setVentasVisibles] = useState(4);
     const [boletaSeleccionada, setBoletaSeleccionada] = useState<BoletaHistorial | null>(null);
+
+    const manejarExportar = async () => {
+        try {
+            setError('');
+            setExito('');
+            setExportando(true);
+            await exportarVentas();
+            setExito('Ventas exportadas correctamente.');
+        } catch (e: unknown) {
+            setError(mensajeError(e));
+        } finally {
+            setExportando(false);
+        }
+    };
 
     const cargar = async () => {
         try {
@@ -529,6 +545,9 @@ export default function VentasTab() {
                     </span>
                 </div>
                 <div className="flex gap-2">
+                    <button type="button" className={botonSecundarioCls} onClick={() => void manejarExportar()} disabled={exportando}>
+                        {exportando ? 'Exportando...' : 'Exportar Excel'}
+                    </button>
                     <button type="button" className={botonSecundarioCls} onClick={cargar} disabled={cargando}>
                         {cargando ? 'Cargando...' : 'Refrescar'}
                     </button>

@@ -9,6 +9,7 @@ import { ClientesModule } from './clientes/clientes.module';
 import { FacturacionModule } from './facturacion/facturacion.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { VentasModule } from './ventas/ventas.module';
+import { ExportModule } from './export/export.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { VentasModule } from './ventas/ventas.module';
     FacturacionModule,
     DashboardModule,
     VentasModule,
+    ExportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
