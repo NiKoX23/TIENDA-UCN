@@ -6,9 +6,9 @@ import {
     type AlertaStock,
     type ResumenDashboard,
 } from '../services/dashboard.service';
+import CountUp from '../components/brand/CountUp';
 
-const botonSecundarioCls =
-    'rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-xs font-bold text-slate-200 transition hover:border-violet-400/50 hover:text-slate-100';
+const botonSecundarioCls = 'vcm-btn vcm-btn--surface vcm-btn--sm';
 
 function num(n: number): string {
     return n.toLocaleString('es-CL');
@@ -22,13 +22,20 @@ interface KpiCardProps {
     etiqueta: string;
     valor: string;
     acento?: boolean;
+    /** 0–100: muestra una barra de avance animada bajo el valor. */
+    progreso?: number;
 }
 
-function KpiCard({ etiqueta, valor, acento }: KpiCardProps) {
+function KpiCard({ etiqueta, valor, acento, progreso }: KpiCardProps) {
     return (
-        <div className="rounded-lg border border-slate-400/15 bg-slate-950/25 px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{etiqueta}</p>
-            <p className={`mt-1 text-xl font-extrabold ${acento ? 'text-violet-300' : 'text-slate-100'}`}>{valor}</p>
+        <div className={`vcm-kpi${acento ? ' vcm-kpi--accent' : ''}`}>
+            <p className="vcm-kpi__label">{etiqueta}</p>
+            <p className="vcm-kpi__value"><CountUp texto={valor} /></p>
+            {progreso !== undefined && (
+                <div className="vcm-kpi__bar" aria-hidden="true">
+                    <span style={{ width: `${Math.min(100, Math.max(0, progreso))}%` }} />
+                </div>
+            )}
         </div>
     );
 }
@@ -45,7 +52,7 @@ function badgeEstado(estado: AlertaStock['estado'] | 'AGOTADO') {
 }
 
 function TituloSeccion({ children }: { children: string }) {
-    return <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-200">{children}</h2>;
+    return <h2 className="vcm-section-title">{children}</h2>;
 }
 
 function mensajeError(e: unknown): string {
@@ -105,7 +112,7 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
 
     if (cargando) {
         return (
-            <div className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-slate-100 before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:border-2 before:border-slate-400/20 before:border-r-violet-600 before:border-t-violet-300 before:animate-spin">
+            <div className="vcm-spinner mt-8">
                 Cargando indicadores...
             </div>
         );
@@ -114,7 +121,7 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
     if (error) {
         return (
             <div className="mt-4 flex flex-col items-center gap-3">
-                <p className="w-full rounded-full border border-red-400/20 bg-red-950/30 px-4 py-3 text-center text-sm text-red-200">{error}</p>
+                <p className="vcm-alert w-full text-center" role="alert">{error}</p>
                 <button type="button" className={botonSecundarioCls} onClick={() => void cargar()}>
                     Reintentar
                 </button>
@@ -152,7 +159,7 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
     return (
         <div>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-slate-400">Indicadores calculados por el servicio de analítica.</p>
+                <p className="text-xs text-[var(--text-soft)]">Indicadores calculados por el servicio de analítica.</p>
                 <button type="button" className={botonSecundarioCls} onClick={() => void cargar()}>
                     Refrescar
                 </button>
@@ -165,11 +172,11 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                     <KpiCard etiqueta="Unidades iniciales" valor={num(general.totalUnidadesIniciales)} />
                     <KpiCard etiqueta="Stock actual" valor={num(general.stockActualTotal)} />
                     <KpiCard etiqueta="Unidades vendidas" valor={num(general.unidadesVendidas)} />
-                    <KpiCard etiqueta="% Vendido" valor={pct(general.porcentajeVendido)} acento />
+                    <KpiCard etiqueta="% Vendido" valor={pct(general.porcentajeVendido)} acento progreso={general.porcentajeVendido} />
                 </div>
             </section>
 
-            <section className="mt-8 border-t border-slate-400/15 pt-5">
+            <section className="mt-8 border-t border-[var(--border)] pt-5">
                 <TituloSeccion>Ventas</TituloSeccion>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <KpiCard etiqueta="Total ventas" valor={num(ventas.totalVentas)} />
@@ -182,7 +189,7 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                 </div>
             </section>
 
-            <section className="mt-8 border-t border-slate-400/15 pt-5">
+            <section className="mt-8 border-t border-[var(--border)] pt-5">
                 <TituloSeccion>Control TAC</TituloSeccion>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <KpiCard etiqueta="Total documentos" valor={num(controlTac.totalDocumentos)} />
@@ -192,20 +199,20 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                 </div>
             </section>
 
-            <section className="mt-8 border-t border-slate-400/15 pt-5">
+            <section className="mt-8 border-t border-[var(--border)] pt-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <TituloSeccion>Resumen por producto</TituloSeccion>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         <button
                             aria-checked={tema === 'dark'}
                             aria-label="Modo oscuro"
-                            className="inline-flex items-center gap-2 px-1 py-2 text-xs text-slate-500"
+                            className="inline-flex items-center gap-2 px-1 py-2 text-xs text-[var(--text-muted)]"
                             onClick={onToggleTema}
                             role="switch"
                             type="button"
                         >
                             Modo oscuro
-                            <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${tema === 'dark' ? 'bg-[var(--primary)]' : 'bg-slate-400/40'}`}>
+                            <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${tema === 'dark' ? 'bg-[var(--primary)]' : 'bg-[color-mix(in_srgb,var(--text)_28%,transparent)]'}`}>
                                 <span
                                     className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
                                     style={{ transform: tema === 'dark' ? 'translateX(16px)' : 'translateX(0)' }}
@@ -214,13 +221,13 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                         </button>
                         <input
                             aria-label="Buscar producto"
-                            className="w-40 rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-slate-400/50"
+                            className="vcm-input vcm-input--sm"
                             onChange={(event) => { setBusquedaProducto(event.target.value); setProductosVisibles(4); }}
                             placeholder="Buscar producto"
                             type="search"
                             value={busquedaProducto}
                         />
-                        <select aria-label="Ordenar productos" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setOrdenProducto(event.target.value); setProductosVisibles(4); }} value={ordenProducto}>
+                        <select aria-label="Ordenar productos" className="vcm-select vcm-select--sm" onChange={(event) => { setOrdenProducto(event.target.value); setProductosVisibles(4); }} value={ordenProducto}>
                             <option value="ingreso">Mayor ingreso</option>
                             <option value="stock">Menor stock</option>
                             <option value="vendidos">Más vendidos</option>
@@ -229,9 +236,9 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                         </select>
                     </div>
                 </div>
-                <div className="mt-3 overflow-x-auto rounded-lg border border-slate-400/15">
+                <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
                     <table className="w-full min-w-[650px] border-collapse text-left text-sm">
-                        <thead className="border-y border-slate-400/20 bg-slate-400/10 text-[11px] font-bold uppercase tracking-wide text-slate-300">
+                        <thead className="vcm-thead border-y border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
                             <tr>
                                 <th className="px-3 py-2 font-semibold">Producto</th>
                                 <th className="px-3 py-2 text-center font-semibold">Stock</th>
@@ -241,26 +248,26 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                                 <th className="px-3 py-2 text-center font-semibold">Ingreso normal</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-400/10">
+                        <tbody className="divide-y divide-[var(--border)]">
                             {productosFiltrados.slice(0, productosVisibles).map((prod) => (
-                                <tr className="hover:bg-slate-400/[0.04]" key={prod.codigoProducto}>
+                                <tr className="hover:bg-[var(--primary-soft)]" key={prod.codigoProducto}>
                                     <td className="px-3 py-2">
-                                        <p className="font-medium text-slate-200">{prod.nombre}</p>
-                                        <p className="font-mono text-[10px] text-slate-500">{prod.codigoProducto}</p>
+                                        <p className="font-medium text-[var(--text)]">{prod.nombre}</p>
+                                        <p className="font-mono text-[10px] text-[var(--text-muted)]">{prod.codigoProducto}</p>
                                     </td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-slate-300">{num(prod.stock)}</td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-slate-300">{num(prod.cantInicial)}</td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-slate-300">{num(prod.vendidos)}</td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-slate-400">{pct(prod.porcentajeVendido)}</td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-slate-300">{formatearCLP(prod.ingresoNormal)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.stock)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.cantInicial)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.vendidos)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{pct(prod.porcentajeVendido)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{formatearCLP(prod.ingresoNormal)}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    {productosFiltrados.length === 0 && <p className="py-6 text-center text-sm text-slate-500">No hay productos que coincidan.</p>}
+                    {productosFiltrados.length === 0 && <p className="py-6 text-center text-sm text-[var(--text-muted)]">No hay productos que coincidan.</p>}
                     {productosVisibles < productosFiltrados.length && (
-                        <div className="flex justify-center border-t border-slate-400/10 py-3">
-                            <button className="rounded-md border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => setProductosVisibles((actual) => actual + 4)} type="button">
+                        <div className="flex justify-center border-t border-[var(--border)] py-3">
+                            <button className="vcm-btn vcm-btn--primary vcm-btn--sm" onClick={() => setProductosVisibles((actual) => actual + 4)} type="button">
                                 Cargar más productos (+{Math.min(4, productosFiltrados.length - productosVisibles)})
                             </button>
                         </div>
@@ -268,28 +275,28 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                 </div>
             </section>
 
-            <section className="mt-6 border-t border-slate-400/15 pt-5">
+            <section className="mt-6 border-t border-[var(--border)] pt-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <TituloSeccion>Alertas de stock bajo</TituloSeccion>
-                        <p className="mt-1 text-xs text-slate-500">{num(resumen.alertasStockBajo.length)} variantes requieren atención</p>
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">{num(resumen.alertasStockBajo.length)} variantes requieren atención</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <input
                             aria-label="Buscar alerta"
-                            className="w-36 rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-slate-400/50"
+                            className="vcm-input vcm-input--sm"
                             onChange={(event) => { setBusquedaAlerta(event.target.value); setAlertasVisibles(4); }}
                             placeholder="Buscar alerta"
                             type="search"
                             value={busquedaAlerta}
                         />
-                        <select aria-label="Filtrar alertas por estado" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setFiltroAlerta(event.target.value); setAlertasVisibles(4); }} value={filtroAlerta}>
+                        <select aria-label="Filtrar alertas por estado" className="vcm-select vcm-select--sm" onChange={(event) => { setFiltroAlerta(event.target.value); setAlertasVisibles(4); }} value={filtroAlerta}>
                             <option value="todos">Todos los estados</option>
                             <option value="agotado">Agotado</option>
                             <option value="critico">Crítico</option>
                             <option value="bajo">Bajo</option>
                         </select>
-                        <select aria-label="Ordenar alertas" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setOrdenAlerta(event.target.value); setAlertasVisibles(4); }} value={ordenAlerta}>
+                        <select aria-label="Ordenar alertas" className="vcm-select vcm-select--sm" onChange={(event) => { setOrdenAlerta(event.target.value); setAlertasVisibles(4); }} value={ordenAlerta}>
                             <option value="prioridad">Prioridad</option>
                             <option value="stock">Menor stock</option>
                             <option value="nombre-az">Nombre A-Z</option>
@@ -298,11 +305,11 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                     </div>
                 </div>
                 {alertasFiltradas.length === 0 ? (
-                    <p className="mt-3 border-y border-slate-400/15 py-6 text-center text-sm text-slate-500">No hay alertas para estos filtros.</p>
+                    <p className="mt-3 border-y border-[var(--border)] py-6 text-center text-sm text-[var(--text-muted)]">No hay alertas para estos filtros.</p>
                 ) : (
-                    <div className="mt-3 overflow-x-auto rounded-lg border border-slate-400/15">
+                    <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
                         <table className="w-full min-w-[560px] border-collapse text-left text-sm">
-                            <thead className="border-y border-slate-400/20 bg-slate-400/10 text-[11px] font-bold uppercase tracking-wide text-slate-300">
+                            <thead className="vcm-thead border-y border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
                                 <tr>
                                     <th className="px-3 py-2 font-semibold">Producto</th>
                                     <th className="px-3 py-2 text-center font-semibold">Talla / Color</th>
@@ -310,17 +317,17 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                                     <th className="px-3 py-2 text-center font-semibold">Estado</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-400/10">
+                            <tbody className="divide-y divide-[var(--border)]">
                                 {alertasFiltradas.slice(0, alertasVisibles).map((alerta) => {
                                     const agotado = alerta.stock === 0;
                                     return (
-                                        <tr className="hover:bg-slate-400/[0.04]" key={alerta.sku}>
+                                        <tr className="hover:bg-[var(--primary-soft)]" key={alerta.sku}>
                                             <td className="px-3 py-2">
-                                                <p className="font-medium text-slate-200">{alerta.nombre}</p>
-                                                <p className="font-mono text-[10px] text-slate-500">{alerta.codigoProducto}</p>
+                                                <p className="font-medium text-[var(--text)]">{alerta.nombre}</p>
+                                                <p className="font-mono text-[10px] text-[var(--text-muted)]">{alerta.codigoProducto}</p>
                                             </td>
-                                            <td className="px-3 py-2 text-center text-slate-400">{[alerta.talla && alerta.talla.toLowerCase() !== 'unica' ? alerta.talla : '', alerta.color].filter(Boolean).join(' / ') || '—'}</td>
-                                            <td className={`px-3 py-2 text-center font-semibold tabular-nums ${agotado ? 'text-red-400' : 'text-slate-300'}`}>{num(alerta.stock)}</td>
+                                            <td className="px-3 py-2 text-center text-[var(--text-soft)]">{[alerta.talla && alerta.talla.toLowerCase() !== 'unica' ? alerta.talla : '', alerta.color].filter(Boolean).join(' / ') || '—'}</td>
+                                            <td className={`px-3 py-2 text-center font-semibold tabular-nums ${agotado ? 'text-red-400' : 'text-[var(--text-soft)]'}`}>{num(alerta.stock)}</td>
                                             <td className="px-3 py-2 text-center"><span className={badgeEstado(agotado ? 'AGOTADO' : alerta.estado)}>{agotado ? 'Agotado' : alerta.estado}</span></td>
                                         </tr>
                                     );
@@ -328,8 +335,8 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                             </tbody>
                         </table>
                         {alertasVisibles < alertasFiltradas.length && (
-                            <div className="flex justify-center border-t border-slate-400/10 py-3">
-                                <button className="rounded-md border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => setAlertasVisibles((actual) => actual + 4)} type="button">
+                            <div className="flex justify-center border-t border-[var(--border)] py-3">
+                                <button className="vcm-btn vcm-btn--primary vcm-btn--sm" onClick={() => setAlertasVisibles((actual) => actual + 4)} type="button">
                                     Cargar más alertas (+{Math.min(4, alertasFiltradas.length - alertasVisibles)})
                                 </button>
                             </div>

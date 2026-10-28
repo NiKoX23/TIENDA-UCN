@@ -8,6 +8,8 @@ import { listarProductos, comprarProductos } from '../services/productos.service
 import { useCarrito } from '../hooks/useCarrito';
 import Carrito from '../carrito/Carrito';
 import UserAvatarMenu from '../components/UserAvatarMenu';
+import { BrandLockup } from '../components/brand/BrandLogo';
+import { BrandBlocks, BrandPattern } from '../components/brand/BrandFigures';
 import { formatearCLP } from '../utils/precio';
 
 interface TiendaProps {
@@ -30,19 +32,15 @@ function categoriaProducto(categoria: string): string {
   return 'default';
 }
 
+// Tono de marca por categoría: define el color del borde superior y del fondo de la imagen.
 const fondoPorCategoria: Record<string, string> = {
-  vestuario: 'bg-sky-100 dark:bg-slate-800',
-  accesorios: 'bg-orange-50 dark:bg-slate-800',
-  papeleria: 'bg-blue-50 dark:bg-slate-800',
-  default: 'bg-slate-100 dark:bg-slate-800',
+  vestuario: 'vcm-tone--vestuario',
+  accesorios: 'vcm-tone--accesorios',
+  papeleria: 'vcm-tone--papeleria',
+  default: 'vcm-tone--default',
 };
 
-const claseChip = (activo: boolean) =>
-  `h-11 whitespace-nowrap rounded-full border px-5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c] ${
-    activo
-      ? 'border-[#c2570c] bg-[#c2570c] text-white hover:bg-[#a84a0a]'
-      : 'border-[#f2a46f] bg-[#fff4eb] text-[#7c2d12] hover:bg-[#f2a46f]'
-  }`;
+const claseChip = (activo: boolean) => `vcm-chip${activo ? ' vcm-chip--active' : ''}`;
 
 export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: TiendaProps) {
   const navigate = useNavigate();
@@ -224,20 +222,21 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
   const categoriasMenu = categorias.filter((c) => c.id !== 'todos');
 
   return (
-    <main className="storefront-page min-h-screen w-full text-slate-900 dark:text-slate-100">
+    <main className="storefront-page min-h-screen w-full">
       {modalLoginAbierto && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/80 p-6 backdrop-blur-md" role="presentation" onClick={() => setModalLoginAbierto(false)}>
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-[color-mix(in_srgb,var(--vcm-navy)_80%,transparent)] p-6 backdrop-blur-md" role="presentation" onClick={() => setModalLoginAbierto(false)}>
           <div
-            className="w-full max-w-[420px] rounded-[26px] border border-violet-400/30 bg-slate-900 p-7 text-center text-slate-100 shadow-2xl"
+            className="vcm-card w-full max-w-[420px] border-t-4 p-7 text-center shadow-2xl"
+            style={{ borderTopColor: 'var(--vcm-orange)' }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="tienda-login-titulo"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mx-auto mb-4 grid h-[72px] w-[72px] place-items-center rounded-2xl border border-violet-300/30 bg-violet-500/15 text-3xl" aria-hidden="true">🔒</div>
+            <div className="mx-auto mb-4 grid h-[72px] w-[72px] place-items-center rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--primary-soft)] text-3xl" aria-hidden="true">🔒</div>
             <h3 id="tienda-login-titulo" className="text-2xl font-bold">Inicia sesión para continuar</h3>
-            <p className="mx-auto mb-5 max-w-xs text-sm leading-relaxed text-slate-300">Debes iniciar sesión para comprar y guardar tus favoritos.</p>
-            <button type="button" className="ucn-btn-primary w-full" onClick={abrirLogin}>
+            <p className="mx-auto mb-5 max-w-xs text-sm leading-relaxed text-[var(--text-soft)]">Debes iniciar sesión para comprar y guardar tus favoritos.</p>
+            <button type="button" className="vcm-btn vcm-btn--primary w-full" onClick={abrirLogin}>
               Inicia sesión aquí
             </button>
           </div>
@@ -257,10 +256,11 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
       />
 
       {/* ───────── Header ───────── */}
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0f3d66] shadow-md shadow-slate-900/10 dark:bg-[#0b2a47]">
+      <header className="vcm-header sticky top-0 z-20 shadow-md shadow-black/10">
+        <div className="vcm-bar" aria-hidden="true" />
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-8">
-          <a className="flex items-center gap-3 whitespace-nowrap text-lg font-extrabold text-white" href="/">
-            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/20 bg-white" aria-hidden="true">
+          <a className="flex items-center gap-3 whitespace-nowrap text-lg font-extrabold" href="/">
+            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-[var(--radius)] border border-[var(--border-strong)] bg-white" aria-hidden="true">
               <img src={escudoUcn} alt="" className="h-full w-full object-contain p-1" />
             </span>
             Tienda UCN
@@ -272,10 +272,10 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                 key={categoria.id}
                 type="button"
                 aria-current={categoriaActiva === categoria.id ? 'true' : undefined}
-                className={`border-b-2 py-2 text-sm font-semibold capitalize transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${
+                className={`border-b-2 py-2 text-sm font-semibold capitalize transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${
                   categoriaActiva === categoria.id
-                    ? 'border-[#ffb067] text-white'
-                    : 'border-transparent text-white/80 hover:border-white/40 hover:text-white'
+                    ? 'border-[var(--vcm-orange)]'
+                    : 'border-transparent opacity-80 hover:border-current hover:opacity-100'
                 }`}
                 onClick={() => {
                   setCategoriaActiva(categoria.id);
@@ -297,7 +297,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               id="tienda-busqueda"
               type="search"
               placeholder="Buscar polerones, llaveros, libretas…"
-              className="h-11 w-full rounded-xl border border-transparent bg-white pl-11 pr-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-[#ffb067] focus:ring-4 focus:ring-[#ffb067]/30"
+              className="h-11 w-full rounded-[var(--radius)] border border-[var(--vcm-chip-border)] bg-white pl-11 pr-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-[var(--vcm-orange)] focus:ring-4 focus:ring-[var(--vcm-orange)]/30"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
@@ -306,9 +306,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
           <div className="ml-auto flex items-center gap-2.5 lg:ml-0">
             <button
               type="button"
-              className={`grid h-11 w-11 place-items-center rounded-xl border bg-white transition hover:bg-slate-100 ${
-                categoriaActiva === 'favoritos' ? 'border-pink-400 text-pink-500' : 'border-transparent text-slate-800'
-              }`}
+              className="vcm-iconbtn"
               aria-label={`Favoritos (${favoritos.length})`}
               aria-pressed={categoriaActiva === 'favoritos'}
               onClick={handleFavoritos}
@@ -320,7 +318,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
 
             <button
               type="button"
-              className="relative flex h-11 items-center gap-2 rounded-xl bg-[#c2570c] px-4 text-sm font-bold text-white transition hover:bg-[#a84a0a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2570c]"
+              className="vcm-btn vcm-btn--primary relative gap-2 px-4 text-sm"
               aria-label={`Carrito (${carrito.cantidadTotal})`}
               onClick={handleCarrito}
             >
@@ -330,7 +328,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               </svg>
               <span className="max-sm:hidden">Carrito</span>
               {carrito.cantidadTotal > 0 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[11px] font-extrabold text-[#a84a0a]" aria-hidden="true">
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--vcm-navy)] px-1 text-[11px] font-extrabold text-white" aria-hidden="true">
                   {carrito.cantidadTotal}
                 </span>
               )}
@@ -338,7 +336,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
 
             <button
               type="button"
-              className="grid h-11 w-11 place-items-center rounded-full border border-transparent bg-white text-lg text-slate-800 transition hover:bg-slate-100"
+              className="vcm-iconbtn text-lg"
               onClick={onToggleTema}
               aria-label={tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
               title={tema === 'dark' ? 'Modo claro' : 'Modo oscuro'}
@@ -363,53 +361,52 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
       <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
         {/* ───────── Hero ───────── */}
         <section className="grid gap-5 pt-8 lg:grid-cols-[1.4fr_1fr]" aria-label="Bienvenida">
-          <div className="flex min-h-[300px] flex-col justify-center gap-4 rounded-3xl bg-[#0f3d66] p-8 text-white sm:p-12 dark:bg-[#0b2a47]">
-            <span className="text-[13px] font-bold uppercase tracking-wider text-[#ffc58a]">Merchandising oficial · UCN Coquimbo</span>
-            <h1 className="text-[2rem] font-extrabold leading-[1.1] sm:text-[2.75rem]">Lleva la UCN contigo, todos los días.</h1>
-            <p className="max-w-[460px] text-base leading-relaxed text-[#cfe0f1]">
-              Polerones, accesorios y papelería oficial para toda la comunidad universitaria.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-3">
-              <button
-                type="button"
-                className="h-12 rounded-xl bg-[#c2570c] px-6 text-[15px] font-bold text-white transition hover:bg-[#a84a0a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                onClick={explorarProductos}
-              >
-                Ver catálogo
-              </button>
-              {destacado && precioDesdeDestacado !== null && (
-                <button
-                  type="button"
-                  className="h-12 rounded-xl border border-[#6f95bb] px-6 text-[15px] font-bold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                  onClick={() => {
-                    setCategoriaActiva(destacado.categoria);
-                    explorarProductos();
-                  }}
-                >
-                  {destacado.categoria} desde {formatearCLP(precioDesdeDestacado)}
+          <div className="vcm-hero flex min-h-[300px] flex-col justify-center p-8 sm:p-12">
+            <BrandBlocks variant="right" />
+            <div className="vcm-hero__content flex flex-col gap-4">
+              <span className="vcm-eyebrow">Merchandising oficial · UCN Coquimbo</span>
+              <h1 className="max-w-[30rem] text-[2rem] font-extrabold leading-[1.1] sm:text-[2.75rem]">Lleva la UCN contigo, todos los días.</h1>
+              <p className="max-w-[460px] text-base leading-relaxed opacity-90">
+                Polerones, accesorios y papelería oficial para toda la comunidad universitaria.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-3">
+                <button type="button" className="vcm-btn vcm-btn--primary h-12 px-6" onClick={explorarProductos}>
+                  Ver catálogo
                 </button>
-              )}
+                {destacado && precioDesdeDestacado !== null && (
+                  <button
+                    type="button"
+                    className="vcm-btn vcm-btn--ghost h-12 px-6"
+                    onClick={() => {
+                      setCategoriaActiva(destacado.categoria);
+                      explorarProductos();
+                    }}
+                  >
+                    {destacado.categoria} desde {formatearCLP(precioDesdeDestacado)}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3.5 rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+          <div className="vcm-card group flex flex-col gap-3.5 p-5 transition duration-200 hover:-translate-y-1 hover:shadow-lg">
             {destacado ? (
               <>
                 <button
                   type="button"
-                  className={`relative grid min-h-[170px] flex-1 place-items-center overflow-hidden rounded-2xl ${fondoPorCategoria[categoriaProducto(destacado.categoria)]}`}
+                  className="vcm-gradient-bg relative grid min-h-[170px] flex-1 place-items-center overflow-hidden rounded-[var(--radius)]"
                   onClick={() => navigate(`/producto/${destacado.codigoProducto}`)}
                   aria-label={`Ver ${destacado.nombre}`}
                 >
-                  <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#0f3d66]">Destacado</span>
-                  <img src={destacado.imagen} alt="" className="h-full max-h-[220px] w-full object-contain p-2" />
+                  <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[var(--vcm-navy)]">Destacado</span>
+                  <img src={destacado.imagen} alt="" className="h-full max-h-[220px] w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105" />
                 </button>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[15px] font-bold">{destacado.nombre}</p>
-                    <p className="text-[13px] text-slate-600 dark:text-slate-400">{destacado.categoria}</p>
+                    <p className="text-[13px] text-[var(--text-soft)]">{destacado.categoria}</p>
                   </div>
-                  <p className="text-xl font-extrabold text-[#0f3d66] dark:text-blue-300">{formatearCLP(destacado.precio)}</p>
+                  <p className="text-xl font-extrabold text-[var(--vcm-price)]">{formatearCLP(destacado.precio)}</p>
                 </div>
               </>
             ) : (
@@ -434,10 +431,10 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               </button>
             ))}
           </nav>
-          <label className="ml-auto flex items-center gap-2 text-[13px] text-slate-600 dark:text-slate-400">
+          <label className="ml-auto flex items-center gap-2 text-[13px] text-[var(--text-soft)]">
             Ordenar
             <select
-              className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="vcm-select"
               value={orden}
               onChange={(e) => setOrden(e.target.value as Orden)}
             >
@@ -453,7 +450,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
           <div className="mb-4 flex items-baseline gap-3">
             <h2 id="catalogo-titulo" className="text-2xl font-extrabold">Catálogo</h2>
             {!cargandoProductos && !errorProductos && (
-              <p className="text-sm text-slate-600 dark:text-slate-400" aria-live="polite">
+              <p className="text-sm text-[var(--text-soft)]" aria-live="polite">
                 {productosFiltrados.length} {productosFiltrados.length === 1 ? 'producto' : 'productos'}
               </p>
             )}
@@ -464,7 +461,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               <div className="ucn-skeleton h-[360px] rounded-2xl" key={`producto-cargando-${indice}`} aria-hidden="true" />
             ))}
             {errorProductos && (
-              <p className="col-span-full rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-800" role="alert">
+              <p className="vcm-alert col-span-full px-5 py-4" role="alert">
                 No fue posible cargar el catálogo. Intenta actualizar la página en unos momentos.
               </p>
             )}
@@ -479,9 +476,9 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               return (
                 <article
                   key={producto.codigoProducto}
-                  className={`flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 ${agotado ? 'opacity-80' : ''}`}
+                  className={`vcm-card vcm-product ${fondoPorCategoria[tipo]} flex flex-col overflow-hidden transition duration-200 hover:-translate-y-1 hover:shadow-lg ${agotado ? 'opacity-80' : ''}`}
                 >
-                  <div className={`relative ${fondoPorCategoria[tipo]}`}>
+                  <div className="vcm-media relative">
                     <button
                       type="button"
                       className="flex h-[210px] w-full items-center justify-center"
@@ -494,12 +491,12 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                         className={`h-full w-full object-contain p-3 ${agotado ? 'grayscale' : ''}`}
                       />
                     </button>
-                    <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#0f3d66]">
+                    <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[var(--vcm-navy)]">
                       {producto.categoria}
                     </span>
                     <span
                       className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold text-white ${
-                        agotado ? 'bg-slate-600' : pocas ? 'bg-[#a35200]' : 'bg-[#1a6b50]'
+                        agotado ? 'bg-[#4B5563]' : pocas ? 'bg-[#a35200]' : 'bg-[#1a6b50]'
                       }`}
                     >
                       {agotado ? 'Agotado' : pocas ? `Últimas ${producto.stock}` : `${producto.stock} unidades`}
@@ -517,7 +514,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                       </button>
                       <button
                         type="button"
-                        className={`-mr-1 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full transition hover:bg-slate-100 dark:hover:bg-slate-800 ${esFavorito ? 'text-pink-500' : 'text-slate-500'}`}
+                        className={`-mr-1 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full transition hover:bg-[var(--primary-soft)] ${esFavorito ? 'text-[var(--vcm-red)]' : 'text-[var(--text-soft)]'}`}
                         aria-label={esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
                         aria-pressed={esFavorito}
                         onClick={() => handleToggleFavorito(producto.codigoProducto)}
@@ -528,18 +525,14 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                       </button>
                     </div>
 
-                    <p className={`text-xl font-extrabold ${agotado ? 'text-slate-500' : 'text-[#0f3d66] dark:text-blue-300'}`}>
+                    <p className={`text-xl font-extrabold ${agotado ? 'text-[var(--text-muted)]' : 'text-[var(--vcm-price)]'}`}>
                       {formatearCLP(producto.precio)}
                     </p>
 
                     {/* Los productos con talla/color se eligen en el detalle */}
                     <button
                       type="button"
-                      className={`storefront-add-button mt-auto h-11 w-full rounded-[10px] text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f3d66] ${
-                        agotado
-                          ? 'cursor-not-allowed bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                          : 'bg-[#0f3d66] text-white hover:bg-[#0b2f4f] dark:bg-blue-600 dark:hover:bg-blue-500'
-                      }`}
+                      className="vcm-btn vcm-btn--primary mt-auto w-full"
                       onClick={() => (eligeVariante ? irAlDetalle() : handleAgregarAlCarrito(producto))}
                       disabled={agotado}
                     >
@@ -551,9 +544,9 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
             })}
 
             {!cargandoProductos && !errorProductos && productosFiltrados.length === 0 && (
-              <div className="col-span-full flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
-                <p className="font-semibold text-slate-700 dark:text-slate-300">No encontramos productos con esos filtros.</p>
-                <button type="button" className="ucn-btn-ghost" onClick={limpiarFiltros}>
+              <div className="vcm-card col-span-full flex flex-col items-center gap-3 px-6 py-10 text-center">
+                <p className="font-semibold text-[var(--text-soft)]">No encontramos productos con esos filtros.</p>
+                <button type="button" className="vcm-btn vcm-btn--surface" onClick={limpiarFiltros}>
                   Limpiar búsqueda y filtros
                 </button>
               </div>
@@ -572,24 +565,28 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
         {/* ───────── Confianza ───────── */}
         <section className="grid gap-5 pb-4 pt-14 md:grid-cols-3" aria-label="Información de la tienda">
           {[
-            { titulo: 'Producto oficial UCN', texto: 'Merchandising con identidad institucional.' },
-            { titulo: 'Stock actualizado', texto: 'Ves la disponibilidad real de cada producto.' },
-            { titulo: 'Retiro en sede Coquimbo', texto: 'Completa tu compra y coordina el retiro.' },
+            { titulo: 'Producto oficial UCN', texto: 'Merchandising con identidad institucional.', tono: 'vcm-tone--vestuario' },
+            { titulo: 'Stock actualizado', texto: 'Ves la disponibilidad real de cada producto.', tono: 'vcm-tone--accesorios' },
+            { titulo: 'Retiro en sede Coquimbo', texto: 'Completa tu compra y coordina el retiro.', tono: 'vcm-tone--default' },
           ].map((item) => (
-            <div key={item.titulo} className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+            <div key={item.titulo} className={`vcm-card ${item.tono} p-6`} style={{ borderLeft: '4px solid var(--m)' }}>
               <p className="text-base font-bold">{item.titulo}</p>
-              <p className="mt-1.5 text-[13px] text-slate-600 dark:text-slate-400">{item.texto}</p>
+              <p className="mt-1.5 text-[13px] text-[var(--text-soft)]">{item.texto}</p>
             </div>
           ))}
         </section>
       </div>
 
       {/* ───────── Footer ───────── */}
-      <footer className="mt-14 bg-[#0f3d66] text-[#cfe0f1] dark:bg-[#0b2a47]">
-        <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-4 py-9 text-sm sm:px-8">
-          <p className="text-base font-extrabold text-white">Tienda UCN</p>
-          <p>Universidad Católica del Norte · Sede Coquimbo</p>
+      <footer className="vcm-footer mt-14">
+        <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-x-8 gap-y-5 px-4 py-9 sm:px-8">
+          <BrandLockup height={44} partner={<img src={escudoUcn} alt="Universidad Católica del Norte" />} />
+          <div className="text-sm sm:text-right">
+            <p className="text-base font-extrabold">Tienda UCN</p>
+            <p>Universidad Católica del Norte · Sede Coquimbo</p>
+          </div>
         </div>
+        <BrandPattern cols={20} height={56} seed={5} />
       </footer>
     </main>
   );

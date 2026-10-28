@@ -1,6 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;0,800;1,400&display=swap');
 @import "tailwindcss";
 @import "./styles/variables.css";
+@import "./styles/brand-vcm.css";
 
 /* =========================================================
    PALETA UCN — Universidad Católica del Norte, Chile
@@ -103,7 +104,7 @@
 * { box-sizing: border-box; }
 html {
   scroll-behavior: auto;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-brand, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
 }
 body {

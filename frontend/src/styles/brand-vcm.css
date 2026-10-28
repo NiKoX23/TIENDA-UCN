@@ -1,0 +1,631 @@
+/* =========================================================
+   MARCA — Dirección General de Vinculación con el Medio (VcM, UCN)
+   Fuente: manual-marca-VcM.pdf (23 págs.)
+
+   Se importa desde index.css (después de variables.css).
+   Contiene: 1) tokens de Tailwind (@theme)  2) paleta + gradientes
+   3) tipografía  4) mapeo de las variables antiguas a la marca,
+   por tema  5) utilidades de marca (logo, figuras, gradiente).
+
+   Las reglas de tema usan `html:root…` (mayor especificidad) para
+   ganar a los bloques `:root` / `html[data-theme]` de index.css sin
+   depender del orden de carga.
+   ========================================================= */
+
+/* ---------- 1) Tailwind v4: utilidades bg-vcm-*, text-vcm-*, font-brand ---------- */
+@theme {
+  --color-vcm-navy:   #023359;
+  --color-vcm-blue:   #215fa8;
+  --color-vcm-cyan:   #00b0de;
+  --color-vcm-red:    #f14e23;
+  --color-vcm-orange: #ffa829;
+  --color-vcm-pastel: #ede7d8;
+
+  --font-brand: "Karmina Sans", "Source Sans 3", system-ui, sans-serif;
+}
+
+/* ---------- 2) Paleta base (idéntica en ambos temas) ---------- */
+:root {
+  --vcm-navy:   #023359;   /* "negro" del tema oscuro */
+  --vcm-blue:   #215fa8;
+  --vcm-cyan:   #00b0de;
+  --vcm-red:    #f14e23;
+  --vcm-orange: #ffa829;
+  --vcm-pastel: #ede7d8;
+  /* Derivado de la imagen del gradiente claro (el manual no da HEX del amarillo). */
+  --vcm-yellow: #ffc83d;
+  --vcm-white:  #ffffff;
+
+  /* Gradientes (manual, pág. "Paleta cromática") */
+  --vcm-gradient-dark:
+    radial-gradient(120% 100% at 0% 50%, var(--vcm-cyan) 0%, transparent 65%),
+    linear-gradient(to bottom, var(--vcm-navy) 0%, var(--vcm-blue) 100%);
+  --vcm-gradient-light:
+    radial-gradient(90% 90% at 0% 0%,     var(--vcm-orange) 0%, transparent 70%),
+    radial-gradient(90% 90% at 0% 100%,   var(--vcm-yellow) 0%, transparent 70%),
+    radial-gradient(90% 90% at 100% 0%,   var(--vcm-red)    0%, transparent 70%),
+    radial-gradient(90% 90% at 100% 100%, var(--vcm-pastel) 0%, transparent 70%),
+    var(--vcm-pastel);
+
+  /* Logo: x = diámetro interior de la "C" (≈ 0.45 × alto del logo, ESTIMADO).
+     Separación mínima con otros logos = 2x. Validar con la Dirección. */
+  --vcm-logo-x: 0.45;
+  --vcm-logo-gap: calc(var(--vcm-logo-x) * 2);   /* en múltiplos del alto del logo */
+
+  /* Tipografía */
+  --font-brand: "Karmina Sans", "Source Sans 3", system-ui, sans-serif;
+
+  /* Geometría: el manual usa bloques rectos; radios reducidos. */
+  --radius:    8px;
+  --radius-sm: 4px;
+  --radius-lg: 12px;
+}
+
+/*
+  Cuando tengas los archivos de Karmina Sans con licencia web,
+  coloca los .woff2 en public/fonts/ y descomenta:
+
+  @font-face { font-family: "Karmina Sans"; font-weight: 300; font-style: normal; font-display: swap; src: url("/fonts/KarminaSans-Light.woff2") format("woff2"); }
+  @font-face { font-family: "Karmina Sans"; font-weight: 400; font-style: normal; font-display: swap; src: url("/fonts/KarminaSans-Regular.woff2") format("woff2"); }
+  @font-face { font-family: "Karmina Sans"; font-weight: 400; font-style: italic; font-display: swap; src: url("/fonts/KarminaSans-Italic.woff2") format("woff2"); }
+  @font-face { font-family: "Karmina Sans"; font-weight: 600; font-style: normal; font-display: swap; src: url("/fonts/KarminaSans-SemiBold.woff2") format("woff2"); }
+  @font-face { font-family: "Karmina Sans"; font-weight: 700; font-style: normal; font-display: swap; src: url("/fonts/KarminaSans-Bold.woff2") format("woff2"); }
+  @font-face { font-family: "Karmina Sans"; font-weight: 800; font-style: normal; font-display: swap; src: url("/fonts/KarminaSans-ExtraBold.woff2") format("woff2"); }
+*/
+
+/* ---------- 3) Tipografía global ---------- */
+html:root {
+  font-family: var(--font-brand);
+}
+
+/* ---------- 4a) TEMA OSCURO (por defecto): fondo azul oscuro ---------- */
+html:root:not([data-theme='light']) {
+  --bg-950: var(--vcm-navy);
+  --bg-900: color-mix(in srgb, var(--vcm-navy) 84%, var(--vcm-blue));
+  --bg-800: color-mix(in srgb, var(--vcm-navy) 66%, var(--vcm-blue));
+  --surface:        rgba(33, 95, 168, 0.18);
+  --surface-strong: color-mix(in srgb, var(--vcm-navy) 78%, var(--vcm-blue));
+  --card:           color-mix(in srgb, var(--vcm-navy) 86%, var(--vcm-blue));
+  --border:         rgba(0, 176, 222, 0.22);
+  --border-strong:  rgba(0, 176, 222, 0.55);
+
+  --text:       #ffffff;
+  --text-soft:  color-mix(in srgb, #ffffff 82%, var(--vcm-cyan));
+  --text-muted: color-mix(in srgb, #ffffff 58%, var(--vcm-blue));
+
+  --primary:       var(--vcm-cyan);
+  --primary-dark:  var(--vcm-blue);
+  --primary-soft:  rgba(0, 176, 222, 0.14);
+  --accent:        var(--vcm-orange);
+  --accent-light:  color-mix(in srgb, var(--vcm-orange) 70%, #ffffff);
+  --accent-soft:   rgba(255, 168, 41, 0.16);
+
+  /* Alias heredados (index.css los usa en botones, filtros, hero…) */
+  --ucn-blue:        var(--vcm-cyan);
+  --ucn-blue-strong: var(--vcm-blue);
+  --ucn-blue-dark:   var(--vcm-blue);
+  --ucn-blue-deeper: var(--vcm-navy);
+  --ucn-earth:       var(--vcm-orange);
+  --ucn-earth-light: color-mix(in srgb, var(--vcm-orange) 70%, #ffffff);
+  --ucn-earth-dark:  var(--vcm-red);
+  --ucn-gold:        var(--vcm-orange);
+  --ucn-sand:        var(--vcm-pastel);
+
+  --focus-ring: rgba(0, 176, 222, 0.55);
+  --shadow-blue:  0 12px 32px rgba(0, 176, 222, 0.22);
+  --shadow-earth: 0 12px 32px rgba(255, 168, 41, 0.22);
+
+  --vcm-gradient: var(--vcm-gradient-dark);
+  --vcm-on-gradient: #ffffff;
+}
+
+/* ---------- 4b) TEMA CLARO: fondo blanco, paleta rojo/naranja/pastel ---------- */
+html:root[data-theme='light'] {
+  --bg-950: #ffffff;
+  --bg-900: color-mix(in srgb, var(--vcm-pastel) 45%, #ffffff);
+  --bg-800: var(--vcm-pastel);
+  --surface:        #ffffff;
+  --surface-strong: #ffffff;
+  --card:           #ffffff;
+  --border:         color-mix(in srgb, var(--vcm-pastel) 70%, var(--vcm-navy) 12%);
+  --border-strong:  color-mix(in srgb, var(--vcm-navy) 40%, transparent);
+
+  --text:       var(--vcm-navy);
+  --text-soft:  color-mix(in srgb, var(--vcm-navy) 78%, #ffffff);
+  --text-muted: color-mix(in srgb, var(--vcm-navy) 66%, #ffffff);
+
+  /* Rojo #f14e23 sobre blanco da 3.6:1 → solo para textos grandes/acentos;
+     para texto pequeño se usa el tono oscurecido. */
+  --primary:       color-mix(in srgb, var(--vcm-red) 82%, #000000);
+  --primary-dark:  color-mix(in srgb, var(--vcm-red) 68%, #000000);
+  --primary-soft:  rgba(241, 78, 35, 0.10);
+  --accent:        var(--vcm-orange);
+  --accent-light:  color-mix(in srgb, var(--vcm-orange) 60%, #ffffff);
+  --accent-soft:   rgba(255, 168, 41, 0.18);
+
+  --ucn-blue:        var(--vcm-red);
+  --ucn-blue-strong: color-mix(in srgb, var(--vcm-red) 82%, #000000);
+  --ucn-blue-dark:   color-mix(in srgb, var(--vcm-red) 82%, #000000);
+  --ucn-blue-deeper: var(--vcm-navy);
+  --ucn-earth:       var(--vcm-orange);
+  --ucn-earth-light: color-mix(in srgb, var(--vcm-orange) 60%, #ffffff);
+  --ucn-earth-dark:  color-mix(in srgb, var(--vcm-orange) 70%, #000000);
+  --ucn-gold:        var(--vcm-orange);
+  --ucn-sand:        var(--vcm-pastel);
+
+  --focus-ring: rgba(2, 51, 89, 0.45);
+  --shadow-soft:  0 8px 30px rgba(2, 51, 89, 0.10);
+  --shadow-blue:  0 8px 24px rgba(241, 78, 35, 0.22);
+  --shadow-earth: 0 8px 24px rgba(255, 168, 41, 0.28);
+
+  --vcm-gradient: var(--vcm-gradient-light);
+  --vcm-on-gradient: var(--vcm-navy);
+}
+
+/* ---------- 5) Utilidades de marca ---------- */
+
+/* Fondo con el gradiente del tema activo */
+.vcm-gradient-bg {
+  background: var(--vcm-gradient);
+  color: var(--vcm-on-gradient);
+}
+
+/* Logo VcM: variante automática según tema */
+.vcm-logo { display: block; height: var(--vcm-logo-h, 48px); width: auto; }
+.vcm-logo--auto-dark,
+.vcm-logo--auto-light { display: none; }
+html:root:not([data-theme='light']) .vcm-logo--auto-dark { display: block; }
+html:root[data-theme='light']        .vcm-logo--auto-light { display: block; }
+
+/* Convivencia con otro logo: a la derecha, mismo tamaño visual,
+   centrados verticalmente, separación mínima 2x. */
+.vcm-lockup {
+  --vcm-logo-h: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--vcm-logo-h) * var(--vcm-logo-gap));
+}
+.vcm-lockup > img:not(.vcm-logo),
+.vcm-lockup > svg { height: var(--vcm-logo-h); width: auto; }
+
+/* Zona de protección alrededor del logo (provisional: 0.25 × alto) */
+.vcm-logo-safe { padding: calc(var(--vcm-logo-h, 48px) * 0.25); }
+
+/* Figuras: patrón repetible, colores de ambas paletas */
+.vcm-figures { display: grid; line-height: 0; }
+.vcm-figures svg { display: block; width: 100%; height: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vcm-gradient-bg { background-attachment: scroll; }
+}
+
+/* =========================================================
+   FASE 2 — Componentes de marca (tienda, login, registro)
+   Clases vcm-*: reemplazan las combinaciones slate/violet y los
+   colores fijos (#c2570c, #0f3d66…) de Tienda, Login y Register.
+   ========================================================= */
+
+/* ---- Tokens por tema ---- */
+html:root:not([data-theme='light']) {
+  --vcm-header-bg: color-mix(in srgb, var(--vcm-navy) 88%, #000000);
+  --vcm-header-fg: #ffffff;
+  --vcm-bar: linear-gradient(90deg, var(--vcm-cyan), var(--vcm-blue));
+  --vcm-hero-bg: var(--vcm-blue);
+  --vcm-hero-fg: #ffffff;
+  --vcm-price: var(--vcm-cyan);
+  --vcm-footer-bg: color-mix(in srgb, var(--vcm-navy) 88%, #000000);
+  --vcm-footer-fg: color-mix(in srgb, #ffffff 82%, var(--vcm-cyan));
+  --vcm-chip-bg: transparent;
+  --vcm-chip-border: var(--border-strong);
+  --vcm-chip-fg: var(--text);
+  --vcm-input-bg: color-mix(in srgb, var(--vcm-navy) 72%, #000000);
+  --vcm-tone-1: var(--vcm-cyan);
+  --vcm-tone-2: var(--vcm-orange);
+  --vcm-tone-3: var(--vcm-blue);
+  --vcm-tone-4: var(--vcm-cyan);
+}
+html:root[data-theme='light'] {
+  --vcm-header-bg: #ffffff;
+  --vcm-header-fg: var(--vcm-navy);
+  --vcm-bar: linear-gradient(90deg, var(--vcm-orange), var(--vcm-red));
+  --vcm-hero-bg: var(--vcm-pastel);
+  --vcm-hero-fg: var(--vcm-navy);
+  --vcm-price: var(--vcm-navy);
+  --vcm-footer-bg: var(--vcm-pastel);
+  --vcm-footer-fg: var(--vcm-navy);
+  --vcm-chip-bg: #ffffff;
+  --vcm-chip-border: color-mix(in srgb, var(--vcm-navy) 28%, transparent);
+  --vcm-chip-fg: var(--vcm-navy);
+  --vcm-input-bg: #ffffff;
+  --vcm-tone-1: var(--vcm-red);
+  --vcm-tone-2: var(--vcm-orange);
+  --vcm-tone-3: var(--vcm-navy);
+  --vcm-tone-4: var(--vcm-red);
+}
+
+/* ---- Página: gana al fondo fijo #171719 de .storefront-page ---- */
+html:root .storefront-page {
+  background: var(--bg-950);
+  color: var(--text);
+}
+
+/* ---- Botones ---- */
+.vcm-btn {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+.vcm-btn--primary { background: var(--vcm-orange); color: var(--vcm-navy); }
+.vcm-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--vcm-orange) 84%, #ffffff);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-earth);
+}
+.vcm-btn--ghost { background: transparent; color: inherit; border-color: currentColor; }
+.vcm-btn--ghost:hover:not(:disabled) { background: color-mix(in srgb, currentColor 12%, transparent); }
+.vcm-btn--surface { background: var(--card); color: var(--text); border-color: var(--border-strong); }
+.vcm-btn--surface:hover:not(:disabled) { border-color: var(--vcm-orange); }
+.vcm-btn:disabled {
+  cursor: not-allowed;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+  border-color: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ---- Filtros y selectores ---- */
+.vcm-chip {
+  height: 44px;
+  white-space: nowrap;
+  padding: 0 1.25rem;
+  border: 1.5px solid var(--vcm-chip-border);
+  border-radius: var(--radius);
+  background: var(--vcm-chip-bg);
+  color: var(--vcm-chip-fg);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+.vcm-chip:hover { border-color: var(--vcm-orange); }
+.vcm-chip--active,
+.vcm-chip--active:hover { background: var(--vcm-orange); border-color: var(--vcm-orange); color: var(--vcm-navy); }
+
+.vcm-select {
+  height: 44px;
+  padding: 0 0.75rem;
+  border: 1.5px solid var(--vcm-chip-border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* ---- Campos (ganan a `html[data-theme='light'] input { … !important }`) ---- */
+.vcm-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--vcm-chip-border);
+  border-radius: var(--radius);
+  background: var(--vcm-input-bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.vcm-input::placeholder { color: var(--text-muted); }
+.vcm-input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--focus-ring); }
+html:root[data-theme='light'] input.vcm-input { background: var(--vcm-input-bg) !important; color: var(--text) !important; }
+html:root[data-theme='light'] input.vcm-input::placeholder { color: var(--text-muted) !important; }
+
+/* ---- Tarjetas, avisos y logo de tonos ---- */
+.vcm-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+}
+.vcm-alert {
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid var(--vcm-red);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--vcm-red) 12%, var(--card));
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.vcm-tone--vestuario { --m: var(--vcm-tone-1); }
+.vcm-tone--accesorios { --m: var(--vcm-tone-2); }
+.vcm-tone--papeleria { --m: var(--vcm-tone-3); }
+.vcm-tone--default { --m: var(--vcm-tone-4); }
+.vcm-product { border-top: 4px solid var(--m); }
+.vcm-media { background: color-mix(in srgb, var(--m) 16%, var(--card)); }
+
+/* ---- Encabezado, hero y pie ---- */
+.vcm-header { background: var(--vcm-header-bg); color: var(--vcm-header-fg); border-bottom: 1px solid var(--border); }
+.vcm-bar { height: 4px; background: var(--vcm-bar); }
+.vcm-iconbtn {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1.5px solid var(--vcm-chip-border);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--vcm-navy);
+  transition: border-color 0.16s ease;
+}
+.vcm-iconbtn:hover { border-color: var(--vcm-orange); }
+
+.vcm-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--vcm-hero-bg);
+  color: var(--vcm-hero-fg);
+  border-radius: var(--radius-lg);
+}
+.vcm-hero__content { position: relative; z-index: 1; }
+.vcm-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.vcm-eyebrow::before { content: ''; width: 28px; height: 4px; background: var(--vcm-orange); }
+html:root[data-theme='light'] .vcm-eyebrow::before { background: var(--vcm-red); }
+
+.vcm-footer { background: var(--vcm-footer-bg); color: var(--vcm-footer-fg); }
+
+/* ---- Login / registro ---- */
+.vcm-auth {
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow: hidden;
+  padding: 6rem 1.25rem 7rem;
+  background: var(--vcm-gradient);
+  color: var(--text);
+}
+.vcm-auth-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 28rem;
+  padding: 2rem;
+  box-shadow: 0 24px 60px rgba(2, 51, 89, 0.35);
+}
+@media (max-width: 480px) { .vcm-auth-card { padding: 1.5rem; } }
+
+.vcm-iconbtn[aria-pressed='true'] { border-color: var(--vcm-red); color: var(--vcm-red); }
+
+/* =========================================================
+   FASE 3 — Detalle de producto, carrito, perfil, panel admin
+   Los selectores `html:root:root` ganan a `html[data-theme='light']`
+   y a las reglas con !important de index.css sin depender del orden.
+   ========================================================= */
+
+/* ---- Animaciones de entrada ---- */
+@keyframes vcm-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes vcm-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vcm-pop { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes vcm-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes vcm-spin { to { transform: rotate(360deg); } }
+
+/* Los bloques de color aparecen escalonados (hero, login, panel) */
+.vcm-blocks > span { animation: vcm-pop 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.vcm-blocks > span:nth-child(2) { animation-delay: 0.08s; }
+.vcm-blocks > span:nth-child(3) { animation-delay: 0.16s; }
+.vcm-blocks > span:nth-child(4) { animation-delay: 0.24s; }
+.vcm-blocks > span:nth-child(5) { animation-delay: 0.32s; }
+.vcm-blocks > span:nth-child(6) { animation-delay: 0.40s; }
+.vcm-blocks > span:nth-child(7) { animation-delay: 0.48s; }
+.vcm-blocks > span:nth-child(8) { animation-delay: 0.56s; }
+
+.vcm-tab-panel { animation: vcm-fade 0.3s ease both; }
+
+/* Spinner de carga */
+.vcm-spinner {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.vcm-spinner::before {
+  content: '';
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid var(--border-strong);
+  border-top-color: var(--vcm-orange);
+  border-right-color: var(--primary);
+  border-radius: 50%;
+  animation: vcm-spin 0.8s linear infinite;
+}
+
+/* ---- Página genérica y avisos ---- */
+.vcm-page { min-height: 100vh; background: var(--bg-950); color: var(--text); }
+.vcm-alert--success {
+  border-color: #2f7d4a;
+  background: color-mix(in srgb, #2f7d4a 14%, var(--card));
+}
+
+/* ---- Detalle de producto ---- */
+html:root:root:not([data-theme='light']) .storefront-product-detail-page {
+  --detail-page-background: var(--bg-950);
+  --detail-surface: var(--card);
+  --detail-outline: var(--border);
+  --detail-secondary: var(--text-soft);
+  --detail-muted: var(--text-muted);
+}
+html:root:root[data-theme='light'] .storefront-product-detail-page {
+  --detail-page-background: var(--bg-900);
+  --detail-surface: #ffffff;
+  --detail-outline: var(--border);
+  --detail-secondary: var(--text-soft);
+  --detail-muted: var(--text-muted);
+}
+html:root:root .storefront-detail-header {
+  background: var(--vcm-header-bg) !important;
+  color: var(--vcm-header-fg);
+  border-bottom-color: var(--border) !important;
+  box-shadow: 0 6px 18px rgba(2, 51, 89, 0.12);
+}
+html:root:root .storefront-detail-card {
+  border-radius: var(--radius-lg);
+  border-top: 4px solid var(--vcm-orange);
+  animation: vcm-rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+html:root:root .storefront-detail-media { border-radius: var(--radius); }
+html:root:root .storefront-detail-media--vestuario { --detail-media-tone: color-mix(in srgb, var(--vcm-tone-1) 18%, var(--detail-surface)); }
+html:root:root .storefront-detail-media--accesorios { --detail-media-tone: color-mix(in srgb, var(--vcm-tone-2) 18%, var(--detail-surface)); }
+html:root:root .storefront-detail-media--papeleria { --detail-media-tone: color-mix(in srgb, var(--vcm-tone-3) 18%, var(--detail-surface)); }
+html:root:root .storefront-detail-media--default { --detail-media-tone: color-mix(in srgb, var(--vcm-tone-4) 18%, var(--detail-surface)); }
+html:root:root .storefront-detail-category { background: var(--primary-soft); color: var(--primary); border-radius: var(--radius-sm); }
+html:root:root .storefront-detail-price { color: var(--vcm-price); }
+html:root:root .storefront-detail-option--selected {
+  border-color: var(--vcm-orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--vcm-orange) 45%, transparent);
+}
+html:root:root .storefront-detail-swatch--selected { box-shadow: 0 0 0 2px var(--detail-surface), 0 0 0 4px var(--vcm-orange); }
+html:root:root .storefront-detail-quantity-button { background: var(--vcm-orange); color: var(--vcm-navy) !important; box-shadow: none; }
+html:root:root .storefront-detail-quantity-button:hover:not(:disabled) { background: color-mix(in srgb, var(--vcm-orange) 84%, #ffffff); }
+html:root:root .storefront-detail-quantity-button:disabled { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text-muted) !important; }
+html:root:root .storefront-add-button:not(:disabled) { background: var(--vcm-orange); color: var(--vcm-navy); }
+html:root:root .storefront-add-button:hover:not(:disabled) { background: color-mix(in srgb, var(--vcm-orange) 84%, #ffffff); }
+html:root:root .storefront-detail-add { border-radius: var(--radius); box-shadow: var(--shadow-earth); }
+html:root:root .storefront-detail-add:disabled { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text-muted) !important; }
+html:root:root .storefront-detail-zoom-hint { background: color-mix(in srgb, var(--vcm-navy) 90%, transparent); }
+/* "En stock" en verde pálido no se leía sobre blanco */
+html:root:root[data-theme='light'] .storefront-detail-stock--available { color: #1a6b50; }
+html:root:root[data-theme='light'] .storefront-detail-stock--empty { color: #a12d2d; }
+
+/* ---- Menú de usuario ---- */
+html:root:root .ucn-dropdown { background: var(--card); border-color: var(--border-strong); border-radius: var(--radius); }
+html:root:root .ucn-dropdown-item { color: var(--text); }
+html:root:root .ucn-dropdown-item:hover { background: var(--primary-soft); color: var(--text); }
+
+/* ---- Carrito ---- */
+html:root:root .cart-overlay { background: color-mix(in srgb, var(--vcm-navy) 62%, transparent); }
+html:root:root .cart-panel {
+  background: var(--bg-950);
+  color: var(--text);
+  border-left: 4px solid var(--vcm-orange);
+  animation: slide-left 0.22s ease both;
+}
+@keyframes slide-left { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+html:root:root .cart-header {
+  border-bottom-color: var(--border);
+  background: var(--vcm-header-bg) var(--vcm-bar) no-repeat top / 100% 4px;
+  color: var(--vcm-header-fg);
+}
+html:root:root .cart-count,
+html:root:root .cart-variant,
+html:root:root .cart-unit-price,
+html:root:root .cart-subtotal,
+html:root:root .cart-empty { color: var(--text-soft); }
+html:root:root .cart-close { background: var(--card); border-color: var(--border-strong); color: var(--text); border-radius: var(--radius-sm); }
+html:root:root .cart-close:hover { border-color: var(--vcm-orange); }
+html:root:root .cart-item { background: var(--card); border-color: var(--border); border-radius: var(--radius); }
+html:root:root .cart-image { background: color-mix(in srgb, var(--vcm-tone-1) 14%, var(--card)); border-radius: var(--radius-sm); }
+html:root:root .cart-remove { color: var(--text-soft); }
+html:root:root .cart-remove:hover { background: color-mix(in srgb, var(--vcm-red) 14%, transparent); color: var(--vcm-red); }
+html:root:root .cart-quantity { background: var(--vcm-input-bg); border-color: var(--vcm-chip-border); }
+html:root:root .cart-quantity button { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); }
+html:root:root .cart-quantity button:last-child { background: var(--vcm-orange); color: var(--vcm-navy); }
+html:root:root .cart-quantity input { color: var(--text) !important; }
+html:root:root .cart-line-total { color: var(--vcm-price); }
+html:root:root .cart-empty p,
+html:root:root .cart-total { color: var(--text); }
+html:root:root .cart-footer { border-top-color: var(--border); background: var(--card); }
+html:root:root .cart-subtotal { border-bottom-color: var(--border); }
+html:root:root .cart-checkout { background: var(--vcm-orange); color: var(--vcm-navy); border-radius: var(--radius); min-height: 44px; font-size: 14px; }
+html:root:root .cart-continue { border-color: var(--vcm-chip-border); color: var(--text); border-radius: var(--radius); min-height: 44px; font-size: 14px; }
+html:root:root .cart-checkout:disabled { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text-muted); opacity: 1; }
+
+/* ---- Panel de administración ---- */
+.vcm-admin-hero { border-radius: 0; }
+.vcm-admin-hero h1 { animation: vcm-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.vcm-admin-hero p { animation: vcm-rise 0.5s 0.08s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+.vcm-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.vcm-section-title::before { content: ''; width: 12px; height: 12px; background: var(--vcm-orange); }
+html:root[data-theme='light'] .vcm-section-title::before { background: var(--vcm-red); }
+
+.vcm-kpi {
+  position: relative;
+  overflow: hidden;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--m, var(--vcm-tone-1));
+  border-radius: var(--radius);
+  background: var(--card);
+  animation: vcm-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.vcm-kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-blue); border-color: var(--m, var(--vcm-tone-1)); }
+.vcm-kpi:nth-child(4n + 1) { --m: var(--vcm-tone-1); }
+.vcm-kpi:nth-child(4n + 2) { --m: var(--vcm-tone-2); }
+.vcm-kpi:nth-child(4n + 3) { --m: var(--vcm-tone-3); }
+.vcm-kpi:nth-child(4n + 4) { --m: var(--vcm-red); }
+.vcm-kpi:nth-child(2) { animation-delay: 0.05s; }
+.vcm-kpi:nth-child(3) { animation-delay: 0.10s; }
+.vcm-kpi:nth-child(4) { animation-delay: 0.15s; }
+.vcm-kpi:nth-child(5) { animation-delay: 0.20s; }
+.vcm-kpi:nth-child(6) { animation-delay: 0.25s; }
+.vcm-kpi:nth-child(7) { animation-delay: 0.30s; }
+.vcm-kpi__label { font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-soft); }
+.vcm-kpi__value { margin-top: 0.25rem; font-size: 1.375rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.vcm-kpi--accent .vcm-kpi__value { color: var(--vcm-price); }
+.vcm-kpi__bar { margin-top: 0.5rem; height: 6px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--text) 12%, transparent); }
+.vcm-kpi__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--m, var(--vcm-orange));
+  transform-origin: left;
+  animation: vcm-grow 0.9s 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.vcm-thead { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text-soft); }
+.vcm-input--sm { width: auto; min-width: 9rem; padding: 0.5rem 0.75rem; font-size: 0.75rem; }
+.vcm-select--sm { height: 36px; font-size: 0.75rem; }
+.vcm-btn--sm { min-height: 36px; padding: 0 0.875rem; font-size: 0.75rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vcm-blocks > span, .vcm-tab-panel, .vcm-kpi, .vcm-kpi__bar > span,
+  .vcm-admin-hero h1, .vcm-admin-hero p,
+  html:root:root .storefront-detail-card, html:root:root .cart-panel { animation: none; }
+}
+
+.vcm-btn--danger {
+  background: transparent;
+  color: color-mix(in srgb, var(--vcm-red) 78%, var(--text));
+  border-color: var(--vcm-red);
+}
+.vcm-btn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--vcm-red) 12%, transparent); }
