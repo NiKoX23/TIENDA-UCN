@@ -14,6 +14,13 @@ async function bootstrap() {
     credentials: true,
   });
 
-  await app.listen(process.env.BACKEND_PORT ?? 3000);
+  const port = Number(process.env.BACKEND_PORT ?? 3000);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(
+      `BACKEND_PORT debe ser un puerto TCP válido: ${process.env.BACKEND_PORT}`,
+    );
+  }
+
+  await app.listen(port, '0.0.0.0');
 }
-bootstrap();
+void bootstrap();

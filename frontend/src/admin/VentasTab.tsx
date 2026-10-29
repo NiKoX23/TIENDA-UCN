@@ -121,6 +121,35 @@ function agruparBoletas(registros: RegistroHistorialVenta[]): BoletaHistorial[] 
     });
 }
 
+interface ResultadoCargaVentas {
+    registros: RegistroHistorialVenta[] | null;
+    productos: ItemInventario[] | null;
+    errores: string[];
+}
+
+async function cargarRegistroYProductos(): Promise<ResultadoCargaVentas> {
+    const [ventas, inventario] = await Promise.allSettled([
+        listarRegistroVentas(),
+        listarInventario(),
+    ]);
+    const errores: string[] = [];
+
+    if (ventas.status === 'rejected') {
+        errores.push(`No se pudo cargar el registro de ventas: ${mensajeError(ventas.reason)}`);
+    }
+    if (inventario.status === 'rejected') {
+        errores.push(`No se pudo cargar el inventario: ${mensajeError(inventario.reason)}`);
+    }
+
+    return {
+        registros: ventas.status === 'fulfilled' ? convertirRegistros(ventas.value) : null,
+        productos: inventario.status === 'fulfilled'
+            ? inventario.value.filter((producto) => producto.activo)
+            : null,
+        errores,
+    };
+}
+
 interface ModalRegistrarProps {
     productos: ItemInventario[];
     onCerrar: () => void;
@@ -424,16 +453,12 @@ export default function VentasTab() {
     };
 
     const cargar = async () => {
+        setCargando(true);
         try {
-            setError('');
-            const [app, inv] = await Promise.all([
-                listarRegistroVentas(),
-                listarInventario(),
-            ]);
-            setRegistro(convertirRegistros(app));
-            setProductos(inv.filter((p) => p.activo));
-        } catch (e) {
-            setError(mensajeError(e));
+            const resultado = await cargarRegistroYProductos();
+            if (resultado.registros !== null) setRegistro(resultado.registros);
+            if (resultado.productos !== null) setProductos(resultado.productos);
+            setError(resultado.errores.join(' '));
         } finally {
             setCargando(false);
         }
@@ -441,14 +466,12 @@ export default function VentasTab() {
 
     useEffect(() => {
         let activo = true;
-        Promise.all([listarRegistroVentas(), listarInventario()])
-            .then(([app, inv]) => {
+        cargarRegistroYProductos()
+            .then((resultado) => {
                 if (!activo) return;
-                setRegistro(convertirRegistros(app));
-                setProductos(inv.filter((p) => p.activo));
-            })
-            .catch((e: unknown) => {
-                if (activo) setError(mensajeError(e));
+                if (resultado.registros !== null) setRegistro(resultado.registros);
+                if (resultado.productos !== null) setProductos(resultado.productos);
+                setError(resultado.errores.join(' '));
             })
             .finally(() => {
                 if (activo) setCargando(false);
@@ -506,12 +529,10 @@ export default function VentasTab() {
             setExito(
                 `Venta ${payload.tipoVenta.toUpperCase()} registrada · ${resultado.numeroDocumento} · ${formatearCLP(resultado.total)}`,
             );
-            const [app, inv] = await Promise.all([
-                listarRegistroVentas(),
-                listarInventario(),
-            ]);
-            setRegistro(convertirRegistros(app));
-            setProductos(inv.filter((p) => p.activo));
+            const carga = await cargarRegistroYProductos();
+            if (carga.registros !== null) setRegistro(carga.registros);
+            if (carga.productos !== null) setProductos(carga.productos);
+            setError(carga.errores.join(' '));
         } catch (e) {
             setError(mensajeError(e));
         }
