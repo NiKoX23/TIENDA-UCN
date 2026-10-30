@@ -145,10 +145,11 @@ export function BrandPattern({ cols = 6, rows = 1, seed = 7, height, className =
  *  - frame: bloques en los bordes de toda la pantalla (login, portadas)
  *  - right: solo en el costado derecho, deja libre el texto de la izquierda (hero)
  */
-export function BrandBlocks({ variant = 'frame', className = '' }: { variant?: 'frame' | 'right'; className?: string }) {
+export function BrandBlocks({ variant = 'frame', className = '' }: { variant?: 'frame' | 'right' | 'hero' | 'login' | 'footer'; className?: string }) {
+  const compact = variant === 'right' || variant === 'hero' || variant === 'footer'
   return (
     <div className={`vcm-blocks pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
-      {variant === 'frame' ? (
+      {!compact ? (
         <>
           <span className="absolute left-0 top-0 h-full w-[5%] max-sm:w-[6%]" style={bg('navy')} />
           <span className="absolute left-[5%] top-[14%] h-[12%] w-[4%] max-sm:hidden" style={bg('red')} />
@@ -172,3 +173,7 @@ export function BrandBlocks({ variant = 'frame', className = '' }: { variant?: '
 }
 
 const bg = (c: Color): CSSProperties => ({ backgroundColor: `var(--vcm-${c})` })
+
+export function PatternStrip(props: BrandPatternProps) {
+  return <BrandPattern {...props} />
+}

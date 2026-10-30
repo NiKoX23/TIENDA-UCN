@@ -883,6 +883,51 @@ html[data-theme='light'] .admin-sales-profit-total {
   background: #263E54;
   color: #EAF1F8;
 }
+.admin-action-btn {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  padding: 0;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(30, 41, 59, 0.45);
+  color: #cbd5e1;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+.admin-action-btn:hover {
+  transform: translateY(-1px);
+  border-color: #00b0de;
+  background: rgba(0, 176, 222, 0.14);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 176, 222, 0.15);
+}
+.admin-action-btn:focus-visible {
+  outline: 2px solid #00b0de;
+  outline-offset: 2px;
+}
+.admin-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+html:root:root .admin-action-btn {
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
 .admin-variant-section {
   border: 1px solid #405A73;
   background: #1D3145;
@@ -908,6 +953,17 @@ html[data-theme='light'] .admin-secondary-button {
   border-color: #B6C6D4;
   background: #E4EDF5;
   color: #26394B;
+}
+html[data-theme='light'] .admin-action-btn {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #334155;
+}
+html[data-theme='light'] .admin-action-btn:hover {
+  border-color: #00b0de;
+  background: #e0f2fe;
+  color: #0284c7;
+  box-shadow: 0 4px 12px rgba(0, 176, 222, 0.15);
 }
 html[data-theme='light'] .admin-variant-section {
   border-color: #C2D0DC;

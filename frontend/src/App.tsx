@@ -12,7 +12,8 @@ import AdminPanel from './admin/AdminPanel';
 type Theme = 'dark' | 'light';
 
 function cargarTema(): Theme {
-    return localStorage.getItem('tema') === 'dark' ? 'dark' : 'light';
+    const guardado = localStorage.getItem('tema');
+    return guardado === 'dark' || guardado === 'light' ? guardado : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 }
 
 export default function App() {

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, Fragment, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { formatearCLP } from '../utils/precio';
@@ -73,6 +73,47 @@ function nivelEstado(variantes: ItemInventario[]): EstadoVisual {
     return 'NORMAL';
 }
 
+function hasMultipleVariants(variantes: ItemInventario[]): boolean {
+    return variantes.length > 1;
+}
+
+function IconChevronDown({ className = 'h-4 w-4' }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+        </svg>
+    );
+}
+
+function IconArrowUpDown({ className = 'h-4 w-4' }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m21 16-4 4-4-4" />
+            <path d="M17 20V4" />
+            <path d="m3 8 4-4 4 4" />
+            <path d="M7 4v16" />
+        </svg>
+    );
+}
+
+function IconPencil({ className = 'h-4 w-4' }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+            <path d="m15 5 4 4" />
+        </svg>
+    );
+}
+
+function IconPlus({ className = 'h-4 w-4' }: { className?: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 12h14" />
+            <path d="M12 5v14" />
+        </svg>
+    );
+}
+
 function badgeEstado(estado: EstadoVisual) {
     const estilos = {
         AGOTADO: 'admin-inventory-status--empty',
@@ -82,9 +123,12 @@ function badgeEstado(estado: EstadoVisual) {
         ALTO: 'admin-inventory-status--high',
     };
     const etiqueta = estado === 'AGOTADO' ? 'Agotado' : estado === 'CRITICO' ? 'Crítico' : estado === 'BAJO' ? 'Bajo' : estado === 'ALTO' ? 'Alto' : 'Normal';
-    return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${estilos[estado]}`}>
-        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />{etiqueta}
-    </span>;
+    return (
+        <span className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${estilos[estado]}`}>
+            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+            {etiqueta}
+        </span>
+    );
 }
 
 function numero(valor: number) {
@@ -99,13 +143,7 @@ function nombreVisibleVariante(item: ItemInventario): string {
     return [item.nombre, color, talla].filter(Boolean).join(' · ');
 }
 
-function BotonExpandir({ abierto, onClick }: { abierto: boolean; onClick: () => void }) {
-    return <button type="button" aria-label={abierto ? 'Ocultar variantes' : 'Mostrar variantes'} aria-expanded={abierto}
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-slate-400/20 text-slate-500 transition hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-        onClick={onClick}>
-        <span aria-hidden="true" className={`transition-transform ${abierto ? 'rotate-90' : ''}`}>›</span>
-    </button>;
-}
+
 
 interface ModalProps {
     titulo: string;
@@ -547,7 +585,6 @@ function ModalEditarVariante({ item, onCerrar, onGuardar }: ModalEditarVarianteP
         <Modal titulo={`Editar variante · ${item.nombre}`} onCerrar={onCerrar}>
             <form className="mt-4 space-y-4" onSubmit={(event) => { event.preventDefault(); void guardar(); }}>
                 <p className="text-sm text-[var(--text-soft)]">SKU: <strong>{item.sku}</strong> · Stock actual: <strong>{item.stock}</strong></p>
-                                <p className="text-sm text-[var(--text-soft)]">SKU: <strong>{item.sku}</strong></p>
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label htmlFor="editar-talla" className={labelCls}>Talla / variante *</label>
@@ -779,31 +816,147 @@ export default function InventarioTab() {
         abrirModal('stock', varianteDetalle);
     };
 
-    const acciones = (item: ItemInventario, compactas = false, esVariante = true) => (
-        <div className={`flex items-center justify-end gap-1 ${compactas ? 'mt-3' : ''}`}>
-            <button type="button" aria-label={esVariante ? `Ajustar stock de ${item.sku}` : `Ver stock de ${item.nombre}`} title="Stock" className="admin-secondary-button grid h-7 w-7 place-items-center rounded-md text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => esVariante ? abrirModal('stock', item) : alternarExpandido(item.codigoProducto)}>{esVariante ? '↕' : '▤'}</button>
-            <button type="button" aria-label={`Editar ${item.nombre}`} title="Editar producto" className="admin-secondary-button grid h-7 w-7 place-items-center rounded-md text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => abrirModal('producto', item)}>✎</button>
-            <button type="button" aria-label={`Agregar variante a ${item.nombre}`} title="Agregar variante" className="admin-secondary-button grid h-7 w-7 place-items-center rounded-md text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => abrirModal('variante', item)}>+</button>
+    const renderAccionesProducto = (producto: ItemInventario, variantes: ItemInventario[], compactas = false) => {
+        const tieneMultiples = hasMultipleVariants(variantes);
+        const abierto = expandidos.has(producto.codigoProducto);
+
+        return (
+            <div className={`flex items-center justify-center gap-1.5 ${compactas ? 'mt-3 justify-end' : ''}`}>
+                {tieneMultiples ? (
+                    <button
+                        type="button"
+                        className="admin-action-btn"
+                        title={abierto ? 'Ocultar variantes' : 'Ver variantes'}
+                        aria-label={abierto ? `Ocultar variantes de ${producto.nombre}` : `Ver variantes de ${producto.nombre}`}
+                        aria-expanded={abierto}
+                        onClick={() => alternarExpandido(producto.codigoProducto)}
+                    >
+                        <span className={`inline-flex items-center justify-center transition-transform duration-200 ${abierto ? 'rotate-180' : ''}`}>
+                            <IconChevronDown className="h-4 w-4" />
+                        </span>
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        className="admin-action-btn"
+                        title="Ajustar stock"
+                        aria-label={`Ajustar stock de ${variantes[0]?.sku ?? producto.codigoProducto}`}
+                        onClick={() => abrirModal('stock', variantes[0] ?? producto)}
+                    >
+                        <IconArrowUpDown className="h-4 w-4" />
+                    </button>
+                )}
+                <button
+                    type="button"
+                    className="admin-action-btn"
+                    title="Editar producto"
+                    aria-label={`Editar ${producto.nombre}`}
+                    onClick={() => abrirModal('producto', producto)}
+                >
+                    <IconPencil className="h-4 w-4" />
+                </button>
+                <button
+                    type="button"
+                    className="admin-action-btn"
+                    title="Agregar variante"
+                    aria-label={`Agregar variante a ${producto.nombre}`}
+                    onClick={() => abrirModal('variante', producto)}
+                >
+                    <IconPlus className="h-4 w-4" />
+                </button>
+            </div>
+        );
+    };
+
+    const renderAccionesVariante = (item: ItemInventario) => (
+        <div className="flex items-center justify-center gap-1.5">
+            <button
+                type="button"
+                className="admin-action-btn"
+                title="Ajustar stock"
+                aria-label={`Ajustar stock de ${item.sku}`}
+                onClick={() => abrirModal('stock', item)}
+            >
+                <IconArrowUpDown className="h-4 w-4" />
+            </button>
+            <button
+                type="button"
+                className="admin-action-btn"
+                title="Editar variante"
+                aria-label={`Editar variante ${item.sku}`}
+                onClick={() => {
+                    setError('');
+                    setSeleccion(item);
+                    setModal('editar-variante');
+                }}
+            >
+                <IconPencil className="h-4 w-4" />
+            </button>
         </div>
     );
 
-    const subtablaVariantes = (variantes: ItemInventario[]) => (
-        <div className="overflow-x-auto border-t border-slate-400/10 bg-slate-500/[0.035] px-4 py-2">
-            <table className="w-full min-w-[560px] text-center text-xs">
-                <thead className="text-center text-[11px] text-[var(--text-soft)]"><tr>
-                    <th className="px-2 py-2 font-medium">Talla</th><th className="px-2 py-2 font-medium">Color</th><th className="px-2 py-2 font-medium">SKU</th>
-                    <th className="px-2 py-2 font-medium">Stock y nivel</th><th className="px-2 py-2 font-medium">Acciones</th>
-                </tr></thead>
-                <tbody className="divide-y divide-slate-400/10">{variantes.map((item) => <tr key={item.sku}>
-                    <td className="whitespace-nowrap px-2 py-2.5 text-center">{item.talla && item.talla.toLowerCase() !== 'unica' ? item.talla : (!item.color ? 'Única' : '')}</td>
-                    <td className="whitespace-nowrap px-2 py-2.5 text-center">{item.color || <span className="text-slate-400/60">Vacío</span>}</td>
-                    <td className="whitespace-nowrap px-2 py-2.5 text-center font-mono">{item.sku}</td>
-                    <td className="px-2 py-2.5"><div className="admin-variant-stock-cell"><div className="admin-variant-stock-value">{numero(item.stock)} unidades {badgeEstado(estadoVisualVariante(item))}</div><div className="admin-variant-stock-track" role="progressbar" aria-label={`Stock de ${item.sku}`} aria-valuenow={item.stock} aria-valuemin={0} aria-valuemax={Math.max(item.stockMinimo, 50)}><span className={`admin-stock-bar--${estadoVisualVariante(item).toLowerCase()}`} style={{ width: `${porcentajeBarraStock(item.stock, item.stockMinimo)}%` }} /></div></div></td>
-                    <td className="px-2 py-2.5 text-center admin-variant-table-actions">{acciones(item)}</td>
-                </tr>)}</tbody>
-            </table>
-        </div>
-    );
+    const subtablaVariantes = (variantes: ItemInventario[]) => {
+        const tieneTalla = variantes.some(
+            (v) => v.talla && v.talla.trim().toLowerCase() !== 'unica' && v.talla.trim() !== ''
+        );
+        const tieneColor = variantes.some((v) => v.color && v.color.trim() !== '');
+
+        return (
+            <div className="overflow-x-auto border-t border-slate-400/10 bg-slate-500/[0.035] px-4 py-3">
+                <table className="w-full min-w-[560px] text-center text-xs">
+                    <thead className="text-center text-[11px] uppercase tracking-wider text-[var(--text-soft)]">
+                        <tr>
+                            {tieneTalla && <th className="px-3 py-2 font-medium">Talla</th>}
+                            {tieneColor && <th className="px-3 py-2 font-medium">Color</th>}
+                            <th className="px-3 py-2 font-medium">SKU</th>
+                            <th className="px-3 py-2 font-medium">Stock y nivel</th>
+                            <th className="px-3 py-2 font-medium text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-400/10">
+                        {variantes.map((item) => (
+                            <tr key={item.sku} className="transition-colors hover:bg-slate-500/[0.04]">
+                                {tieneTalla && (
+                                    <td className="whitespace-nowrap px-3 py-2.5 text-center">
+                                        {item.talla && item.talla.toLowerCase() !== 'unica' ? item.talla : 'Única'}
+                                    </td>
+                                )}
+                                {tieneColor && (
+                                    <td className="whitespace-nowrap px-3 py-2.5 text-center">
+                                        {item.color || <span className="text-slate-400/60">—</span>}
+                                    </td>
+                                )}
+                                <td className="whitespace-nowrap px-3 py-2.5 text-center font-mono text-xs">{item.sku}</td>
+                                <td className="px-3 py-2.5">
+                                    <div className="admin-variant-stock-cell">
+                                        <div className="admin-variant-stock-value">
+                                            {numero(item.stock)} unidades {badgeEstado(estadoVisualVariante(item))}
+                                        </div>
+                                        <div
+                                            className="admin-variant-stock-track"
+                                            role="progressbar"
+                                            aria-label={`Stock de ${item.sku}`}
+                                            aria-valuenow={item.stock}
+                                            aria-valuemin={0}
+                                            aria-valuemax={Math.max(item.stockMinimo, 50)}
+                                        >
+                                            <span
+                                                className={`admin-stock-bar--${estadoVisualVariante(item).toLowerCase()}`}
+                                                style={{ width: `${porcentajeBarraStock(item.stock, item.stockMinimo)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-3 py-2.5 text-center">
+                                    {renderAccionesVariante(item)}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
 
     return (
         <div className="mt-6 space-y-5">
@@ -846,50 +999,180 @@ export default function InventarioTab() {
                     {[0, 1, 2, 3].map((fila) => <div key={fila} className="ucn-skeleton h-12 w-full" />)}
                 </div>
             ) : (
-                <div className="overflow-hidden rounded-lg border border-slate-400/15 bg-slate-950/10">
-                    <table className="hidden w-full table-fixed text-left text-sm md:table">
-                        <colgroup><col className="w-[27%]" /><col className="hidden w-[15%] lg:table-column" /><col className="hidden w-[9%] xl:table-column" /><col className="w-[17%]" /><col className="w-[14%]" /><col className="w-[10%]" /><col className="w-[8%]" /></colgroup>
-                        <thead className="border-b border-slate-400/15 text-center text-sm text-[var(--text-soft)]">
+                <div className="overflow-x-auto rounded-lg border border-slate-400/15 bg-slate-950/10">
+                    <table className="hidden w-full min-w-[760px] table-fixed text-left text-sm md:table">
+                        <colgroup>
+                            <col className="w-[30%] min-w-[200px]" />
+                            <col className="hidden w-[10%] xl:table-column" />
+                            <col className="w-[20%] min-w-[140px]" />
+                            <col className="w-[16%] min-w-[120px]" />
+                            <col className="w-[12%] min-w-[110px]" />
+                            <col className="w-[12%] min-w-[150px]" />
+                        </colgroup>
+                        <thead className="border-b border-slate-400/15 text-sm text-[var(--text-soft)]">
                             <tr>
-                                <th className="px-3 py-3 font-medium">Producto</th>
-                                <th className="hidden px-3 py-3 text-center font-medium lg:table-cell">Categoría</th>
-                                <th className="hidden px-3 py-3 text-center text-sm font-medium xl:table-cell">Variantes</th><th className="px-3 py-3 font-medium">Stock</th>
-                                <th className="px-3 py-3 font-medium">Precio de venta</th><th className="px-3 py-3 font-medium">Estado</th>
-                                <th className="sticky right-0 bg-[var(--bg-950)] px-2 py-3 font-medium">Acciones</th>
+                                <th className="px-3 py-3 text-left font-medium">Producto</th>
+                                <th className="hidden px-3 py-3 text-center text-sm font-medium xl:table-cell">Variantes</th>
+                                <th className="px-3 py-3 text-left font-medium">Stock</th>
+                                <th className="px-3 py-3 text-right font-medium">Precio de venta</th>
+                                <th className="px-3 py-3 text-center font-medium">Estado</th>
+                                <th className="px-3 py-3 text-center font-medium">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-400/10">
-                            {gruposFiltrados.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => <>
-                                <tr key={codigo} className="h-14 transition-colors hover:bg-slate-500/[0.04]">
-                                    <td className="px-3 py-2"><div className="flex min-w-0 items-center gap-2">
-                                        <BotonExpandir abierto={expandidos.has(codigo)} onClick={() => alternarExpandido(codigo)} />
-                                        <button type="button" className="min-w-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => abrirDetalle(variantes)}>
-                                            <span className="block truncate font-medium text-[var(--text)]">{producto.nombre}</span><span className="block truncate text-xs text-slate-400">{codigo}{!producto.activo && ' · Inactivo'}</span>
-                                        </button>
-                                    </div></td>
-                                    <td className="hidden truncate px-3 py-2 text-center text-sm text-slate-400 lg:table-cell">{producto.categoria}</td>
-                                    <td className="hidden px-3 py-2 text-center text-sm text-slate-400 xl:table-cell">{numero(variantes.length)}</td>
-                                    <td className="px-3 py-2">{variantes.length > 1 ? (
-                                        <div className="admin-product-stock-summary"><span className="font-medium tabular-nums">{numero(stock)}</span><span className="admin-product-stock-track" role="progressbar" aria-label={`Stock ${stock} del producto`} aria-valuenow={stock} aria-valuemin={0} aria-valuemax={Math.max(stockMinimo, 50)}><span className={`admin-stock-bar--${estado.toLowerCase()}`} style={{ width: `${porcentajeBarraStock(stock, stockMinimo)}%` }} /></span></div>
-                                    ) : (
-                                        <div className="flex items-center gap-2"><span className="w-8 text-right font-medium tabular-nums">{numero(stock)}</span>{stockMinimo > 0 && <span className="h-1.5 min-w-8 flex-1 overflow-hidden rounded-full bg-slate-400/15" aria-label={`Stock ${stock} respecto al mínimo ${stockMinimo}`}><span className={`block h-full rounded-full ${estado === 'AGOTADO' || estado === 'CRITICO' ? 'bg-red-400' : estado === 'BAJO' ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${Math.min(stock / stockMinimo * 100, 100)}%` }} /></span>}</div>
-                                    )}</td>
-                                    <td className="px-3 py-2 text-right"><span className="block whitespace-nowrap tabular-nums">{formatearCLP(producto.precioVenta)}</span><span className="block whitespace-nowrap text-xs text-slate-400">TAC {formatearCLP(producto.precioTac)}</span></td>
-                                    <td className="px-3 py-2">{badgeEstado(estado)}</td>
-                                    <td className="sticky right-0 bg-[var(--bg-950)] px-2 py-2">{acciones(producto, false, false)}</td>
-                                </tr>
-                                {expandidos.has(codigo) && <tr key={`${codigo}-variants`}><td colSpan={7} className="p-0">{subtablaVariantes(variantes)}</td></tr>}
-                            </>)}
+                            {gruposFiltrados.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => {
+                                const tieneMultiples = hasMultipleVariants(variantes);
+                                return (
+                                    <Fragment key={codigo}>
+                                        <tr className="h-14 transition-colors hover:bg-slate-500/[0.04]">
+                                            <td className="px-3 py-2">
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className="min-w-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                                                        onClick={() => abrirDetalle(variantes)}
+                                                        aria-expanded={tieneMultiples ? expandidos.has(codigo) : undefined}
+                                                    >
+                                                        <span className="block truncate font-medium text-[var(--text)]">{producto.nombre}</span>
+                                                        <span className="block truncate text-xs text-slate-400">
+                                                            {codigo}{!producto.activo && ' · Inactivo'}
+                                                        </span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td className="hidden px-3 py-2 text-center text-sm text-slate-400 xl:table-cell">
+                                                {numero(variantes.length)}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {tieneMultiples ? (
+                                                    <div className="admin-product-stock-summary">
+                                                        <span className="font-medium tabular-nums">{numero(stock)}</span>
+                                                        <span
+                                                            className="admin-product-stock-track"
+                                                            role="progressbar"
+                                                            aria-label={`Stock ${stock} del producto`}
+                                                            aria-valuenow={stock}
+                                                            aria-valuemin={0}
+                                                            aria-valuemax={Math.max(stockMinimo, 50)}
+                                                        >
+                                                            <span
+                                                                className={`admin-stock-bar--${estado.toLowerCase()}`}
+                                                                style={{ width: `${porcentajeBarraStock(stock, stockMinimo)}%` }}
+                                                            />
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-8 text-right font-medium tabular-nums">{numero(stock)}</span>
+                                                        {stockMinimo > 0 && (
+                                                            <span
+                                                                className="h-1.5 min-w-8 flex-1 overflow-hidden rounded-full bg-slate-400/15"
+                                                                aria-label={`Stock ${stock} respecto al mínimo ${stockMinimo}`}
+                                                            >
+                                                                <span
+                                                                    className={`block h-full rounded-full ${
+                                                                        estado === 'AGOTADO' || estado === 'CRITICO'
+                                                                            ? 'bg-red-400'
+                                                                            : estado === 'BAJO'
+                                                                            ? 'bg-amber-400'
+                                                                            : 'bg-emerald-400'
+                                                                    }`}
+                                                                    style={{ width: `${Math.min((stock / stockMinimo) * 100, 100)}%` }}
+                                                                />
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 text-right">
+                                                <span className="block whitespace-nowrap tabular-nums">{formatearCLP(producto.precioVenta)}</span>
+                                                <span className="block whitespace-nowrap text-xs text-slate-400">
+                                                    TAC {formatearCLP(producto.precioTac)}
+                                                </span>
+                                            </td>
+                                            <td className="px-3 py-2 text-center">
+                                                {badgeEstado(estado)}
+                                            </td>
+                                            <td className="px-3 py-2 text-center">
+                                                {renderAccionesProducto(producto, variantes)}
+                                            </td>
+                                        </tr>
+                                        {tieneMultiples && expandidos.has(codigo) && (
+                                            <tr key={`${codigo}-variants`}>
+                                                <td colSpan={6} className="p-0">
+                                                    {subtablaVariantes(variantes)}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </Fragment>
+                                );
+                            })}
                         </tbody>
                     </table>
-                    <div className="space-y-3 p-3 md:hidden">{gruposFiltrados.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => <article key={codigo} className="rounded-md border border-slate-400/15 p-3">
-                        <div className="flex items-start gap-2"><BotonExpandir abierto={expandidos.has(codigo)} onClick={() => alternarExpandido(codigo)} /><button type="button" className="min-w-0 flex-1 text-left" onClick={() => abrirDetalle(variantes)}><span className="block truncate font-medium">{producto.nombre}</span><span className="block text-xs text-slate-400">{codigo} · {variantes.length} {variantes.length === 1 ? 'variante' : 'variantes'}</span></button>{badgeEstado(estado)}</div>
-                        <div className="mt-3 flex items-center justify-between gap-3 text-sm"><span className="text-slate-400">Stock</span><span className="tabular-nums">{numero(stock)}</span></div>
-                        <div className="mt-3 flex items-center justify-between gap-3 text-sm"><span className="text-slate-400">Stock</span><span className="tabular-nums">{numero(stock)}</span></div>
-                        {variantes.length > 1 ? <div className="admin-product-stock-track" role="progressbar" aria-label={`Stock ${stock} del producto`} aria-valuenow={stock} aria-valuemin={0} aria-valuemax={Math.max(stockMinimo, 50)}><span className={`admin-stock-bar--${estado.toLowerCase()}`} style={{ width: `${porcentajeBarraStock(stock, stockMinimo)}%` }} /></div> : stockMinimo > 0 && <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-400/15"><span className={`block h-full ${estado === 'AGOTADO' || estado === 'CRITICO' ? 'bg-red-400' : estado === 'BAJO' ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${Math.min(stock / stockMinimo * 100, 100)}%` }} /></div>}
-                        <div className="mt-3 flex justify-between gap-3 text-sm"><span className="text-slate-400">{producto.categoria}</span><span className="text-right tabular-nums">{formatearCLP(producto.precioVenta)}<span className="block text-xs text-slate-400">TAC {formatearCLP(producto.precioTac)}</span></span></div>
-                        {acciones(producto, true, false)}{expandidos.has(codigo) && subtablaVariantes(variantes)}
-                    </article>)}</div>
+                    <div className="space-y-3 p-3 md:hidden">
+                        {gruposFiltrados.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => {
+                            const tieneMultiples = hasMultipleVariants(variantes);
+                            return (
+                                <article key={codigo} className="rounded-md border border-slate-400/15 p-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <button
+                                            type="button"
+                                            className="min-w-0 flex-1 text-left"
+                                            onClick={() => abrirDetalle(variantes)}
+                                        >
+                                            <span className="block truncate font-medium">{producto.nombre}</span>
+                                            <span className="block text-xs text-slate-400">
+                                                {codigo} · {variantes.length} {variantes.length === 1 ? 'variante' : 'variantes'}
+                                            </span>
+                                        </button>
+                                        {badgeEstado(estado)}
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                                        <span className="text-slate-400">Stock</span>
+                                        <span className="tabular-nums">{numero(stock)}</span>
+                                    </div>
+                                    {tieneMultiples ? (
+                                        <div
+                                            className="admin-product-stock-track"
+                                            role="progressbar"
+                                            aria-label={`Stock ${stock} del producto`}
+                                            aria-valuenow={stock}
+                                            aria-valuemin={0}
+                                            aria-valuemax={Math.max(stockMinimo, 50)}
+                                        >
+                                            <span
+                                                className={`admin-stock-bar--${estado.toLowerCase()}`}
+                                                style={{ width: `${porcentajeBarraStock(stock, stockMinimo)}%` }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        stockMinimo > 0 && (
+                                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-400/15">
+                                                <span
+                                                    className={`block h-full ${
+                                                        estado === 'AGOTADO' || estado === 'CRITICO'
+                                                            ? 'bg-red-400'
+                                                            : estado === 'BAJO'
+                                                            ? 'bg-amber-400'
+                                                            : 'bg-emerald-400'
+                                                    }`}
+                                                    style={{ width: `${Math.min((stock / stockMinimo) * 100, 100)}%` }}
+                                                />
+                                            </div>
+                                        )
+                                    )}
+                                    <div className="mt-3 flex justify-end gap-3 text-sm">
+                                        <span className="text-right tabular-nums">
+                                            {formatearCLP(producto.precioVenta)}
+                                            <span className="block text-xs text-slate-400">TAC {formatearCLP(producto.precioTac)}</span>
+                                        </span>
+                                    </div>
+                                    {renderAccionesProducto(producto, variantes, true)}
+                                    {tieneMultiples && expandidos.has(codigo) && subtablaVariantes(variantes)}
+                                </article>
+                            );
+                        })}
+                    </div>
                     {gruposFiltrados.length === 0 && <p className="px-4 py-10 text-center text-sm text-slate-400">{items.length === 0 ? 'Aún no hay productos en el inventario.' : 'No hay productos que coincidan con estos filtros.'}</p>}
                 </div>
             )}
@@ -900,8 +1183,7 @@ export default function InventarioTab() {
                         <div>
                             <p className="admin-product-eyebrow">Inventario / {varianteDetalle.categoria}</p>
                             <h2>{varianteDetalle.nombre}</h2>
-                            <div className="admin-product-heading-meta"><span>{varianteDetalle.codigoProducto}</span>{badgeEstado(nivelEstado(detalle))}</div>
-                                                    <div className="admin-product-heading-meta"><span>{varianteDetalle.codigoProducto}</span>{badgeEstado(estadoVisualVariante(varianteDetalle))}</div>
+                            <div className="admin-product-heading-meta"><span>{varianteDetalle.codigoProducto}</span>{badgeEstado(estadoVisualVariante(varianteDetalle))}</div>
                         </div>
                         <button type="button" aria-label="Cerrar detalle" className="admin-product-close" onClick={() => setDetalle(null)}>×</button>
                     </header>
@@ -957,8 +1239,7 @@ export default function InventarioTab() {
                         </section>
 
                         <section className="admin-product-stock">
-                            <div className="admin-product-stock-heading"><span>Stock disponible</span><span>Inicial {inicialDetalle.toLocaleString('es-CL')} · Vendidas {vendidasDetalle.toLocaleString('es-CL')}</span></div>
-                                                        <div className="admin-product-stock-heading"><span>Stock disponible · {badgeEstado(estadoVisualVariante(varianteDetalle))}</span><span>Inicial {inicialDetalle.toLocaleString('es-CL')} · Vendidas {vendidasDetalle.toLocaleString('es-CL')}</span></div>
+                            <div className="admin-product-stock-heading"><span>Stock disponible · {badgeEstado(estadoVisualVariante(varianteDetalle))}</span><span>Inicial {inicialDetalle.toLocaleString('es-CL')} · Vendidas {vendidasDetalle.toLocaleString('es-CL')}</span></div>
                             <p><strong>{stockDetalle.toLocaleString('es-CL')}</strong> unidades</p>
                             <div className="admin-product-stock-track" role="progressbar" aria-label="Stock disponible respecto al inicial" aria-valuenow={stockDetalle} aria-valuemin={0} aria-valuemax={Math.max(inicialDetalle, stockDetalle)}><span style={{ width: `${porcentajeStockDetalle}%` }} /></div>
                             {minimoDetalle > 0 && <span className="admin-product-min-stock">Stock mínimo {minimoDetalle.toLocaleString('es-CL')}</span>}

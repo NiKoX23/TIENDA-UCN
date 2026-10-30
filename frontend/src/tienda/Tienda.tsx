@@ -9,7 +9,7 @@ import { useCarrito } from '../hooks/useCarrito';
 import Carrito from '../carrito/Carrito';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { BrandLockup } from '../components/brand/BrandLogo';
-import { BrandBlocks, BrandPattern } from '../components/brand/BrandFigures';
+import { BrandBlocks, PatternStrip } from '../components/brand/BrandFigures';
 import { formatearCLP } from '../utils/precio';
 
 interface TiendaProps {
@@ -260,9 +260,12 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
         <div className="vcm-bar" aria-hidden="true" />
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-8">
           <a className="flex items-center gap-3 whitespace-nowrap text-lg font-extrabold" href="/">
-            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-[var(--radius)] border border-[var(--border-strong)] bg-white" aria-hidden="true">
-              <img src={escudoUcn} alt="" className="h-full w-full object-contain p-1" />
-            </span>
+            <BrandLockup
+              variant={tema === 'dark' ? 'white' : 'color'}
+              height={28}
+              className="shrink-0"
+              partner={<img src={escudoUcn} alt="" />}
+            />
             Tienda UCN
           </a>
 
@@ -362,7 +365,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
         {/* ───────── Hero ───────── */}
         <section className="grid gap-5 pt-8 lg:grid-cols-[1.4fr_1fr]" aria-label="Bienvenida">
           <div className="vcm-hero flex min-h-[300px] flex-col justify-center p-8 sm:p-12">
-            <BrandBlocks variant="right" />
+            <BrandBlocks variant="hero" />
             <div className="vcm-hero__content flex flex-col gap-4">
               <span className="vcm-eyebrow">Merchandising oficial · UCN Coquimbo</span>
               <h1 className="max-w-[30rem] text-[2rem] font-extrabold leading-[1.1] sm:text-[2.75rem]">Lleva la UCN contigo, todos los días.</h1>
@@ -399,7 +402,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                   aria-label={`Ver ${destacado.nombre}`}
                 >
                   <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[var(--vcm-navy)]">Destacado</span>
-                  <img src={destacado.imagen} alt="" className="h-full max-h-[220px] w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105" />
+                  <img src={destacado.imagen} alt={destacado.nombre} className="h-full max-h-[220px] w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105" />
                 </button>
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -487,7 +490,8 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                     >
                       <img
                         src={producto.imagen}
-                        alt=""
+                        alt={producto.nombre}
+                        loading="lazy"
                         className={`h-full w-full object-contain p-3 ${agotado ? 'grayscale' : ''}`}
                       />
                     </button>
@@ -495,12 +499,23 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                       {producto.categoria}
                     </span>
                     <span
-                      className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold text-white ${
-                        agotado ? 'bg-[#4B5563]' : pocas ? 'bg-[#a35200]' : 'bg-[#1a6b50]'
+                      className={`vcm-stock-badge absolute right-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                        agotado ? 'vcm-stock-badge--empty' : pocas ? 'vcm-stock-badge--low' : 'vcm-stock-badge--available'
                       }`}
                     >
                       {agotado ? 'Agotado' : pocas ? `Últimas ${producto.stock}` : `${producto.stock} unidades`}
                     </span>
+                    <button
+                      type="button"
+                      className={`vcm-favorite-button ${esFavorito ? 'text-[var(--vcm-red)]' : 'text-[var(--text-soft)]'}`}
+                      aria-label={esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                      aria-pressed={esFavorito}
+                      onClick={() => handleToggleFavorito(producto.codigoProducto)}
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill={esFavorito ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                        <path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 5 6.5 5c2 0 3.5 1.5 5.5 3.5C14 6.5 15.5 5 17.5 5 21 5 23.5 8.5 21.5 12.5 19 16.65 12 21 12 21Z" />
+                      </svg>
+                    </button>
                   </div>
 
                   <div className="flex flex-1 flex-col gap-1.5 p-4">
@@ -511,17 +526,6 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                         onClick={irAlDetalle}
                       >
                         {producto.nombre}
-                      </button>
-                      <button
-                        type="button"
-                        className={`-mr-1 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full transition hover:bg-[var(--primary-soft)] ${esFavorito ? 'text-[var(--vcm-red)]' : 'text-[var(--text-soft)]'}`}
-                        aria-label={esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                        aria-pressed={esFavorito}
-                        onClick={() => handleToggleFavorito(producto.codigoProducto)}
-                      >
-                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill={esFavorito ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                          <path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 5 6.5 5c2 0 3.5 1.5 5.5 3.5C14 6.5 15.5 5 17.5 5 21 5 23.5 8.5 21.5 12.5 19 16.65 12 21 12 21Z" />
-                        </svg>
                       </button>
                     </div>
 
@@ -580,13 +584,13 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
       {/* ───────── Footer ───────── */}
       <footer className="vcm-footer mt-14">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-x-8 gap-y-5 px-4 py-9 sm:px-8">
-          <BrandLockup height={44} partner={<img src={escudoUcn} alt="Universidad Católica del Norte" />} />
+          <BrandLockup variant={tema === 'dark' ? 'white' : 'color'} height={44} partner={<img src={escudoUcn} alt="Universidad Católica del Norte" />} />
           <div className="text-sm sm:text-right">
             <p className="text-base font-extrabold">Tienda UCN</p>
             <p>Universidad Católica del Norte · Sede Coquimbo</p>
           </div>
         </div>
-        <BrandPattern cols={20} height={56} seed={5} />
+        <PatternStrip cols={20} height={56} seed={5} />
       </footer>
     </main>
   );

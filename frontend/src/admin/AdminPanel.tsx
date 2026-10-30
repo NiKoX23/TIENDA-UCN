@@ -151,7 +151,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
 
             <div className="vcm-card w-full max-w-6xl overflow-hidden shadow-2xl">
                 <div className="vcm-hero vcm-admin-hero px-8 py-9 max-[480px]:px-5">
-                    <BrandBlocks variant="right" />
+                    <BrandBlocks variant="hero" />
                     <div key={tab} className="vcm-hero__content max-w-2xl pr-[12%]">
                         <span className="vcm-eyebrow">Tienda UCN · Administración</span>
                         <h1 className="mt-3 text-3xl font-extrabold tracking-tight max-[480px]:text-2xl">{CONTENIDO_TAB[tab].titulo}</h1>

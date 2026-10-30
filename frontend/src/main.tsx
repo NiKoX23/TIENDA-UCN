@@ -4,7 +4,13 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-document.documentElement.dataset.theme = localStorage.getItem('tema') === 'dark' ? 'dark' : 'light';
+const temaGuardado = localStorage.getItem('tema');
+document.documentElement.dataset.theme =
+  temaGuardado === 'dark' || temaGuardado === 'light'
+    ? temaGuardado
+    : window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
