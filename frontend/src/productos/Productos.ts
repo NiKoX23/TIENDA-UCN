@@ -19,3 +19,7 @@ export const categorias = [
   { id: 'accesorios', label: 'accesorios' },
   { id: 'papeleria', label: 'papelería' },
 ] as const;
+
+/** La API entrega /productos/sin-imagen.svg cuando un producto aún no tiene foto. */
+export const esImagenPlaceholder = (imagen?: string | null): boolean =>
+  !imagen || /sin-imagen\.svg(?:[?#].*)?$/i.test(imagen.trim());

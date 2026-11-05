@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { comprarProductos, listarProductos } from '../services/productos.service';
-import type { Producto } from './Productos';
+import { esImagenPlaceholder, type Producto } from './Productos';
+import ImagenProducto from '../components/ImagenProducto';
 import type { Usuario } from '../services/auth.service';
 import { useCarrito } from '../hooks/useCarrito';
 import BackToStore from '../components/BackToStore';
@@ -186,6 +187,9 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
     );
   }
 
+  // Sin foto se muestra el escudo UCN y se desactiva la vista ampliada.
+  const sinImagen = esImagenPlaceholder(producto.imagen);
+
   return (
     <div className="storefront-page storefront-product-detail-page flex min-h-screen flex-col">
       <Carrito
@@ -246,20 +250,20 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
       <main className="storefront-detail-main flex flex-1 justify-center px-6 py-8 max-[900px]:py-6 max-[640px]:px-4">
         <div className="storefront-detail-card grid h-fit w-full max-w-6xl grid-cols-2 gap-12 p-8 max-[900px]:grid-cols-1 max-[900px]:gap-8 max-[640px]:p-5">
           <div
-            className={`storefront-detail-media storefront-detail-media--${categoriaVisual(producto.categoria)} relative flex min-h-[480px] cursor-zoom-in items-center justify-center overflow-hidden p-10 max-[900px]:min-h-[400px] max-[640px]:min-h-[310px] max-[640px]:p-6`}
-            onClick={() => setZoomAbierto(true)}
-            role="button"
-            tabIndex={0}
-            aria-label={`Ampliar imagen de ${producto.nombre}`}
+            className={`storefront-detail-media storefront-detail-media--${categoriaVisual(producto.categoria)} relative flex min-h-[480px] ${sinImagen ? '' : 'cursor-zoom-in'} items-center justify-center overflow-hidden p-10 max-[900px]:min-h-[400px] max-[640px]:min-h-[310px] max-[640px]:p-6`}
+            onClick={() => { if (!sinImagen) setZoomAbierto(true); }}
+            role={sinImagen ? undefined : 'button'}
+            tabIndex={sinImagen ? undefined : 0}
+            aria-label={sinImagen ? undefined : `Ampliar imagen de ${producto.nombre}`}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') setZoomAbierto(true);
+              if (!sinImagen && (event.key === 'Enter' || event.key === ' ')) setZoomAbierto(true);
             }}
           >
             <span className="storefront-detail-media-tag absolute left-4 top-4 rounded-full border px-3 py-1.5 text-xs font-bold">
               {producto.stock > 0 ? 'Disponible' : 'Agotado'}
             </span>
-            <img src={producto.imagen} alt={producto.nombre} className="max-h-[520px] w-full max-w-[440px] object-contain drop-shadow-2xl transition duration-300 hover:scale-[1.03]" />
-            <span className="storefront-detail-zoom-hint absolute bottom-3.5 right-4 rounded-full px-2.5 py-1.5 text-xs">Click para ampliar</span>
+            <ImagenProducto src={producto.imagen} alt={producto.nombre} className="max-h-[520px] w-full max-w-[440px] object-contain drop-shadow-2xl transition duration-300 hover:scale-[1.03]" />
+            {!sinImagen && <span className="storefront-detail-zoom-hint absolute bottom-3.5 right-4 rounded-full px-2.5 py-1.5 text-xs">Click para ampliar</span>}
           </div>
           <div className="storefront-detail-info flex flex-col justify-center gap-5">
             <span className="storefront-detail-category w-fit rounded-full px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide">{producto.categoria}</span>
