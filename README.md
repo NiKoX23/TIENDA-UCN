@@ -1,14 +1,14 @@
 # TIENDA-UCN
 Tienda sobre ventas de productos UCN
 
-- rama: feat/tema_de_marca
-- fuente de respaldo: Source Sans
+- rama actual: feat/paginación
+- fuente de respaldo: Source Sans 3
 - Nginx publica el puerto 80; la aplicación usa 5173 (frontend), 3000 (API), 8000 (analítica) y 5432 (PostgreSQL).
 - El backend importa al iniciar las ventas de `docs/Productos.xlsx` una sola vez, agrupándolas por ID y fecha, sin modificar el stock.
 
 <br><br>
 
-### parte de la guia de implementación de claude:
+### fragmento obtenido de la guía de implementación de claude:
 ## Decisiones tomadas (a confirmar con la Dirección)
 - **Karmina Sans no se incorporó**: el PDF solo trae subconjuntos incrustados de la fuente y es tipografía licenciada. Se usa Source Sans 3 de respaldo. Cuando tengas los `.woff2` con licencia web, déjalos en `public/fonts/` y descomenta los `@font-face` en la línea 64 de `brand-vcm.css` (en nginx verifica que sirva `font/woff2`).
 - **Tema oscuro** = fondo `#023359`, primario celeste `#00b0de`, acento naranja `#ffa829`. **Tema claro** = fondo blanco, superficies pastel `#ede7d8`, acento naranja, rojo para detalles.
