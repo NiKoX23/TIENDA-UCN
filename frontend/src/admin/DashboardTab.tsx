@@ -4,9 +4,13 @@ import { formatearCLP } from '../utils/precio';
 import {
     obtenerResumen,
     type AlertaStock,
+    type ResumenProducto,
     type ResumenDashboard,
 } from '../services/dashboard.service';
 import CountUp from '../components/brand/CountUp';
+import { usePaginacion } from '../hooks/usePaginacion';
+import Paginacion from '../components/Paginacion';
+import { FILAS_POR_PAGINA_DASHBOARD } from '../utils/paginacion';
 
 const botonSecundarioCls = 'vcm-btn vcm-btn--surface vcm-btn--sm';
 
@@ -69,17 +73,123 @@ interface DashboardTabProps {
     onToggleTema: () => void;
 }
 
+interface TablaProductosProps {
+    productos: ResumenProducto[];
+    /** Cambia cuando cambian búsqueda u orden: vuelve a la primera página. */
+    reinicio: string;
+}
+
+function TablaProductos({ productos, reinicio }: TablaProductosProps) {
+    const paginacion = usePaginacion<ResumenProducto>(productos, FILAS_POR_PAGINA_DASHBOARD, [reinicio]);
+    return (
+        <>
+            <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
+                <table className="w-full min-w-[650px] border-collapse text-left text-sm">
+                        <thead className="vcm-thead border-y border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
+                            <tr>
+                                <th className="px-3 py-2 font-semibold">Producto</th>
+                                <th className="px-3 py-2 text-center font-semibold">Stock</th>
+                                <th className="px-3 py-2 text-center font-semibold">Cant. inicial</th>
+                                <th className="px-3 py-2 text-center font-semibold">Vendidos</th>
+                                <th className="px-3 py-2 text-center font-semibold">% vendido</th>
+                                <th className="px-3 py-2 text-center font-semibold">Ingreso normal</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--border)]">
+                            {paginacion.visibles.map((prod) => (
+                                <tr className="hover:bg-[var(--primary-soft)]" key={prod.codigoProducto}>
+                                    <td className="px-3 py-2">
+                                        <p className="font-medium text-[var(--text)]">{prod.nombre}</p>
+                                        <p className="font-mono text-[10px] text-[var(--text-muted)]">{prod.codigoProducto}</p>
+                                    </td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.stock)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.cantInicial)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.vendidos)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{pct(prod.porcentajeVendido)}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{formatearCLP(prod.ingresoNormal)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                {productos.length === 0 && <p className="py-6 text-center text-sm text-[var(--text-muted)]">No hay productos que coincidan.</p>}
+            </div>
+            <Paginacion
+                    pagina={paginacion.pagina}
+                    totalPaginas={paginacion.totalPaginas}
+                    total={paginacion.total}
+                    desde={paginacion.desde}
+                    hasta={paginacion.hasta}
+                    etiqueta="productos"
+                    onCambiar={paginacion.irA}
+                />
+        </>
+    );
+}
+
+interface TablaAlertasProps {
+    alertas: AlertaStock[];
+    reinicio: string;
+}
+
+function TablaAlertas({ alertas, reinicio }: TablaAlertasProps) {
+    const paginacion = usePaginacion<AlertaStock>(alertas, FILAS_POR_PAGINA_DASHBOARD, [reinicio]);
+    if (alertas.length === 0) {
+        return (
+            <p className="mt-3 border-y border-[var(--border)] py-6 text-center text-sm text-[var(--text-muted)]">No hay alertas para estos filtros.</p>
+        );
+    }
+    return (
+        <>
+            <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
+                <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+                            <thead className="vcm-thead border-y border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
+                                <tr>
+                                    <th className="px-3 py-2 font-semibold">Producto</th>
+                                    <th className="px-3 py-2 text-center font-semibold">Talla / Color</th>
+                                    <th className="px-3 py-2 text-center font-semibold">Stock</th>
+                                    <th className="px-3 py-2 text-center font-semibold">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--border)]">
+                                {paginacion.visibles.map((alerta) => {
+                                    const agotado = alerta.stock === 0;
+                                    return (
+                                        <tr className="hover:bg-[var(--primary-soft)]" key={alerta.sku}>
+                                            <td className="px-3 py-2">
+                                                <p className="font-medium text-[var(--text)]">{alerta.nombre}</p>
+                                                <p className="font-mono text-[10px] text-[var(--text-muted)]">{alerta.codigoProducto}</p>
+                                            </td>
+                                            <td className="px-3 py-2 text-center text-[var(--text-soft)]">{[alerta.talla && alerta.talla.toLowerCase() !== 'unica' ? alerta.talla : '', alerta.color].filter(Boolean).join(' / ') || '—'}</td>
+                                            <td className={`px-3 py-2 text-center font-semibold tabular-nums ${agotado ? 'text-red-400' : 'text-[var(--text-soft)]'}`}>{num(alerta.stock)}</td>
+                                            <td className="px-3 py-2 text-center"><span className={badgeEstado(agotado ? 'AGOTADO' : alerta.estado)}>{agotado ? 'Agotado' : alerta.estado}</span></td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+            </div>
+            <Paginacion
+                    pagina={paginacion.pagina}
+                    totalPaginas={paginacion.totalPaginas}
+                    total={paginacion.total}
+                    desde={paginacion.desde}
+                    hasta={paginacion.hasta}
+                    etiqueta="alertas"
+                    onCambiar={paginacion.irA}
+                />
+        </>
+    );
+}
+
 export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) {
     const [resumen, setResumen] = useState<ResumenDashboard | null>(null);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
     const [busquedaProducto, setBusquedaProducto] = useState('');
     const [ordenProducto, setOrdenProducto] = useState('nombre');
-    const [productosVisibles, setProductosVisibles] = useState(4);
     const [busquedaAlerta, setBusquedaAlerta] = useState('');
     const [filtroAlerta, setFiltroAlerta] = useState('todos');
     const [ordenAlerta, setOrdenAlerta] = useState('prioridad');
-    const [alertasVisibles, setAlertasVisibles] = useState(4);
 
     const cargar = async () => {
         setError('');
@@ -222,12 +332,12 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                         <input
                             aria-label="Buscar producto"
                             className="vcm-input vcm-input--sm"
-                            onChange={(event) => { setBusquedaProducto(event.target.value); setProductosVisibles(4); }}
+                            onChange={(event) => { setBusquedaProducto(event.target.value); }}
                             placeholder="Buscar producto"
                             type="search"
                             value={busquedaProducto}
                         />
-                        <select aria-label="Ordenar productos" className="vcm-select vcm-select--sm" onChange={(event) => { setOrdenProducto(event.target.value); setProductosVisibles(4); }} value={ordenProducto}>
+                        <select aria-label="Ordenar productos" className="vcm-select vcm-select--sm" onChange={(event) => { setOrdenProducto(event.target.value); }} value={ordenProducto}>
                             <option value="ingreso">Mayor ingreso</option>
                             <option value="stock">Menor stock</option>
                             <option value="vendidos">Más vendidos</option>
@@ -236,43 +346,7 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                         </select>
                     </div>
                 </div>
-                <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
-                    <table className="w-full min-w-[650px] border-collapse text-left text-sm">
-                        <thead className="vcm-thead border-y border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
-                            <tr>
-                                <th className="px-3 py-2 font-semibold">Producto</th>
-                                <th className="px-3 py-2 text-center font-semibold">Stock</th>
-                                <th className="px-3 py-2 text-center font-semibold">Cant. inicial</th>
-                                <th className="px-3 py-2 text-center font-semibold">Vendidos</th>
-                                <th className="px-3 py-2 text-center font-semibold">% vendido</th>
-                                <th className="px-3 py-2 text-center font-semibold">Ingreso normal</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--border)]">
-                            {productosFiltrados.slice(0, productosVisibles).map((prod) => (
-                                <tr className="hover:bg-[var(--primary-soft)]" key={prod.codigoProducto}>
-                                    <td className="px-3 py-2">
-                                        <p className="font-medium text-[var(--text)]">{prod.nombre}</p>
-                                        <p className="font-mono text-[10px] text-[var(--text-muted)]">{prod.codigoProducto}</p>
-                                    </td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.stock)}</td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.cantInicial)}</td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{num(prod.vendidos)}</td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{pct(prod.porcentajeVendido)}</td>
-                                    <td className="px-3 py-2 text-center tabular-nums text-[var(--text-soft)]">{formatearCLP(prod.ingresoNormal)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {productosFiltrados.length === 0 && <p className="py-6 text-center text-sm text-[var(--text-muted)]">No hay productos que coincidan.</p>}
-                    {productosVisibles < productosFiltrados.length && (
-                        <div className="flex justify-center border-t border-[var(--border)] py-3">
-                            <button className="vcm-btn vcm-btn--primary vcm-btn--sm" onClick={() => setProductosVisibles((actual) => actual + 4)} type="button">
-                                Cargar más productos (+{Math.min(4, productosFiltrados.length - productosVisibles)})
-                            </button>
-                        </div>
-                    )}
-                </div>
+                <TablaProductos productos={productosFiltrados} reinicio={`${busquedaProducto}|${ordenProducto}`} />
             </section>
 
             <section className="mt-6 border-t border-[var(--border)] pt-5">
@@ -285,18 +359,18 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                         <input
                             aria-label="Buscar alerta"
                             className="vcm-input vcm-input--sm"
-                            onChange={(event) => { setBusquedaAlerta(event.target.value); setAlertasVisibles(4); }}
+                            onChange={(event) => { setBusquedaAlerta(event.target.value); }}
                             placeholder="Buscar alerta"
                             type="search"
                             value={busquedaAlerta}
                         />
-                        <select aria-label="Filtrar alertas por estado" className="vcm-select vcm-select--sm" onChange={(event) => { setFiltroAlerta(event.target.value); setAlertasVisibles(4); }} value={filtroAlerta}>
+                        <select aria-label="Filtrar alertas por estado" className="vcm-select vcm-select--sm" onChange={(event) => { setFiltroAlerta(event.target.value); }} value={filtroAlerta}>
                             <option value="todos">Todos los estados</option>
                             <option value="agotado">Agotado</option>
                             <option value="critico">Crítico</option>
                             <option value="bajo">Bajo</option>
                         </select>
-                        <select aria-label="Ordenar alertas" className="vcm-select vcm-select--sm" onChange={(event) => { setOrdenAlerta(event.target.value); setAlertasVisibles(4); }} value={ordenAlerta}>
+                        <select aria-label="Ordenar alertas" className="vcm-select vcm-select--sm" onChange={(event) => { setOrdenAlerta(event.target.value); }} value={ordenAlerta}>
                             <option value="prioridad">Prioridad</option>
                             <option value="stock">Menor stock</option>
                             <option value="nombre-az">Nombre A-Z</option>
@@ -304,45 +378,7 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                         </select>
                     </div>
                 </div>
-                {alertasFiltradas.length === 0 ? (
-                    <p className="mt-3 border-y border-[var(--border)] py-6 text-center text-sm text-[var(--text-muted)]">No hay alertas para estos filtros.</p>
-                ) : (
-                    <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
-                        <table className="w-full min-w-[560px] border-collapse text-left text-sm">
-                            <thead className="vcm-thead border-y border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
-                                <tr>
-                                    <th className="px-3 py-2 font-semibold">Producto</th>
-                                    <th className="px-3 py-2 text-center font-semibold">Talla / Color</th>
-                                    <th className="px-3 py-2 text-center font-semibold">Stock</th>
-                                    <th className="px-3 py-2 text-center font-semibold">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[var(--border)]">
-                                {alertasFiltradas.slice(0, alertasVisibles).map((alerta) => {
-                                    const agotado = alerta.stock === 0;
-                                    return (
-                                        <tr className="hover:bg-[var(--primary-soft)]" key={alerta.sku}>
-                                            <td className="px-3 py-2">
-                                                <p className="font-medium text-[var(--text)]">{alerta.nombre}</p>
-                                                <p className="font-mono text-[10px] text-[var(--text-muted)]">{alerta.codigoProducto}</p>
-                                            </td>
-                                            <td className="px-3 py-2 text-center text-[var(--text-soft)]">{[alerta.talla && alerta.talla.toLowerCase() !== 'unica' ? alerta.talla : '', alerta.color].filter(Boolean).join(' / ') || '—'}</td>
-                                            <td className={`px-3 py-2 text-center font-semibold tabular-nums ${agotado ? 'text-red-400' : 'text-[var(--text-soft)]'}`}>{num(alerta.stock)}</td>
-                                            <td className="px-3 py-2 text-center"><span className={badgeEstado(agotado ? 'AGOTADO' : alerta.estado)}>{agotado ? 'Agotado' : alerta.estado}</span></td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                        {alertasVisibles < alertasFiltradas.length && (
-                            <div className="flex justify-center border-t border-[var(--border)] py-3">
-                                <button className="vcm-btn vcm-btn--primary vcm-btn--sm" onClick={() => setAlertasVisibles((actual) => actual + 4)} type="button">
-                                    Cargar más alertas (+{Math.min(4, alertasFiltradas.length - alertasVisibles)})
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
+                <TablaAlertas alertas={alertasFiltradas} reinicio={`${busquedaAlerta}|${filtroAlerta}|${ordenAlerta}`} />
             </section>
         </div>
     );

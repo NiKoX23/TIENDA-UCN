@@ -3,13 +3,15 @@ import axios from 'axios';
 import { formatearCLP } from '../utils/precio';
 import { listarInventario, type ItemInventario } from '../services/inventario.service';
 import {
-    listarRegistroVentas,
     registrarVenta,
     type PayloadRegistrarVenta,
     type RegistroVentaItem,
     type TipoVenta,
 } from '../services/ventas.service';
 import { exportarVentas } from '../services/export.service';
+import { useListaPaginada } from '../hooks/useListaPaginada';
+import { listarBoletas, obtenerTotalesVentas, type BoletaVenta, type OrdenBoleta, type TotalesVentas } from '../services/listados.service';
+import Paginacion from '../components/Paginacion';
 
 const inputCls =
     'w-full rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-violet-400/60';
@@ -88,61 +90,44 @@ function convertirRegistros(ventasApp: RegistroVentaItem[]): RegistroHistorialVe
     }));
 }
 
-function agruparBoletas(registros: RegistroHistorialVenta[]): BoletaHistorial[] {
-    const grupos = new Map<string, RegistroHistorialVenta[]>();
-    for (const registro of registros) {
-        const clave = `app-${registro.idFactura}`;
-        const lineas = grupos.get(clave) ?? [];
-        lineas.push(registro);
-        grupos.set(clave, lineas);
-    }
-
-    return [...grupos.entries()].map(([id, lineas]) => {
-        const frecuenciasFecha = new Map<string, number>();
-        const frecuenciasPago = new Map<string, number>();
-        for (const linea of lineas) {
-            if (linea.fecha) frecuenciasFecha.set(linea.fecha, (frecuenciasFecha.get(linea.fecha) ?? 0) + 1);
-            if (linea.metodoPago) frecuenciasPago.set(linea.metodoPago, (frecuenciasPago.get(linea.metodoPago) ?? 0) + 1);
-        }
-        const fecha = [...frecuenciasFecha.entries()].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] ?? '';
-        const metodoPago = [...frecuenciasPago.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
-
-        return {
-            id,
-            numeroVenta: lineas[0].numeroVenta,
-            fecha,
-            tipoVenta: lineas[0].tipoVenta,
-            metodoPago,
-            lineas,
-            unidades: lineas.reduce((total, linea) => total + linea.cantidad, 0),
-            subtotal: lineas.reduce((total, linea) => total + linea.subtotal, 0),
-            ganancia: lineas.reduce((total, linea) => total + linea.ganancia, 0),
-        };
-    });
+/** Boleta del servidor (ya agrupada y con totales) -> formato que usa la tabla y el modal. */
+function desdeBoletaApi(boleta: BoletaVenta): BoletaHistorial {
+    return {
+        id: `app-${boleta.idFactura}`,
+        numeroVenta: boleta.numeroDocumento,
+        fecha: boleta.fecha,
+        tipoVenta: boleta.tipoVenta,
+        metodoPago: boleta.metodoPago,
+        lineas: convertirRegistros(boleta.lineas),
+        unidades: boleta.unidades,
+        subtotal: boleta.subtotal,
+        ganancia: boleta.ganancia,
+    };
 }
 
-interface ResultadoCargaVentas {
-    registros: RegistroHistorialVenta[] | null;
+interface ResultadoCargaAuxiliar {
+    totales: TotalesVentas | null;
     productos: ItemInventario[] | null;
     errores: string[];
 }
 
-async function cargarRegistroYProductos(): Promise<ResultadoCargaVentas> {
-    const [ventas, inventario] = await Promise.allSettled([
-        listarRegistroVentas(),
+/** Totales del historial completo y productos activos (para el formulario de venta). */
+async function cargarTotalesYProductos(): Promise<ResultadoCargaAuxiliar> {
+    const [totales, inventario] = await Promise.allSettled([
+        obtenerTotalesVentas(),
         listarInventario(),
     ]);
     const errores: string[] = [];
 
-    if (ventas.status === 'rejected') {
-        errores.push(`No se pudo cargar el registro de ventas: ${mensajeError(ventas.reason)}`);
+    if (totales.status === 'rejected') {
+        errores.push(`No se pudieron cargar los totales de ventas: ${mensajeError(totales.reason)}`);
     }
     if (inventario.status === 'rejected') {
         errores.push(`No se pudo cargar el inventario: ${mensajeError(inventario.reason)}`);
     }
 
     return {
-        registros: ventas.status === 'fulfilled' ? convertirRegistros(ventas.value) : null,
+        totales: totales.status === 'fulfilled' ? totales.value : null,
         productos: inventario.status === 'fulfilled'
             ? inventario.value.filter((producto) => producto.activo)
             : null,
@@ -425,9 +410,8 @@ function ModalVerBoleta({ boleta, onCerrar }: { boleta: BoletaHistorial; onCerra
 }
 
 export default function VentasTab() {
-    const [registro, setRegistro] = useState<RegistroHistorialVenta[]>([]);
     const [productos, setProductos] = useState<ItemInventario[]>([]);
-    const [cargando, setCargando] = useState(true);
+    const [totales, setTotales] = useState<TotalesVentas>({ boletas: 0, cantidad: 0, subtotal: 0, ganancia: 0 });
     const [error, setError] = useState('');
     const [exito, setExito] = useState('');
     const [exportando, setExportando] = useState(false);
@@ -435,8 +419,14 @@ export default function VentasTab() {
     const [busqueda, setBusqueda] = useState('');
     const [filtroTipo, setFiltroTipo] = useState('todos');
     const [orden, setOrden] = useState('fecha-desc');
-    const [ventasVisibles, setVentasVisibles] = useState(4);
     const [boletaSeleccionada, setBoletaSeleccionada] = useState<BoletaHistorial | null>(null);
+
+    // Filtros, orden y página se resuelven en el servidor; la búsqueda se envía tras una breve pausa.
+    const lista = useListaPaginada(listarBoletas, {
+        filtros: { tipo: filtroTipo as 'todos' | TipoVenta, orden: orden as OrdenBoleta },
+        busqueda,
+    });
+    const cargando = lista.cargando;
 
     const manejarExportar = async () => {
         try {
@@ -453,73 +443,27 @@ export default function VentasTab() {
     };
 
     const cargar = async () => {
-        setCargando(true);
-        try {
-            const resultado = await cargarRegistroYProductos();
-            if (resultado.registros !== null) setRegistro(resultado.registros);
-            if (resultado.productos !== null) setProductos(resultado.productos);
-            setError(resultado.errores.join(' '));
-        } finally {
-            setCargando(false);
-        }
+        lista.recargar();
+        const carga = await cargarTotalesYProductos();
+        if (carga.totales !== null) setTotales(carga.totales);
+        if (carga.productos !== null) setProductos(carga.productos);
+        setError(carga.errores.join(' '));
     };
 
     useEffect(() => {
         let activo = true;
-        cargarRegistroYProductos()
-            .then((resultado) => {
-                if (!activo) return;
-                if (resultado.registros !== null) setRegistro(resultado.registros);
-                if (resultado.productos !== null) setProductos(resultado.productos);
-                setError(resultado.errores.join(' '));
-            })
-            .finally(() => {
-                if (activo) setCargando(false);
-            });
+        cargarTotalesYProductos().then((resultado) => {
+            if (!activo) return;
+            if (resultado.totales !== null) setTotales(resultado.totales);
+            if (resultado.productos !== null) setProductos(resultado.productos);
+            setError(resultado.errores.join(' '));
+        });
         return () => {
             activo = false;
         };
     }, []);
 
-    const totales = useMemo(() => {
-        return registro.reduce(
-            (acc, r) => {
-                acc.cantidad += r.cantidad;
-                acc.subtotal += r.subtotal;
-                acc.ganancia += r.ganancia;
-                return acc;
-            },
-            { cantidad: 0, subtotal: 0, ganancia: 0 },
-        );
-    }, [registro]);
-    const boletas = useMemo(() => agruparBoletas(registro), [registro]);
-
-    const ventasFiltradas = useMemo(() => {
-        const busquedaNormalizada = busqueda.toLocaleLowerCase('es-CL');
-        return boletas
-            .filter((boleta) => {
-                const productosVenta = boleta.lineas
-                    .map((linea) => `${linea.producto} ${linea.sku} ${linea.variante}`)
-                    .join(' ');
-                const texto = `${boleta.numeroVenta ?? ''} ${productosVenta}`
-                    .toLocaleLowerCase('es-CL');
-                return texto.includes(busquedaNormalizada)
-                    && (filtroTipo === 'todos' || boleta.tipoVenta === filtroTipo);
-            })
-            .sort((a, b) => {
-                if (orden === 'fecha-asc' || orden === 'fecha-desc') {
-                    const fechaA = a.fecha ? Date.parse(a.fecha) : Number.NaN;
-                    const fechaB = b.fecha ? Date.parse(b.fecha) : Number.NaN;
-                    if (Number.isNaN(fechaA) && Number.isNaN(fechaB)) return b.id.localeCompare(a.id);
-                    if (Number.isNaN(fechaA)) return 1;
-                    if (Number.isNaN(fechaB)) return -1;
-                    return orden === 'fecha-asc' ? fechaA - fechaB : fechaB - fechaA;
-                }
-                if (orden === 'subtotal') return b.subtotal - a.subtotal;
-                if (orden === 'cantidad') return b.unidades - a.unidades;
-                return (a.lineas[0]?.producto ?? '').localeCompare(b.lineas[0]?.producto ?? '', 'es-CL');
-            });
-    }, [boletas, busqueda, filtroTipo, orden]);
+    const boletas = useMemo(() => lista.data.map(desdeBoletaApi), [lista.data]);
 
     const guardar = async (payload: PayloadRegistrarVenta) => {
         try {
@@ -529,8 +473,9 @@ export default function VentasTab() {
             setExito(
                 `Venta ${payload.tipoVenta.toUpperCase()} registrada · ${resultado.numeroDocumento} · ${formatearCLP(resultado.total)}`,
             );
-            const carga = await cargarRegistroYProductos();
-            if (carga.registros !== null) setRegistro(carga.registros);
+            lista.recargar();
+            const carga = await cargarTotalesYProductos();
+            if (carga.totales !== null) setTotales(carga.totales);
             if (carga.productos !== null) setProductos(carga.productos);
             setError(carga.errores.join(' '));
         } catch (e) {
@@ -538,12 +483,14 @@ export default function VentasTab() {
         }
     };
 
+    const errorVisible = [error, lista.error ? `No se pudo cargar el registro de ventas: ${mensajeError(lista.error)}` : ''].filter(Boolean).join(' ');
+
     return (
         <div className="mt-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2 text-xs font-bold">
                     <span className="rounded-full border border-slate-400/15 bg-slate-950/50 px-3 py-1.5 text-slate-300">
-                        {boletas.length} boletas · {totales.cantidad} unidades
+                        {totales.boletas} boletas · {totales.cantidad} unidades
                     </span>
                     <span className="rounded-full border border-slate-400/15 bg-slate-950/50 px-3 py-1.5 text-slate-300">
                         Ingreso {formatearCLP(totales.subtotal)}
@@ -565,9 +512,9 @@ export default function VentasTab() {
                 </div>
             </div>
 
-            {error && (
+            {errorVisible && (
                 <p className="mt-4 rounded-full border border-red-400/20 bg-red-950/30 px-4 py-3 text-center text-sm text-red-200">
-                    {error}
+                    {errorVisible}
                 </p>
             )}
             {exito && (
@@ -582,17 +529,17 @@ export default function VentasTab() {
                     <input
                         aria-label="Buscar en el historial de ventas"
                         className="w-44 rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-slate-400/50"
-                        onChange={(event) => { setBusqueda(event.target.value); setVentasVisibles(4); }}
+                        onChange={(event) => { setBusqueda(event.target.value); }}
                         placeholder="Buscar venta o producto"
                         type="search"
                         value={busqueda}
                     />
-                    <select aria-label="Filtrar historial por tipo de venta" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setFiltroTipo(event.target.value); setVentasVisibles(4); }} value={filtroTipo}>
+                    <select aria-label="Filtrar historial por tipo de venta" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setFiltroTipo(event.target.value); }} value={filtroTipo}>
                         <option value="todos">Todos los tipos</option>
                         <option value="normal">Normal</option>
                         <option value="tac">TAC</option>
                     </select>
-                    <select aria-label="Ordenar historial de ventas" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setOrden(event.target.value); setVentasVisibles(4); }} value={orden}>
+                    <select aria-label="Ordenar historial de ventas" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setOrden(event.target.value); }} value={orden}>
                         <option value="fecha-desc">Fecha reciente</option>
                         <option value="fecha-asc">Fecha antigua</option>
                         <option value="subtotal">Mayor subtotal</option>
@@ -602,12 +549,13 @@ export default function VentasTab() {
                 </div>
             </div>
 
-            {cargando ? (
+            {cargando && boletas.length === 0 ? (
                 <div className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-slate-100 before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:border-2 before:border-slate-400/20 before:border-r-violet-600 before:border-t-violet-300 before:animate-spin">
                     Cargando registro de ventas...
                 </div>
             ) : (
-                <div className="mt-3 overflow-x-auto rounded-lg border border-slate-400/15">
+                <>
+                <div aria-busy={cargando} className={`mt-3 overflow-x-auto rounded-lg border border-slate-400/15 transition-opacity ${cargando ? 'opacity-60' : ''}`}>
                     <table className="w-full min-w-[820px] border-collapse text-left text-sm">
                         <thead className="border-y border-slate-400/20 bg-slate-400/10 text-[11px] font-bold uppercase tracking-wide text-slate-300">
                             <tr>
@@ -621,7 +569,7 @@ export default function VentasTab() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-400/10">
-                            {ventasFiltradas.slice(0, ventasVisibles).map((boleta) => (
+                            {boletas.map((boleta) => (
                                 <tr className={`hover:bg-slate-400/[0.04] ${boleta.tipoVenta === 'tac' ? 'bg-purple-500/5' : ''}`} key={boleta.id}>
                                     <td className="px-3 py-2">
                                         <p className="font-semibold text-slate-200">Venta {boleta.numeroVenta}</p>
@@ -643,18 +591,22 @@ export default function VentasTab() {
                             ))}
                         </tbody>
                     </table>
-                    {ventasFiltradas.length === 0 ? (
+                    {boletas.length === 0 && !cargando && (
                         <p className="border-t border-slate-400/10 px-4 py-6 text-center text-sm text-slate-500">
                                 No hay boletas que coincidan con estos filtros.
                         </p>
-                    ) : ventasVisibles < ventasFiltradas.length && (
-                        <div className="flex justify-center border-t border-slate-400/10 py-3">
-                            <button className="rounded-md border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => setVentasVisibles((actual) => actual + 4)} type="button">
-                                Cargar más boletas (+{Math.min(4, ventasFiltradas.length - ventasVisibles)})
-                            </button>
-                        </div>
                     )}
                 </div>
+                <Paginacion
+                    pagina={lista.pagina}
+                    totalPaginas={lista.totalPaginas}
+                    total={lista.total}
+                    desde={lista.desde}
+                    hasta={lista.hasta}
+                    etiqueta="boletas"
+                    onCambiar={lista.irA}
+                />
+                </>
             )}
 
             {modal && <ModalRegistrarVenta productos={productos} onCerrar={() => setModal(false)} onGuardar={guardar} />}

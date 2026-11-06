@@ -10,6 +10,7 @@ import {
   UseGuards,
   Req,
   Res,
+  Query,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -25,6 +26,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { AdminRolDto } from './dto/admin-rol.dto';
+import { ListarUsuariosQueryDto } from './dto/listar-usuarios.dto';
 
 type AuthRequest = Request & {
   user: { uid: number; email: string; esAdmin: boolean };
@@ -111,8 +113,8 @@ export class AuthController {
   @Get('admin/usuarios')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  listarUsuariosAdmin() {
-    return this.authService.listarUsuarios();
+  listarUsuariosAdmin(@Query() query: ListarUsuariosQueryDto) {
+    return this.authService.listarUsuarios(query);
   }
 
   @Patch('admin/usuarios/:uid/rol')

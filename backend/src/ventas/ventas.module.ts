@@ -8,6 +8,7 @@ import { VarianteProducto } from '../productos/variante-producto.entity';
 import { DocumentoTac } from './documento-tac.entity';
 import { VentasController } from './ventas.controller';
 import { VentasService } from './ventas.service';
+import { VentasListadoService } from './ventas-listado.service';
 
 @Module({
   imports: [
@@ -21,6 +22,6 @@ import { VentasService } from './ventas.service';
     ]),
   ],
   controllers: [VentasController],
-  providers: [VentasService],
+  providers: [VentasService, VentasListadoService],
 })
 export class VentasModule {}

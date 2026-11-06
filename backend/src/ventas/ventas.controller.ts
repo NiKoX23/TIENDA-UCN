@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -18,17 +19,33 @@ import {
   FirmasDto,
   RegistrarVentaDto,
 } from './ventas.dto';
+import { ListarBoletasQueryDto, ListarTacQueryDto } from './dto/listar-ventas.dto';
 import { VentasService } from './ventas.service';
+import { VentasListadoService } from './ventas-listado.service';
 
 @Controller('ventas/admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class VentasController {
-  constructor(private readonly ventasService: VentasService) {}
+  constructor(
+    private readonly ventasService: VentasService,
+    private readonly ventasListado: VentasListadoService,
+  ) {}
 
+  /**
+   * Sin `page`: arreglo de líneas de venta (comportamiento anterior).
+   * Con `page`: boletas paginadas { data, total, page, limit, totalPages }.
+   */
   @Get('registro')
-  listarRegistro() {
-    return this.ventasService.listarRegistroVentas();
+  listarRegistro(@Query() query: ListarBoletasQueryDto) {
+    return query.page === undefined
+      ? this.ventasService.listarRegistroVentas()
+      : this.ventasListado.listarBoletas(query);
+  }
+
+  @Get('registro/totales')
+  totalesRegistro() {
+    return this.ventasListado.totalesVentas();
   }
 
   @Post('registro')
@@ -36,9 +53,17 @@ export class VentasController {
     return this.ventasService.registrarVenta(dto);
   }
 
+  @Get('tac/resumen')
+  resumenTac() {
+    return this.ventasListado.resumenTac();
+  }
+
+  /** Sin `page`: arreglo completo. Con `page`: documentos TAC paginados. */
   @Get('tac')
-  listarDocumentosTac() {
-    return this.ventasService.listarDocumentosTac();
+  listarDocumentosTac(@Query() query: ListarTacQueryDto) {
+    return query.page === undefined
+      ? this.ventasService.listarDocumentosTac()
+      : this.ventasListado.listarTac(query);
   }
 
   @Post('tac')

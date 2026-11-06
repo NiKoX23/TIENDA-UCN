@@ -15,6 +15,12 @@ import { Usuario } from './usuario.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ListarUsuariosQueryDto } from './dto/listar-usuarios.dto';
+import {
+  crearPagina,
+  patronBusqueda,
+  resolverPagina,
+} from '../common/paginacion';
 
 @Injectable()
 export class AuthService implements OnModuleInit {
@@ -155,19 +161,54 @@ export class AuthService implements OnModuleInit {
     }
   }
 
-  async listarUsuarios() {
-    const usuarios = await this.usuarioRepository.find({
-      order: { fechaRegistro: 'ASC' },
-    });
-    return usuarios.map(
-      ({ uid, nombre, email, proveedorAuth, esAdmin, fechaRegistro }) => ({
-        uid,
-        nombre,
-        email,
-        proveedorAuth,
-        esAdmin,
-        fechaRegistro,
-      }),
+  private aUsuarioPublico({
+    uid,
+    nombre,
+    email,
+    proveedorAuth,
+    esAdmin,
+    fechaRegistro,
+  }: Usuario) {
+    return { uid, nombre, email, proveedorAuth, esAdmin, fechaRegistro };
+  }
+
+  /**
+   * Sin `page`: arreglo completo (comportamiento anterior).
+   * Con `page`: { data, total, page, limit, totalPages }.
+   */
+  async listarUsuarios(query: ListarUsuariosQueryDto = {}) {
+    if (query.page === undefined) {
+      const usuarios = await this.usuarioRepository.find({
+        order: { fechaRegistro: 'ASC' },
+      });
+      return usuarios.map((usuario) => this.aUsuarioPublico(usuario));
+    }
+
+    const { page, limit, offset } = resolverPagina(query);
+    const patron = patronBusqueda(query.q);
+    const consulta = this.usuarioRepository.createQueryBuilder('u');
+    if (patron) {
+      consulta.andWhere('(u.nombre ILIKE :patron OR u.email ILIKE :patron)', {
+        patron,
+      });
+    }
+    if (query.rol) {
+      consulta.andWhere('u.esAdmin = :esAdmin', {
+        esAdmin: query.rol === 'admin',
+      });
+    }
+    const [usuarios, total] = await consulta
+      .orderBy('u.fechaRegistro', 'ASC')
+      .addOrderBy('u.uid', 'ASC')
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    return crearPagina(
+      usuarios.map((usuario) => this.aUsuarioPublico(usuario)),
+      total,
+      page,
+      limit,
     );
   }
 

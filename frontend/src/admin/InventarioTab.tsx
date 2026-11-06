@@ -19,6 +19,9 @@ import {
     type VariantePayload,
 } from '../services/inventario.service';
 import { exportarInventario } from '../services/export.service';
+import { usePaginacion } from '../hooks/usePaginacion';
+import Paginacion from '../components/Paginacion';
+import { FILAS_POR_PAGINA_ADMIN } from '../utils/paginacion';
 
 const inputCls =
     'admin-form-field w-full rounded-xl px-3 py-2 text-sm outline-none focus:border-violet-400/60';
@@ -779,6 +782,8 @@ export default function InventarioTab() {
             && (!categoriaFiltro || producto.categoria === categoriaFiltro)
             && (!estadoFiltro || estado === estadoFiltro);
     });
+    // Se pagina por producto (no por variante). Cambiar búsqueda, categoría o estado vuelve a la página 1.
+    const paginacion = usePaginacion(gruposFiltrados, FILAS_POR_PAGINA_ADMIN, [busqueda, categoriaFiltro, estadoFiltro]);
     const variantesCriticas = items.filter((item) => item.stock > 0 && item.estado === 'CRITICO').length;
     const varianteDetalle = detalle?.find((item) => item.sku === detalleSkuSeleccionado) ?? detalle?.[0] ?? null;
     const stockDetalle = varianteDetalle?.stock ?? 0;
@@ -999,6 +1004,7 @@ export default function InventarioTab() {
                     {[0, 1, 2, 3].map((fila) => <div key={fila} className="ucn-skeleton h-12 w-full" />)}
                 </div>
             ) : (
+                <>
                 <div className="overflow-x-auto rounded-lg border border-slate-400/15 bg-slate-950/10">
                     <table className="hidden w-full min-w-[760px] table-fixed text-left text-sm md:table">
                         <colgroup>
@@ -1020,7 +1026,7 @@ export default function InventarioTab() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-400/10">
-                            {gruposFiltrados.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => {
+                            {paginacion.visibles.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => {
                                 const tieneMultiples = hasMultipleVariants(variantes);
                                 return (
                                     <Fragment key={codigo}>
@@ -1110,7 +1116,7 @@ export default function InventarioTab() {
                         </tbody>
                     </table>
                     <div className="space-y-3 p-3 md:hidden">
-                        {gruposFiltrados.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => {
+                        {paginacion.visibles.map(({ codigo, variantes, producto, stock, stockMinimo, estado }) => {
                             const tieneMultiples = hasMultipleVariants(variantes);
                             return (
                                 <article key={codigo} className="rounded-md border border-slate-400/15 p-3">
@@ -1175,6 +1181,16 @@ export default function InventarioTab() {
                     </div>
                     {gruposFiltrados.length === 0 && <p className="px-4 py-10 text-center text-sm text-slate-400">{items.length === 0 ? 'Aún no hay productos en el inventario.' : 'No hay productos que coincidan con estos filtros.'}</p>}
                 </div>
+                <Paginacion
+                    pagina={paginacion.pagina}
+                    totalPaginas={paginacion.totalPaginas}
+                    total={paginacion.total}
+                    desde={paginacion.desde}
+                    hasta={paginacion.hasta}
+                    etiqueta="productos"
+                    onCambiar={paginacion.irA}
+                />
+                </>
             )}
 
             {detalle && detalle.length > 0 && varianteDetalle && createPortal(<div className="admin-product-detail-overlay fixed inset-0 z-[140] flex justify-end" onClick={() => setDetalle(null)}>

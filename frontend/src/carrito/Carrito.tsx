@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { ItemCarrito } from '../hooks/useCarrito';
 import { formatearCLP } from '../utils/precio';
+import ImagenProducto from '../components/ImagenProducto';
 
 interface CarritoProps {
   abierto: boolean;
@@ -75,7 +76,7 @@ export default function Carrito({
           <ul className="cart-items m-0 flex flex-1 list-none flex-col gap-2.5 overflow-y-auto">
             {items.map((item) => (
               <li className="cart-item flex items-center gap-3" key={item.idVariante}>
-                <img src={item.imagen} alt={item.nombre} className="cart-image h-14 w-14 shrink-0 rounded-xl object-contain" />
+                <ImagenProducto src={item.imagen} alt={item.nombre} className="cart-image h-14 w-14 shrink-0 rounded-xl object-contain" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

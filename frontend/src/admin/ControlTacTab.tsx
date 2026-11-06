@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { formatearCLP } from '../utils/precio';
+import { useListaPaginada } from '../hooks/useListaPaginada';
+import Paginacion from '../components/Paginacion';
+import { listarDocumentosTacPaginado, obtenerResumenTac, type ResumenTac } from '../services/listados.service';
 import { listarInventario, type ItemInventario } from '../services/inventario.service';
 import {
     actualizarDocumentoTac,
     crearDocumentoTac,
     eliminarDocumentoTac,
-    listarDocumentosTac,
     type DocumentoTac,
     type FirmaEstado,
     type PayloadDocumentoTac,
@@ -99,9 +101,8 @@ function datosFormulario(documento: DocumentoTac): FormularioDocumento {
 }
 
 export default function ControlTacTab() {
-    const [documentos, setDocumentos] = useState<DocumentoTac[]>([]);
+    const [resumen, setResumen] = useState<ResumenTac>({ total: 0, monto: 0, aprobados: 0, pendientes: 0, rechazados: 0 });
     const [inventario, setInventario] = useState<ItemInventario[]>([]);
-    const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
     const [error, setError] = useState('');
     const [exito, setExito] = useState('');
@@ -113,6 +114,10 @@ export default function ControlTacTab() {
     const [formularioAbierto, setFormularioAbierto] = useState(false);
     const [modoEdicion, setModoEdicion] = useState(false);
     const [formulario, setFormulario] = useState<FormularioDocumento>(formularioVacio);
+
+    // Filtros, orden y página se resuelven en el servidor; la búsqueda se envía tras una breve pausa.
+    const lista = useListaPaginada(listarDocumentosTacPaginado, { filtros: { estado: filtroEstado, orden }, busqueda });
+    const cargando = lista.cargando;
 
     const manejarExportar = async () => {
         try {
@@ -128,28 +133,28 @@ export default function ControlTacTab() {
         }
     };
 
-    const cargar = async () => {
+    const cargarResumen = async () => {
         try {
-            setError('');
-            setDocumentos(await listarDocumentosTac());
+            setResumen(await obtenerResumenTac());
         } catch (e) {
             setError(mensajeError(e));
-        } finally {
-            setCargando(false);
         }
+    };
+
+    const cargar = async () => {
+        setError('');
+        lista.recargar();
+        await cargarResumen();
     };
 
     useEffect(() => {
         let activo = true;
-        listarDocumentosTac()
+        obtenerResumenTac()
             .then((datos) => {
-                if (activo) setDocumentos(datos);
+                if (activo) setResumen(datos);
             })
             .catch((e: unknown) => {
                 if (activo) setError(mensajeError(e));
-            })
-            .finally(() => {
-                if (activo) setCargando(false);
             });
         return () => {
             activo = false;
@@ -175,46 +180,6 @@ export default function ControlTacTab() {
             window.removeEventListener('keydown', cerrarConEscape);
         };
     }, [formularioAbierto]);
-
-    const resumen = useMemo(() => {
-        return documentos.reduce(
-            (acc, d) => {
-                acc.monto += d.total;
-                if (d.estado === 'Aprobado') acc.aprobados += 1;
-                if (d.estado === 'Pendiente') acc.pendientes += 1;
-                if (d.estado === 'Rechazado') acc.rechazados += 1;
-                return acc;
-            },
-            { monto: 0, aprobados: 0, pendientes: 0, rechazados: 0 },
-        );
-    }, [documentos]);
-
-    const documentosFiltrados = useMemo(() => {
-        const termino = busqueda.trim().toLocaleLowerCase('es-CL');
-        return documentos
-            .filter((documento) => {
-                const texto = [
-                    documento.nTac,
-                    documento.producto,
-                    documento.codigoProducto,
-                    documento.sku,
-                    documento.talla,
-                    documento.color,
-                    documento.responsable,
-                ].filter(Boolean).join(' ').toLocaleLowerCase('es-CL');
-                return texto.includes(termino)
-                    && (filtroEstado === 'todos' || documento.estado === filtroEstado);
-            })
-            .sort((a, b) => {
-                if (orden === 'fecha-asc' || orden === 'fecha-desc') {
-                    const fechaA = Date.parse(a.fecha);
-                    const fechaB = Date.parse(b.fecha);
-                    return orden === 'fecha-asc' ? fechaA - fechaB : fechaB - fechaA;
-                }
-                if (orden === 'total') return b.total - a.total;
-                return a.producto.localeCompare(b.producto, 'es-CL');
-            });
-    }, [documentos, busqueda, filtroEstado, orden]);
 
     const abrirNuevo = () => {
         setEditando(null);
@@ -253,12 +218,10 @@ export default function ControlTacTab() {
                 firmaComprador: formulario.firmaComprador,
                 firmaVendedor: formulario.firmaVendedor,
             };
-            const guardado = editando
-                ? await actualizarDocumentoTac(editando.idTac, payload)
-                : await crearDocumentoTac(payload);
-            setDocumentos((actuales) => editando
-                ? actuales.map((d) => d.idTac === guardado.idTac ? guardado : d)
-                : [guardado, ...actuales]);
+            if (editando) await actualizarDocumentoTac(editando.idTac, payload);
+            else await crearDocumentoTac(payload);
+            lista.recargar();
+            await cargarResumen();
             setEditando(null);
             setFormularioAbierto(false);
             setModoEdicion(false);
@@ -276,7 +239,8 @@ export default function ControlTacTab() {
             setError('');
             setExito('');
             await eliminarDocumentoTac(documento.idTac);
-            setDocumentos((actuales) => actuales.filter((d) => d.idTac !== documento.idTac));
+            lista.recargar();
+            await cargarResumen();
             setFormularioAbierto(false);
             setEditando(null);
             setExito('Documento TAC eliminado.');
@@ -292,12 +256,14 @@ export default function ControlTacTab() {
         setModoEdicion(false);
     };
 
+    const errorVisible = error || (lista.error ? mensajeError(lista.error) : '');
+
     return (
         <div className="tac-control-panel mt-6">
             <div className="tac-panel-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4">
                 <div className="flex flex-wrap gap-2.5 text-sm font-semibold">
                     <button type="button" aria-pressed={filtroEstado === 'todos'} onClick={() => setFiltroEstado('todos')} className="tac-filter-chip tac-filter-chip--primary">
-                        <strong className="text-base tabular-nums">{documentos.length}</strong><span>documentos</span>
+                        <strong className="text-base tabular-nums">{resumen.total}</strong><span>documentos</span>
                     </button>
                     <button type="button" aria-pressed={filtroEstado === 'Aprobado'} onClick={() => setFiltroEstado(filtroEstado === 'Aprobado' ? 'todos' : 'Aprobado')} className="tac-filter-chip tac-filter-chip--success">
                         <strong className="text-base tabular-nums">{resumen.aprobados}</strong><span>aprobados</span>
@@ -322,9 +288,9 @@ export default function ControlTacTab() {
                 </div>
             </div>
 
-            {error && (
+            {errorVisible && (
                 <p className="tac-feedback--error mt-4 rounded-xl px-4 py-3 text-center text-sm">
-                    {error}
+                    {errorVisible}
                 </p>
             )}
             {exito && (
@@ -334,7 +300,7 @@ export default function ControlTacTab() {
             )}
 
             <div className="tac-panel-surface mt-5 flex flex-col gap-3 rounded-2xl border p-4 lg:flex-row lg:items-center lg:justify-between">
-                <p className="text-sm text-[var(--text-soft)]">{documentosFiltrados.length} de {documentos.length} documentos TAC</p>
+                <p className="text-sm text-[var(--text-soft)]">{lista.total} de {resumen.total} documentos TAC</p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]">
                     <input
                         aria-label="Buscar documentos TAC"
@@ -499,12 +465,13 @@ export default function ControlTacTab() {
                 document.body,
             )}
 
-            {cargando ? (
+            {cargando && lista.data.length === 0 ? (
                 <div className="tac-loading mt-8 text-xs font-bold uppercase tracking-[0.18em] before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:animate-spin">
                     Cargando documentos TAC...
                 </div>
             ) : (
-                <div className="tac-table-shell mt-4 overflow-x-auto rounded-2xl border shadow-sm">
+                <>
+                <div aria-busy={cargando} className={`tac-table-shell mt-4 overflow-x-auto rounded-2xl border shadow-sm transition-opacity ${cargando ? 'opacity-60' : ''}`}>
                     <table className="tac-document-table w-full min-w-[900px] text-sm">
                         <thead className="sticky top-0 z-10 text-xs uppercase tracking-wide">
                             <tr>
@@ -517,7 +484,7 @@ export default function ControlTacTab() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {documentosFiltrados.map((d) => (
+                            {lista.data.map((d) => (
                                     <tr key={d.idTac} className="transition-colors">
                                         <td className="whitespace-nowrap px-5 py-4 text-left">
                                             <span className="font-mono text-sm font-bold tac-doc-number">TAC #{d.nTac}</span>
@@ -542,14 +509,24 @@ export default function ControlTacTab() {
                             ))}
                         </tbody>
                     </table>
-                    {documentosFiltrados.length === 0 && (
+                    {lista.data.length === 0 && !cargando && (
                         <div className="tac-empty-state px-6 py-12 text-center">
                             <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--bg-800)] text-xl text-[var(--text-soft)]" aria-hidden="true">⌕</div>
-                            <p className="mt-3 font-semibold">{documentos.length === 0 ? 'Aún no hay documentos TAC' : 'No encontramos documentos con esos filtros'}</p>
-                            <p className="mt-1 text-sm">{documentos.length === 0 ? 'Crea un documento nuevo para verlo aquí.' : 'Prueba con otra búsqueda o estado.'}</p>
+                            <p className="mt-3 font-semibold">{resumen.total === 0 ? 'Aún no hay documentos TAC' : 'No encontramos documentos con esos filtros'}</p>
+                            <p className="mt-1 text-sm">{resumen.total === 0 ? 'Crea un documento nuevo para verlo aquí.' : 'Prueba con otra búsqueda o estado.'}</p>
                         </div>
                     )}
                 </div>
+                <Paginacion
+                    pagina={lista.pagina}
+                    totalPaginas={lista.totalPaginas}
+                    total={lista.total}
+                    desde={lista.desde}
+                    hasta={lista.hasta}
+                    etiqueta="documentos"
+                    onCambiar={lista.irA}
+                />
+                </>
             )}
         </div>
     );

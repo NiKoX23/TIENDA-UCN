@@ -6,6 +6,11 @@ Tienda sobre ventas de productos UCN
 - Nginx publica el puerto 80; la aplicación usa 5173 (frontend), 3000 (API), 8000 (analítica) y 5432 (PostgreSQL).
 - El backend importa al iniciar las ventas de `docs/Productos.xlsx` una sola vez, agrupándolas por ID y fecha, sin modificar el stock.
 
+### cambio reciente
+- Paginación backend para usuarios y boletas
+- catálogo, dashboard e inventario hacen paginación desde el cliente (frontend)
+
+
 <br><br>
 
 ### fragmento obtenido de la guía de implementación de claude:

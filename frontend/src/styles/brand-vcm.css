@@ -1191,3 +1191,10 @@ html:root[data-theme='light'] [class*='text-slate-500'] { color: var(--text-mute
   box-shadow: 0 6px 18px rgba(2, 51, 89, 0.22);
   user-select: none;
 }
+
+/* el escudo UCN en la miniatura del carrito (56 px) */
+.cart-image.vcm-noimage .vcm-noimage__logo {
+  width: 84%;
+  padding: 0.15rem;
+  box-shadow: none;
+}
