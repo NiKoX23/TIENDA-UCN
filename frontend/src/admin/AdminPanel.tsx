@@ -9,6 +9,7 @@ import DashboardTab from './DashboardTab';
 import VentasTab from './VentasTab';
 import ControlTacTab from './ControlTacTab';
 import { exportarTodo, exportarUsuarios } from '../services/export.service';
+import ReservasPanel from '../reservas/ReservasPanel';
 
 interface AdminPanelProps {
     tema: 'dark' | 'light';
@@ -16,13 +17,14 @@ interface AdminPanelProps {
     usuario: Usuario;
 }
 
-type TabId = 'inicio' | 'inventario' | 'ventas' | 'tac' | 'usuarios';
+type TabId = 'inicio' | 'inventario' | 'ventas' | 'tac' | 'reservas' | 'usuarios';
 
 const TABS: { id: TabId; label: string }[] = [
     { id: 'inicio', label: 'Inicio' },
     { id: 'inventario', label: 'Inventario' },
     { id: 'ventas', label: 'Ventas' },
     { id: 'tac', label: 'Control TAC' },
+    { id: 'reservas', label: 'Reservas' },
     { id: 'usuarios', label: 'Usuarios' },
 ];
 
@@ -42,6 +44,10 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
     tac: {
         titulo: 'Control TAC',
         descripcion: 'Documentos TAC con el estado de las firmas de comprador y vendedor.',
+    },
+    reservas: {
+        titulo: 'Reservas de productos',
+        descripcion: 'Consulta las reservas, sus productos, usuarios y estado de retiro.',
     },
     usuarios: {
         titulo: 'Usuarios',
@@ -202,6 +208,8 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                         {tab === 'ventas' && <VentasTab />}
 
                         {tab === 'tac' && <ControlTacTab />}
+
+                        {tab === 'reservas' && <ReservasPanel administrador />}
 
                         {tab === 'usuarios' && (
                             <>

@@ -1016,9 +1016,13 @@ html:root:root .vcm-favorite-button {
   border: 1px solid var(--border);
   border-radius: 50%;
   background: #ffffff;
+  color: #b93616;
   box-shadow: 0 3px 12px rgba(2, 51, 89, .18);
+  transition: color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
 }
 html:root:root .vcm-favorite-button:hover { border-color: var(--primary); }
+html:root:root .vcm-favorite-button--active { color: #b93616; }
+html:root:root .vcm-favorite-button:focus-visible { outline: 3px solid rgba(185, 54, 22, .35); outline-offset: 3px; }
 html:root:root .storefront-page section[aria-label='Información de la tienda'] > div:nth-child(odd) { --m: #00b0de; }
 html:root:root .storefront-page section[aria-label='Información de la tienda'] > div:nth-child(even) { --m: #ffa829; }
 html:root:root .storefront-detail-stock--available { color: #007b9a; }

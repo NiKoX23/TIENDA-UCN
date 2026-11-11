@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type SetStateAction } from 'react';
 import type { Producto } from '../productos/Productos';
 
 export interface ItemCarrito {
@@ -30,10 +30,25 @@ function cargarCarrito(uid?: number): ItemCarrito[] {
 }
 
 export function useCarrito(uid?: number) {
-  const [items, setItems] = useState<ItemCarrito[]>(() => cargarCarrito(uid));
-
-  useEffect(() => {
-    setItems(cargarCarrito(uid));
+  const [carrito, setCarrito] = useState(() => ({
+    uid,
+    items: cargarCarrito(uid),
+  }));
+  if (carrito.uid !== uid) {
+    setCarrito({ uid, items: cargarCarrito(uid) });
+  }
+  const items = carrito.uid === uid ? carrito.items : cargarCarrito(uid);
+  const setItems = useCallback((actualizar: SetStateAction<ItemCarrito[]>) => {
+    setCarrito((actual) => {
+      const itemsActuales = actual.uid === uid ? actual.items : cargarCarrito(uid);
+      return {
+        uid,
+        items:
+          typeof actualizar === 'function'
+            ? actualizar(itemsActuales)
+            : actualizar,
+      };
+    });
   }, [uid]);
 
   useEffect(() => {
@@ -69,7 +84,7 @@ export function useCarrito(uid?: number) {
         },
       ];
     });
-  }, []);
+  }, [setItems]);
 
   const sumarUno = useCallback((idVariante: number) => {
     setItems((actuales) =>
@@ -79,7 +94,7 @@ export function useCarrito(uid?: number) {
           : item,
       ),
     );
-  }, []);
+  }, [setItems]);
 
   const restarUno = useCallback((idVariante: number) => {
     setItems((actuales) =>
@@ -87,26 +102,48 @@ export function useCarrito(uid?: number) {
         .map((item) => (item.idVariante === idVariante ? { ...item, cantidad: item.cantidad - 1 } : item))
         .filter((item) => item.cantidad > 0),
     );
-  }, []);
+  }, [setItems]);
 
   const actualizarCantidad = useCallback((idVariante: number, cantidad: number) => {
     setItems((actuales) => {
       if (!Number.isFinite(cantidad) || cantidad <= 0) {
         return actuales.filter((item) => item.idVariante !== idVariante);
       }
-      return actuales.map((item) =>
-        item.idVariante === idVariante
-          ? { ...item, cantidad: Math.min(Math.floor(cantidad), item.stock) }
-          : item,
-      );
+      return actuales
+        .map((item) =>
+          item.idVariante === idVariante
+            ? { ...item, cantidad: Math.min(Math.floor(cantidad), item.stock) }
+            : item,
+        )
+        .filter((item) => item.cantidad > 0);
     });
-  }, []);
+  }, [setItems]);
+
+  const sincronizarVariantes = useCallback((variantes: Producto[]) => {
+    const porId = new Map(variantes.map((producto) => [producto.idVariante, producto]));
+    setItems((actuales) =>
+      actuales.map((item) => {
+        const variante = porId.get(item.idVariante);
+        if (!variante) return { ...item, stock: 0 };
+        return {
+          ...item,
+          codigoProducto: variante.codigoProducto,
+          nombre: variante.nombre,
+          precio: variante.precio,
+          imagen: variante.imagen,
+          talla: variante.talla,
+          color: variante.color,
+          stock: variante.stock,
+        };
+      }),
+    );
+  }, [setItems]);
 
   const eliminar = useCallback((idVariante: number) => {
     setItems((actuales) => actuales.filter((item) => item.idVariante !== idVariante));
-  }, []);
+  }, [setItems]);
 
-  const vaciar = useCallback(() => setItems([]), []);
+  const vaciar = useCallback(() => setItems([]), [setItems]);
 
   const cantidadTotal = items.reduce((suma, item) => suma + item.cantidad, 0);
   const total = items.reduce((suma, item) => suma + item.precio * item.cantidad, 0);
@@ -117,6 +154,7 @@ export function useCarrito(uid?: number) {
     sumarUno,
     restarUno,
     actualizarCantidad,
+    sincronizarVariantes,
     eliminar,
     vaciar,
     cantidadTotal,

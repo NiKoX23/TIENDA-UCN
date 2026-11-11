@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import escudoUcn from '../assets/icons/Escudo-UCN.png';
 import type { Usuario } from '../services/auth.service';
-import type { Producto } from '../productos/Productos';
 import { categorias } from '../productos/Productos';
+import {
+  agruparVariantesCatalogo,
+  descontarStockCatalogo,
+  type ProductoCatalogo,
+} from '../productos/catalogo';
 import { listarProductos, comprarProductos } from '../services/productos.service';
 import { useCarrito } from '../hooks/useCarrito';
 import Carrito from '../carrito/Carrito';
@@ -11,6 +15,11 @@ import UserAvatarMenu from '../components/UserAvatarMenu';
 import { BrandLockup } from '../components/brand/BrandLogo';
 import { BrandBlocks, PatternStrip } from '../components/brand/BrandFigures';
 import { formatearCLP } from '../utils/precio';
+import ReservaForm from '../reservas/ReservaForm';
+import { crearReserva, type DatosCrearReserva } from '../services/reservas.service';
+import type { Reserva } from '../services/reservas.service';
+import ReservaConfirmacionModal from '../reservas/ReservaConfirmacionModal';
+import { mensajeErrorApi } from '../utils/mensajeErrorApi';
 
 interface TiendaProps {
   usuario: Usuario | null;
@@ -50,13 +59,21 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [modalLoginAbierto, setModalLoginAbierto] = useState(false);
   const [carritoAbierto, setCarritoAbierto] = useState(false);
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [reservaFormAbierto, setReservaFormAbierto] = useState(false);
+  const [reservando, setReservando] = useState(false);
+  const [errorReserva, setErrorReserva] = useState('');
+  const [comprando, setComprando] = useState(false);
+  const [errorCompra, setErrorCompra] = useState('');
+  const [reservaCreada, setReservaCreada] = useState<Reserva | null>(null);
+  const [advertenciaStockReserva, setAdvertenciaStockReserva] = useState(false);
+  const [productos, setProductos] = useState<ProductoCatalogo[]>([]);
   const [cargandoProductos, setCargandoProductos] = useState(true);
   const [errorProductos, setErrorProductos] = useState(false);
 
   const esInvitado = !usuario;
 
   const carrito = useCarrito(usuario?.uid);
+  const sincronizarVariantesCarrito = carrito.sincronizarVariantes;
 
   useEffect(() => {
     let activo = true;
@@ -64,16 +81,8 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
       .then((datos) => {
         if (!activo) return;
         if (Array.isArray(datos)) {
-          const agrupados = new Map<string, Producto>();
-          for (const producto of datos) {
-            const existente = agrupados.get(producto.codigoProducto);
-            if (existente) {
-              existente.stock += producto.stock;
-              continue;
-            }
-            agrupados.set(producto.codigoProducto, { ...producto });
-          }
-          setProductos([...agrupados.values()]);
+          setProductos(agruparVariantesCatalogo(datos));
+          sincronizarVariantesCarrito(datos);
         } else {
           setErrorProductos(true);
         }
@@ -87,7 +96,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
     return () => {
       activo = false;
     };
-  }, []);
+  }, [sincronizarVariantesCarrito]);
 
   const productosFiltrados = useMemo(() => {
     const filtrados = productos.filter((producto) => {
@@ -174,15 +183,101 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
   };
 
   const handleIrAPagar = async () => {
+    setErrorCompra('');
+    setComprando(true);
     try {
+      const lineasCompradas = carrito.items.map(({ codigoProducto, cantidad }) => ({
+        codigoProducto,
+        cantidad,
+      }));
       const compra = await comprarProductos(
         carrito.items.map(({ idVariante, cantidad }) => ({ idVariante, cantidad })),
       );
+      setProductos((actuales) => descontarStockCatalogo(actuales, lineasCompradas));
       carrito.vaciar();
       setCarritoAbierto(false);
-      window.alert(`Compra registrada: ${compra.numeroDocumento}`);
-    } catch {
-      window.alert('No fue posible completar la compra. Revisa el stock disponible.');
+      let stockActualizado = true;
+      try {
+        const datosActualizados = await listarProductos();
+        if (Array.isArray(datosActualizados)) {
+          setProductos(agruparVariantesCatalogo(datosActualizados));
+          carrito.sincronizarVariantes(datosActualizados);
+          setErrorProductos(false);
+        } else {
+          stockActualizado = false;
+        }
+      } catch {
+        stockActualizado = false;
+      }
+      window.alert(
+        stockActualizado
+          ? `Compra registrada: ${compra.numeroDocumento}`
+          : `Compra registrada: ${compra.numeroDocumento}. No se pudo actualizar el catálogo; recarga la página para ver el stock más reciente.`,
+      );
+    } catch (error: unknown) {
+      setErrorCompra(mensajeErrorApi(error, 'No fue posible completar la compra. Revisa el stock disponible.'));
+    } finally {
+      setComprando(false);
+    }
+  };
+
+  const handleReservar = () => {
+    if (esInvitado) {
+      requiereLogin();
+      return;
+    }
+    setErrorReserva('');
+    setReservaFormAbierto(true);
+  };
+
+  const confirmarReserva = async (
+    datos: Omit<DatosCrearReserva, 'lineas'>,
+  ) => {
+    try {
+      setErrorReserva('');
+      setReservando(true);
+      setAdvertenciaStockReserva(false);
+      const reserva = await crearReserva({
+        ...datos,
+        lineas: carrito.items.map(({ idVariante, cantidad }) => ({
+          idVariante,
+          cantidad,
+        })),
+      });
+      setProductos((actuales) =>
+        descontarStockCatalogo(
+          actuales,
+          reserva.items.map((item) => ({
+            codigoProducto: item.producto.codigoProducto,
+            cantidad: item.cantidad,
+          })),
+        ),
+      );
+      carrito.vaciar();
+      setCarritoAbierto(false);
+      setReservaFormAbierto(false);
+
+      try {
+        const datosActualizados = await listarProductos();
+        if (Array.isArray(datosActualizados)) {
+          setProductos(agruparVariantesCatalogo(datosActualizados));
+          carrito.sincronizarVariantes(datosActualizados);
+          setErrorProductos(false);
+        }
+      } catch {
+        setAdvertenciaStockReserva(true);
+      }
+
+      setReservaCreada(reserva);
+    } catch (error: unknown) {
+      setErrorReserva(
+        mensajeErrorApi(
+          error,
+          'No fue posible crear la reserva. Revisa el stock disponible.',
+        ),
+      );
+    } finally {
+      setReservando(false);
     }
   };
 
@@ -253,6 +348,26 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
         onEliminar={carrito.eliminar}
         onCantidad={carrito.actualizarCantidad}
         onIrAPagar={handleIrAPagar}
+        onReservar={handleReservar}
+        errorCompra={errorCompra}
+        procesandoCompra={comprando}
+        bloqueandoAcciones={cargandoProductos || errorProductos}
+      />
+      <ReservaForm
+        abierto={reservaFormAbierto}
+        procesando={reservando}
+        error={errorReserva}
+        onCerrar={() => setReservaFormAbierto(false)}
+        onConfirmar={(datos) => void confirmarReserva(datos)}
+      />
+      <ReservaConfirmacionModal
+        reserva={reservaCreada}
+        advertenciaStock={advertenciaStockReserva}
+        onVerReservas={() => {
+          setReservaCreada(null);
+          navigate('/reservas');
+        }}
+        onSeguirComprando={() => setReservaCreada(null)}
       />
 
       {/* ───────── Header ───────── */}
@@ -323,6 +438,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               type="button"
               className="vcm-btn vcm-btn--primary relative gap-2 px-4 text-sm"
               aria-label={`Carrito (${carrito.cantidadTotal})`}
+              data-reserva-focus-fallback
               onClick={handleCarrito}
             >
               <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -351,6 +467,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               usuario={usuario}
               onLogin={abrirLogin}
               onPerfil={onPerfil}
+              onReservas={() => navigate('/reservas')}
               onAdmin={onAdmin}
               onLogout={() => {
                 setCarritoAbierto(false);
@@ -472,9 +589,10 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               const agotado = producto.stock <= 0;
               const pocas = !agotado && producto.stock <= 3;
               const tipo = categoriaProducto(producto.categoria);
-              const eligeVariante = tipo === 'vestuario';
+              const eligeVariante = tipo === 'vestuario' || producto.numeroVariantes > 1;
               const esFavorito = favoritos.includes(producto.codigoProducto);
-              const irAlDetalle = () => navigate(`/producto/${producto.codigoProducto}`);
+              const irAlDetalle = () =>
+              navigate(`/producto/${producto.codigoProducto}?variante=${producto.idVariante}`);
 
               return (
                 <article
@@ -503,16 +621,20 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                         agotado ? 'vcm-stock-badge--empty' : pocas ? 'vcm-stock-badge--low' : 'vcm-stock-badge--available'
                       }`}
                     >
-                      {agotado ? 'Agotado' : pocas ? `Últimas ${producto.stock}` : `${producto.stock} unidades`}
+                      {agotado
+                        ? 'Agotado'
+                        : producto.numeroVariantes > 1
+                          ? `${producto.stock} en total`
+                          : pocas ? `Últimas ${producto.stock}` : `${producto.stock} unidades`}
                     </span>
                     <button
                       type="button"
-                      className={`vcm-favorite-button ${esFavorito ? 'text-[var(--vcm-red)]' : 'text-[var(--text-soft)]'}`}
+                      className={`vcm-favorite-button${esFavorito ? ' vcm-favorite-button--active' : ''}`}
                       aria-label={esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
                       aria-pressed={esFavorito}
                       onClick={() => handleToggleFavorito(producto.codigoProducto)}
                     >
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill={esFavorito ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill={esFavorito ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden="true">
                         <path d="M12 21s-7-4.35-9.5-8.5C.5 8.5 3 5 6.5 5c2 0 3.5 1.5 5.5 3.5C14 6.5 15.5 5 17.5 5 21 5 23.5 8.5 21.5 12.5 19 16.65 12 21 12 21Z" />
                       </svg>
                     </button>
@@ -540,7 +662,11 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                       onClick={() => (eligeVariante ? irAlDetalle() : handleAgregarAlCarrito(producto))}
                       disabled={agotado}
                     >
-                      {agotado ? 'Agotado' : eligeVariante ? 'Elegir talla y color' : 'Agregar al carrito'}
+                      {agotado
+                        ? 'Agotado'
+                        : eligeVariante
+                          ? tipo === 'vestuario' ? 'Elegir talla y color' : 'Elegir variante'
+                          : 'Agregar al carrito'}
                     </button>
                   </div>
                 </article>

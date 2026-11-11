@@ -8,6 +8,7 @@ import Tienda from './tienda/Tienda';
 import Perfil from './perfil/Perfil';
 import DetalleProducto from './productos/DetalleProducto';
 import AdminPanel from './admin/AdminPanel';
+import MisReservas from './reservas/MisReservas';
 
 type Theme = 'dark' | 'light';
 
@@ -92,6 +93,10 @@ export default function App() {
                     <Route
                         path="/perfil"
                         element={usuario ? <Perfil tema={tema} usuario={usuario} onLogout={handleLogout} onUpdated={setUsuario} /> : <Navigate to="/login" replace />}
+                    />
+                    <Route
+                        path="/reservas"
+                        element={usuario ? <MisReservas /> : <Navigate to="/login" replace />}
                     />
                     <Route
                         path="/admin"

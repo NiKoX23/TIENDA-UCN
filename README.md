@@ -1,21 +1,97 @@
-# TIENDA-UCN
-Tienda sobre ventas de productos UCN
+# Tienda UCN
 
-- rama: feat/tema_de_marca
-- fuente de respaldo: Source Sans
-- Nginx publica el puerto 80; la aplicación usa 5173 (frontend), 3000 (API), 8000 (analítica) y 5432 (PostgreSQL).
-- El backend importa al iniciar las ventas de `docs/Productos.xlsx` una sola vez, agrupándolas por ID y fecha, sin modificar el stock.
+Aplicación web para la venta y reserva de productos oficiales de la Universidad Católica del Norte. Permite consultar el catálogo, comprar productos, reservar unidades para retiro y gestionar ventas e inventario.
 
-<br><br>
+## Funcionalidades
 
-### parte de la guia de implementación de claude:
-## Decisiones tomadas (a confirmar con la Dirección)
-- **Karmina Sans no se incorporó**: el PDF solo trae subconjuntos incrustados de la fuente y es tipografía licenciada. Se usa Source Sans 3 de respaldo. Cuando tengas los `.woff2` con licencia web, déjalos en `public/fonts/` y descomenta los `@font-face` en la línea 64 de `brand-vcm.css` (en nginx verifica que sirva `font/woff2`).
-- **Tema oscuro** = fondo `#023359`, primario celeste `#00b0de`, acento naranja `#ffa829`. **Tema claro** = fondo blanco, superficies pastel `#ede7d8`, acento naranja, rojo para detalles.
-- **Contraste**: el rojo `#f14e23` sobre blanco da ~3.6:1 de contraste, así que en tema claro el texto pequeño usa un rojo oscurecido, y los botones principales conviene hacerlos naranja con texto azul oscuro (≈6.7:1).
-- **Amarillo del gradiente claro** (`#ffc83d`): el manual no da HEX; se estimó de la imagen.
-- **Separación entre logos (2x)**: `x` se estimó en 0.45 × alto del logo; la zona de protección en 0.25 × alto. Hay que validarlo contra la página "Diagramación variables".
-- **Radios**: reducidos (4/8/12 px) porque la identidad usa bloques rectos.
-- **Espaciado**: el manual solo define la zona de protección del logo; se mantiene la escala de Tailwind (múltiplos de 4 px).
-- **Figuras**: son una reconstrucción geométrica de las del manual. Si la Dirección entrega el set oficial en SVG, se reemplaza `assets/brand/*.svg`.
-- **Logo vertical** (texto bajo el isotipo): aún no generado.
+- Catálogo de productos con variantes, tallas, colores y disponibilidad.
+- Carrito de compras y lista de favoritos.
+- Registro e inicio de sesión con correo y contraseña. El acceso con Google está disponible cuando se configuran sus credenciales.
+- Reservas para retiro en sede, con seguimiento de estado y consulta del historial personal.
+- Panel de administración para inventario, ventas, documentos TAC, reservas y usuarios.
+- Exportación de información a Excel.
+- Indicadores y análisis de ventas e inventario.
+
+## Componentes
+
+- `frontend`: aplicación de cliente construida con React, TypeScript y Vite.
+- `backend`: API construida con NestJS y TypeScript.
+- `analitica`: servicio de análisis construido con FastAPI.
+- `postgres`: base de datos PostgreSQL.
+- `nginx`: punto de entrada para la aplicación, la API y el servicio de análisis.
+
+Los servicios se coordinan mediante Podman Compose. La aplicación queda disponible en `http://localhost`.
+
+## Requisitos
+
+- Podman y Podman Compose.
+- Un archivo `.env` en la raíz del proyecto con la configuración de base de datos y autenticación.
+
+## Configuración
+
+El archivo `.env` debe definir:
+
+| Variable | Uso |
+| --- | --- |
+| `DB_NAME` | Nombre de la base de datos |
+| `DB_USER` | Usuario de PostgreSQL |
+| `DB_PASSWORD` | Contraseña de PostgreSQL |
+| `JWT_SECRET` | Clave usada para firmar las sesiones |
+| `CORS_ORIGIN` | Origen autorizado para las solicitudes del backend |
+
+`DB_PORT` usa `5432` por defecto y `BACKEND_PORT` usa `3000`. Para habilitar el inicio de sesión con Google, se deben definir también `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
+
+No se deben guardar credenciales reales en el repositorio.
+
+## Base de datos
+
+Al crear una base de datos nueva, el servicio de PostgreSQL carga `docs/DB.sql` y `docs/catalogo.sql`. Estos scripts de inicialización se ejecutan cuando el volumen de datos está vacío; no se vuelven a aplicar automáticamente sobre una base existente.
+
+Para habilitar las reservas, hay que ejecutar una vez `backend/src/reservas/reserva-schema.sql` en la base de datos configurada. Las reservas descuentan las unidades disponibles; al cancelar una reserva pendiente o marcarla como vencida, el stock se devuelve.
+
+## Ejecución
+
+Desde la raíz del repositorio:
+
+```bash
+podman-compose -f podman-compose.yml up --build -d
+```
+
+Para consultar los registros:
+
+```bash
+podman-compose -f podman-compose.yml logs -f
+```
+
+La aplicación se sirve en `http://localhost`. Nginx enruta las solicitudes de `/api` al backend y las solicitudes de `/prediccion` al servicio de análisis.
+
+## Desarrollo y validación
+
+El frontend y el backend se pueden ejecutar por separado desde sus directorios, después de instalar sus dependencias:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+```bash
+cd backend
+npm install
+npm run start:dev
+```
+
+Para compilar el frontend:
+
+```bash
+cd frontend
+npm run build
+```
+
+Para compilar y ejecutar las pruebas unitarias del backend:
+
+```bash
+cd backend
+npm run build
+npm test
+```
