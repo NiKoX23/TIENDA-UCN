@@ -1,74 +1,78 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { login, loginConGoogle } from '../services/auth.service';
-import googleLogo from '../assets/icons/googleLogo.png';
-import type { Usuario } from '../services/auth.service';
-import BackToStore from '../components/BackToStore';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { login, loginConGoogle } from "../services/auth.service";
+import googleLogo from "../assets/icons/googleLogo.png";
+import type { Usuario } from "../services/auth.service";
+import AuthShell from "../components/brand/AuthShell";
 
-export default function Login({ tema, onAuthenticated }: { tema: 'dark' | 'light'; onAuthenticated: (usuario: Usuario) => void }) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+export default function Login({ onAuthenticated }: { tema: "dark" | "light"; onAuthenticated: (usuario: Usuario) => void }) {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [mostrarPassword, setMostrarPassword] = useState(false);
+    const [cargando, setCargando] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!email || !password) {
-            setError('Completa correo y contraseña');
+            setError("Completa correo y contraseña");
             return;
         }
 
         try {
-            setError('');
+            setError("");
+            setCargando(true);
             const usuario = await login(email, password);
             onAuthenticated(usuario);
-            navigate('/');
+            navigate("/");
         } catch {
-            setError('Correo o contraseña incorrectos');
+            setError("Correo o contraseña incorrectos");
+        } finally {
+            setCargando(false);
         }
     };
 
     return (
-        <div className={`grid min-h-screen place-items-center px-5 py-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
-            <BackToStore className="fixed left-5 top-5 z-10 max-[480px]:left-3 max-[480px]:top-3" />
-            <form className="theme-dark-surface flex w-full max-w-md flex-col gap-4 rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl max-[480px]:p-6" onSubmit={handleSubmit}>
-                <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-50">Iniciar sesión</h1>
+        <AuthShell title="Iniciar sesión" onSubmit={handleSubmit}>
+            <label className="vcm-auth-field" htmlFor="login-email">
+                Correo electrónico
+                <input id="login-email" className="vcm-input" type="email" placeholder="Correo electrónico" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
 
-                <input 
-                    className="rounded-xl border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15"
-                    type="email"
-                    placeholder="Correo electrónico"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
+            <label className="vcm-auth-field" htmlFor="login-password">
+                Contraseña
+                <span className="vcm-password-field">
+                    <input id="login-password" className="vcm-input" type={mostrarPassword ? "text" : "password"} placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <button className="vcm-password-toggle" type="button" aria-label={mostrarPassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setMostrarPassword((mostrar) => !mostrar)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                            {mostrarPassword ? <><path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5.5 0 9 7 9 7a14.8 14.8 0 0 1-3.1 3.8" /><path d="M6.2 6.2C3.9 7.7 3 12 3 12s3.5 7 9 7a9.9 9.9 0 0 0 3-.5" /></> : <><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></>}
+                        </svg>
+                    </button>
+                </span>
+            </label>
 
-                <input
-                    className="rounded-xl border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15"
-                    type="password"
-                    placeholder="Contraseña"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
+            {error && <p className="vcm-alert" role="alert"><span aria-hidden="true">!</span> {error}</p>}
 
-                {error && <p className="rounded-xl border border-red-400/20 bg-red-950/30 px-3 py-2 text-sm font-semibold text-red-200">{error}</p>}
+            <button className="vcm-btn vcm-btn--primary w-full" type="submit" disabled={cargando} aria-busy={cargando}>
+                {cargando && <span className="vcm-button-spinner" aria-hidden="true" />}
+                Ingresar
+            </button>
 
-                <button className="ucn-btn-primary w-full" type="submit">Ingresar</button>
+            <div className="vcm-auth-divider" aria-hidden="true">o</div>
 
-                <div className="h-px bg-slate-400/15" aria-hidden="true" />
+            <button type="button" className="vcm-btn vcm-btn--surface w-full" onClick={loginConGoogle}>
+                <img src={googleLogo} alt="" className="h-5 w-5" />
+                Continuar con Google
+            </button>
 
-                <button type="button" className="flex items-center justify-center gap-2 rounded-xl border border-slate-400/20 bg-slate-800/70 px-4 py-3 font-semibold text-slate-900 dark:text-slate-100 font-bold transition hover:bg-slate-700" onClick={loginConGoogle}>
-                    <img src={googleLogo} alt="Google" className="h-5 w-5"/>
-                    Continuar con Google
-                </button>
-
-                <p className="text-center text-sm text-slate-400">
-                    ¿No tienes cuenta?{' '}
-                    <Link to="/register" className="font-semibold text-violet-300 hover:text-violet-200">
-                        Regístrate aquí
-                    </Link>
-                </p>
-            </form>
-        </div>
+            <p className="text-center text-sm text-[var(--text-soft)]">
+                ¿No tienes cuenta?{" "}
+                <Link to="/register" className="font-bold text-[var(--primary)] underline-offset-2 hover:underline">
+                    Regístrate aquí
+                </Link>
+            </p>
+        </AuthShell>
     );
 }

@@ -1,6 +1,6 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ResumenDashboard } from './resumen.types';
+import type { RegistroVentaAnalitica, ResumenDashboard } from './resumen.types';
 
 @Injectable()
 export class DashboardService {
@@ -24,6 +24,28 @@ export class DashboardService {
     } catch (error) {
       throw new ServiceUnavailableException(
         `No se pudo obtener el resumen desde el servicio de analítica: ${
+          (error as Error).message
+        }`,
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async obtenerRegistroVentas(): Promise<RegistroVentaAnalitica[]> {
+    const control = new AbortController();
+    const timeout = setTimeout(() => control.abort(), 5000);
+    try {
+      const response = await fetch(`${this.url}/registro-ventas`, {
+        signal: control.signal,
+      });
+      if (!response.ok) {
+        throw new Error(`analitica respondió ${response.status}`);
+      }
+      return (await response.json()) as RegistroVentaAnalitica[];
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo obtener el historial de ventas desde analítica: ${
           (error as Error).message
         }`,
       );

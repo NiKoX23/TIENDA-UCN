@@ -55,3 +55,83 @@ export class FirmasDto {
   @IsIn(['Firmado', 'Pendiente', 'Rechazado'])
   firmaVendedor?: FirmaEstadoDto;
 }
+
+export class CrearDocumentoTacDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  nTac?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  fecha?: string;
+
+  @IsString()
+  @MaxLength(20)
+  sku!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  cantidad!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  precioTac?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  responsable?: string;
+
+  @IsOptional()
+  @IsIn(['Firmado', 'Pendiente', 'Rechazado'])
+  firmaComprador?: FirmaEstadoDto;
+
+  @IsOptional()
+  @IsIn(['Firmado', 'Pendiente', 'Rechazado'])
+  firmaVendedor?: FirmaEstadoDto;
+}
+
+export class ActualizarDocumentoTacDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  nTac?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  fecha?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  sku?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  cantidad?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  precioTac?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  responsable?: string;
+
+  @IsOptional()
+  @IsIn(['Firmado', 'Pendiente', 'Rechazado'])
+  firmaComprador?: FirmaEstadoDto;
+
+  @IsOptional()
+  @IsIn(['Firmado', 'Pendiente', 'Rechazado'])
+  firmaVendedor?: FirmaEstadoDto;
+}

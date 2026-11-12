@@ -34,6 +34,9 @@ export class DocumentoTac {
   @Column({ type: 'integer' })
   total!: number;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  responsable!: string | null;
+
   @Column({
     name: 'firma_comprador',
     type: 'varchar',

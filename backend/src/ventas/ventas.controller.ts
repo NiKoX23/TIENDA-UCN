@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -11,7 +12,12 @@ import {
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { FirmasDto, RegistrarVentaDto } from './ventas.dto';
+import {
+  ActualizarDocumentoTacDto,
+  CrearDocumentoTacDto,
+  FirmasDto,
+  RegistrarVentaDto,
+} from './ventas.dto';
 import { VentasService } from './ventas.service';
 
 @Controller('ventas/admin')
@@ -33,6 +39,24 @@ export class VentasController {
   @Get('tac')
   listarDocumentosTac() {
     return this.ventasService.listarDocumentosTac();
+  }
+
+  @Post('tac')
+  crearDocumentoTac(@Body() dto: CrearDocumentoTacDto) {
+    return this.ventasService.crearDocumentoTac(dto);
+  }
+
+  @Patch('tac/:idTac')
+  actualizarDocumentoTac(
+    @Param('idTac', ParseIntPipe) idTac: number,
+    @Body() dto: ActualizarDocumentoTacDto,
+  ) {
+    return this.ventasService.actualizarDocumentoTac(idTac, dto);
+  }
+
+  @Delete('tac/:idTac')
+  eliminarDocumentoTac(@Param('idTac', ParseIntPipe) idTac: number) {
+    return this.ventasService.eliminarDocumentoTac(idTac);
   }
 
   @Patch('tac/:idTac/firmas')

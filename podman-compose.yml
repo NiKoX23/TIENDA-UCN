@@ -29,6 +29,9 @@ services:
     environment:
       DB_HOST: postgres
       ANALITICA_URL: http://analitica:8000
+      LEGACY_SALES_FILE: /app/docs/Productos.xlsx
+    volumes:
+      - ./docs/Productos.xlsx:/app/docs/Productos.xlsx:ro
     depends_on:
       - postgres
     networks:
@@ -52,7 +55,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      ANALITICA_DB_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      DB_HOST: postgres
     depends_on:
       - postgres
     networks:

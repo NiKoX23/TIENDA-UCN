@@ -1,15 +1,25 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
+import * as ExcelJS from 'exceljs';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Cliente } from '../clientes/cliente.entity';
 import { Factura } from '../facturacion/factura.entity';
 import { Salida } from '../facturacion/salida.entity';
 import { VarianteProducto } from '../productos/variante-producto.entity';
 import { DocumentoTac } from './documento-tac.entity';
-import { FirmasDto, RegistrarVentaDto } from './ventas.dto';
+import {
+  ActualizarDocumentoTacDto,
+  CrearDocumentoTacDto,
+  FirmasDto,
+  RegistrarVentaDto,
+} from './ventas.dto';
 
 function generarFolio(prefijo: string): string {
   const hora = Date.now().toString(36).toUpperCase();
@@ -27,10 +37,276 @@ function estadoTac(
 }
 
 const EMAIL_CLIENTE_RESPALDO = 'respaldo-admin@tienda.local';
+const HOJA_REGISTRO_VENTAS = 'Registro de ventas';
+
+interface LineaVentaHistorica {
+  sku: string;
+  cantidad: number;
+  total: number;
+}
+
+interface VentaHistorica {
+  id: number;
+  fecha: Date;
+  numeroDocumento: string;
+  lineas: LineaVentaHistorica[];
+}
+
+type DocumentoTacDetalle = {
+  idTac: number;
+  nTac: string;
+  fecha: Date;
+  producto: string;
+  codigoProducto: string;
+  sku: string;
+  talla: string;
+  color: string | null;
+  cantidad: number;
+  precioTac: number;
+  total: number;
+  responsable: string | null;
+  firmaComprador: DocumentoTac['firmaComprador'];
+  firmaVendedor: DocumentoTac['firmaVendedor'];
+  estado: 'Aprobado' | 'Pendiente' | 'Rechazado';
+  tieneVenta: boolean;
+};
 
 @Injectable()
-export class VentasService {
+export class VentasService implements OnModuleInit {
+  private readonly logger = new Logger(VentasService.name);
+
   constructor(private readonly dataSource: DataSource) {}
+
+  async onModuleInit(): Promise<void> {
+    const rutaExcel = this.obtenerRutaExcelHistorico();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(rutaExcel);
+    const hoja = workbook.getWorksheet(HOJA_REGISTRO_VENTAS);
+    if (!hoja) {
+      throw new Error(
+        `No se encontró la hoja "${HOJA_REGISTRO_VENTAS}" en ${rutaExcel}`,
+      );
+    }
+
+    const ventas = this.leerVentasHistoricas(hoja);
+    if (ventas.length === 0) {
+      this.logger.log(
+        `No hay ventas históricas para importar desde ${rutaExcel}`,
+      );
+      return;
+    }
+
+    const existentes = await this.dataSource.getRepository(Factura).find({
+      select: { numeroDocumento: true },
+      where: {
+        numeroDocumento: In(ventas.map((venta) => venta.numeroDocumento)),
+      },
+    });
+    const documentosExistentes = new Set(
+      existentes.map((factura) => factura.numeroDocumento),
+    );
+    const pendientes = ventas.filter(
+      (venta) => !documentosExistentes.has(venta.numeroDocumento),
+    );
+    if (pendientes.length === 0) {
+      this.logger.log(
+        'Las ventas históricas de Productos.xlsx ya están importadas',
+      );
+      return;
+    }
+
+    await this.importarVentasHistoricas(pendientes);
+    const cantidadLineas = pendientes.reduce(
+      (total, venta) => total + venta.lineas.length,
+      0,
+    );
+    this.logger.log(
+      `Importadas ${cantidadLineas} líneas históricas en ${pendientes.length} boletas; stock actual sin cambios.`,
+    );
+  }
+
+  private obtenerRutaExcelHistorico(): string {
+    const configurada = process.env.LEGACY_SALES_FILE;
+    if (configurada) {
+      if (!existsSync(configurada)) {
+        throw new Error(
+          `No se encontró el archivo de ventas históricas: ${configurada}`,
+        );
+      }
+      return configurada;
+    }
+
+    const rutas = [
+      resolve(process.cwd(), 'docs', 'Productos.xlsx'),
+      resolve(process.cwd(), '..', 'docs', 'Productos.xlsx'),
+    ];
+    const encontrada = rutas.find((ruta) => existsSync(ruta));
+    if (!encontrada) {
+      throw new Error(
+        'No se encontró docs/Productos.xlsx. Configura LEGACY_SALES_FILE con la ruta del archivo.',
+      );
+    }
+    return encontrada;
+  }
+
+  private leerVentasHistoricas(hoja: ExcelJS.Worksheet): VentaHistorica[] {
+    const ventas = new Map<string, VentaHistorica>();
+    hoja.eachRow((fila, numeroFila) => {
+      if (numeroFila <= 2) return;
+
+      const idOriginal = Number(fila.getCell(1).value);
+      const id = Math.round(idOriginal);
+      const fechaValor = fila.getCell(2).value;
+      const skuValor = fila.getCell(3).value;
+      const cantidad = Number(fila.getCell(4).value);
+      const totalCelda = fila.getCell(5).value;
+      const totalValor =
+        typeof totalCelda === 'object' &&
+        totalCelda !== null &&
+        'result' in totalCelda
+          ? totalCelda.result
+          : totalCelda;
+      const total = Number(totalValor);
+
+      if (
+        fila.getCell(1).value == null &&
+        fechaValor == null &&
+        skuValor == null &&
+        fila.getCell(4).value == null &&
+        totalCelda == null
+      ) {
+        return;
+      }
+
+      const fecha =
+        fechaValor instanceof Date
+          ? fechaValor
+          : typeof fechaValor === 'string' || typeof fechaValor === 'number'
+            ? new Date(fechaValor)
+            : new Date(Number.NaN);
+      if (
+        !Number.isFinite(idOriginal) ||
+        id < 1 ||
+        Number.isNaN(fecha.getTime()) ||
+        typeof skuValor !== 'string' ||
+        !skuValor.trim() ||
+        !Number.isInteger(cantidad) ||
+        cantidad <= 0 ||
+        !Number.isInteger(total) ||
+        total < 0 ||
+        total % cantidad !== 0
+      ) {
+        throw new Error(
+          `Datos inválidos en la fila ${numeroFila} de ${HOJA_REGISTRO_VENTAS}`,
+        );
+      }
+      if (!Number.isInteger(idOriginal)) {
+        this.logger.warn(
+          `ID de venta no entero en fila ${numeroFila}; se redondeó ${idOriginal} a ${id}.`,
+        );
+      }
+
+      const fechaKey = fecha.toISOString().slice(0, 10);
+      const clave = `${id}-${fechaKey}`;
+      let venta = ventas.get(clave);
+      if (!venta) {
+        const fechaDocumento = fechaKey.replaceAll('-', '');
+        const numeroDocumento = `XLSX-${id}-${fechaDocumento}`;
+        if (numeroDocumento.length > 20) {
+          throw new Error(
+            `El ID de venta ${id} excede el largo permitido para la boleta`,
+          );
+        }
+        venta = {
+          id,
+          fecha: new Date(`${fechaKey}T12:00:00.000Z`),
+          numeroDocumento,
+          lineas: [],
+        };
+        ventas.set(clave, venta);
+      }
+      venta.lineas.push({ sku: skuValor.trim(), cantidad, total });
+    });
+
+    return [...ventas.values()];
+  }
+
+  private async importarVentasHistoricas(
+    ventas: VentaHistorica[],
+  ): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const variantes = await manager.getRepository(VarianteProducto).find({
+        where: {
+          sku: In([
+            ...new Set(
+              ventas.flatMap((venta) => venta.lineas.map((linea) => linea.sku)),
+            ),
+          ]),
+        },
+        relations: { producto: true },
+      });
+      const variantesPorSku = new Map(
+        variantes.map((variante) => [variante.sku, variante]),
+      );
+      const skusFaltantes = [
+        ...new Set(
+          ventas.flatMap((venta) =>
+            venta.lineas
+              .filter((linea) => !variantesPorSku.has(linea.sku))
+              .map((linea) => linea.sku),
+          ),
+        ),
+      ];
+      if (skusFaltantes.length > 0) {
+        throw new NotFoundException(
+          `No se puede importar el historial; faltan SKU en el catálogo: ${skusFaltantes.join(', ')}`,
+        );
+      }
+
+      const facturaRepository = manager.getRepository(Factura);
+      const salidaRepository = manager.getRepository(Salida);
+      const cliente = await this.obtenerClienteRespaldo(
+        manager.getRepository(Cliente),
+      );
+
+      for (const venta of ventas) {
+        const total = venta.lineas.reduce(
+          (suma, linea) => suma + linea.total,
+          0,
+        );
+        const factura = await facturaRepository.save(
+          facturaRepository.create({
+            cliente,
+            tipoDocumento: 'boleta',
+            numeroDocumento: venta.numeroDocumento,
+            metodoPago: 'histórico Excel',
+            tipoVenta: 'normal',
+            observaciones: `Importada desde Productos.xlsx (ID ${venta.id})`,
+            fecha: venta.fecha,
+            total,
+          }),
+        );
+
+        await salidaRepository.save(
+          venta.lineas.map((linea) => {
+            const variante = variantesPorSku.get(linea.sku);
+            if (!variante) {
+              throw new NotFoundException(
+                `Variante no encontrada: ${linea.sku}`,
+              );
+            }
+            return salidaRepository.create({
+              factura,
+              variante,
+              cantidad: linea.cantidad,
+              precioUnitario: linea.total / linea.cantidad,
+              subtotal: linea.total,
+            });
+          }),
+        );
+      }
+    });
+  }
 
   async listarRegistroVentas() {
     const salidas = await this.dataSource
@@ -186,6 +462,39 @@ export class VentasService {
     });
   }
 
+  private async obtenerDetalleTac(idTac: number): Promise<DocumentoTacDetalle> {
+    const d = await this.dataSource
+      .getRepository(DocumentoTac)
+      .createQueryBuilder('d')
+      .innerJoinAndSelect('d.variante', 'v')
+      .innerJoinAndSelect('v.producto', 'p')
+      .where('d.id_tac = :idTac', { idTac })
+      .getOne();
+    if (!d) throw new NotFoundException('Documento TAC no encontrado');
+    const tieneVenta = await this.dataSource.getRepository(Factura).exists({
+      where: { documento: { idTac } },
+    });
+
+    return {
+      idTac: d.idTac,
+      nTac: d.nTac,
+      fecha: d.fecha,
+      producto: d.variante.producto.nombre,
+      codigoProducto: d.variante.producto.codigoProducto,
+      sku: d.variante.sku,
+      talla: d.variante.talla,
+      color: d.variante.color,
+      cantidad: d.cantidad,
+      precioTac: d.precioTac,
+      total: d.total,
+      responsable: d.responsable,
+      firmaComprador: d.firmaComprador,
+      firmaVendedor: d.firmaVendedor,
+      estado: estadoTac(d.firmaComprador, d.firmaVendedor),
+      tieneVenta,
+    };
+  }
+
   async listarDocumentosTac() {
     const documentos = await this.dataSource
       .getRepository(DocumentoTac)
@@ -195,6 +504,16 @@ export class VentasService {
       .orderBy('d.fecha', 'DESC')
       .addOrderBy('d.id_tac', 'DESC')
       .getMany();
+
+    const facturasVinculadas = await this.dataSource
+      .getRepository(Factura)
+      .createQueryBuilder('f')
+      .select('f.id_tac', 'idTac')
+      .where('f.id_tac IS NOT NULL')
+      .getRawMany<{ idTac: number }>();
+    const idsVinculados = new Set(
+      facturasVinculadas.map((factura) => Number(factura.idTac)),
+    );
 
     return documentos.map((d) => ({
       idTac: d.idTac,
@@ -208,10 +527,105 @@ export class VentasService {
       cantidad: d.cantidad,
       precioTac: d.precioTac,
       total: d.total,
+      responsable: d.responsable,
       firmaComprador: d.firmaComprador,
       firmaVendedor: d.firmaVendedor,
       estado: estadoTac(d.firmaComprador, d.firmaVendedor),
+      tieneVenta: idsVinculados.has(d.idTac),
     }));
+  }
+
+  async crearDocumentoTac(dto: CrearDocumentoTacDto) {
+    const variante = await this.dataSource
+      .getRepository(VarianteProducto)
+      .findOne({
+        where: { sku: dto.sku },
+        relations: { producto: true },
+      });
+    if (!variante)
+      throw new NotFoundException(`Variante no encontrada: ${dto.sku}`);
+
+    const precioTac = dto.precioTac ?? variante.producto.precioTac;
+    if (precioTac === null)
+      throw new BadRequestException('El producto no tiene precio TAC definido');
+
+    const documento = await this.dataSource.getRepository(DocumentoTac).save(
+      this.dataSource.getRepository(DocumentoTac).create({
+        nTac: dto.nTac?.trim() || generarFolio('TAC'),
+        fecha: dto.fecha ? new Date(dto.fecha) : new Date(),
+        variante,
+        cantidad: dto.cantidad,
+        precioTac,
+        total: dto.cantidad * precioTac,
+        responsable: dto.responsable?.trim() || null,
+        firmaComprador: dto.firmaComprador ?? 'Pendiente',
+        firmaVendedor: dto.firmaVendedor ?? 'Pendiente',
+      }),
+    );
+    return this.obtenerDetalleTac(documento.idTac);
+  }
+
+  async actualizarDocumentoTac(idTac: number, dto: ActualizarDocumentoTacDto) {
+    await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(DocumentoTac);
+      const documento = await repo.findOne({
+        where: { idTac },
+        relations: { variante: { producto: true } },
+      });
+      if (!documento)
+        throw new NotFoundException('Documento TAC no encontrado');
+      const tieneVenta = await manager.getRepository(Factura).exists({
+        where: { documento: { idTac } },
+      });
+      if (
+        tieneVenta &&
+        (dto.sku !== undefined ||
+          dto.cantidad !== undefined ||
+          dto.precioTac !== undefined)
+      ) {
+        throw new BadRequestException(
+          'No se puede cambiar producto, cantidad o precio de un TAC asociado a una venta',
+        );
+      }
+
+      if (dto.sku !== undefined) {
+        const variante = await manager.getRepository(VarianteProducto).findOne({
+          where: { sku: dto.sku },
+          relations: { producto: true },
+        });
+        if (!variante)
+          throw new NotFoundException(`Variante no encontrada: ${dto.sku}`);
+        documento.variante = variante;
+      }
+      if (dto.nTac !== undefined) documento.nTac = dto.nTac.trim();
+      if (dto.fecha !== undefined) documento.fecha = new Date(dto.fecha);
+      if (dto.cantidad !== undefined) documento.cantidad = dto.cantidad;
+      if (dto.precioTac !== undefined) documento.precioTac = dto.precioTac;
+      if (dto.responsable !== undefined)
+        documento.responsable = dto.responsable.trim() || null;
+      if (dto.firmaComprador !== undefined)
+        documento.firmaComprador = dto.firmaComprador;
+      if (dto.firmaVendedor !== undefined)
+        documento.firmaVendedor = dto.firmaVendedor;
+      documento.total = documento.cantidad * documento.precioTac;
+      await repo.save(documento);
+    });
+    return this.obtenerDetalleTac(idTac);
+  }
+
+  async eliminarDocumentoTac(idTac: number) {
+    const repo = this.dataSource.getRepository(DocumentoTac);
+    const documento = await repo.findOne({ where: { idTac } });
+    if (!documento) throw new NotFoundException('Documento TAC no encontrado');
+    const tieneVenta = await this.dataSource.getRepository(Factura).exists({
+      where: { documento: { idTac } },
+    });
+    if (tieneVenta)
+      throw new BadRequestException(
+        'No se puede eliminar un TAC asociado a una venta registrada',
+      );
+    await repo.remove(documento);
+    return { idTac, eliminado: true };
   }
 
   async actualizarFirmas(idTac: number, dto: FirmasDto) {

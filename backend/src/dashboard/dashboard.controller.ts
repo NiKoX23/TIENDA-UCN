@@ -14,4 +14,9 @@ export class DashboardController {
   obtenerResumen() {
     return this.dashboardService.obtenerResumen();
   }
+
+  @Get('registro-ventas')
+  obtenerRegistroVentas() {
+    return this.dashboardService.obtenerRegistroVentas();
+  }
 }

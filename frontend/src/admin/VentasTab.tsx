@@ -9,6 +9,7 @@ import {
     type RegistroVentaItem,
     type TipoVenta,
 } from '../services/ventas.service';
+import { exportarVentas } from '../services/export.service';
 
 const inputCls =
     'w-full rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-violet-400/60';
@@ -33,19 +34,120 @@ function badgeTipo(tipo: TipoVenta) {
         : 'border-slate-400/30 bg-slate-500/15 text-slate-300';
 }
 
-function badgeAprobado(valor: NonNullable<RegistroVentaItem['tacAprobado']>) {
-    const estilos: Record<string, string> = {
-        Si: 'border-emerald-400/40 bg-emerald-500/20 text-emerald-200',
-        Pendiente: 'border-amber-400/40 bg-amber-500/20 text-amber-200',
-        No: 'border-red-400/40 bg-red-500/20 text-red-200',
-    };
-    return `rounded-full border px-2.5 py-1 text-xs font-bold ${estilos[valor]}`;
-}
-
 function fechaCorta(iso: string): string {
+    if (!iso) return 'Sin fecha';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleDateString('es-CL');
+}
+
+type RegistroHistorialVenta = {
+    id: string;
+    idFactura: number;
+    numeroVenta: string;
+    fecha: string;
+    producto: string;
+    sku: string;
+    variante: string;
+    cantidad: number;
+    metodoPago: string;
+    tipoVenta: TipoVenta;
+    subtotal: number;
+    ganancia: number;
+};
+
+interface BoletaHistorial {
+    id: string;
+    numeroVenta: string;
+    fecha: string;
+    tipoVenta: TipoVenta;
+    metodoPago: string;
+    lineas: RegistroHistorialVenta[];
+    unidades: number;
+    subtotal: number;
+    ganancia: number;
+}
+
+function convertirRegistros(ventasApp: RegistroVentaItem[]): RegistroHistorialVenta[] {
+    return ventasApp.map((venta) => ({
+        id: `app-${venta.idSalida}`,
+        idFactura: venta.idFactura,
+        numeroVenta: venta.numeroDocumento,
+        fecha: venta.fecha,
+        producto: venta.producto,
+        sku: venta.sku,
+        variante: [
+            venta.color,
+            venta.talla && venta.talla.toLowerCase() !== 'unica' ? venta.talla : '',
+        ].filter(Boolean).join(' '),
+        cantidad: venta.cantidad,
+        metodoPago: venta.metodoPago,
+        tipoVenta: venta.tipoVenta,
+        subtotal: venta.subtotal,
+        ganancia: venta.gananciaTotal,
+    }));
+}
+
+function agruparBoletas(registros: RegistroHistorialVenta[]): BoletaHistorial[] {
+    const grupos = new Map<string, RegistroHistorialVenta[]>();
+    for (const registro of registros) {
+        const clave = `app-${registro.idFactura}`;
+        const lineas = grupos.get(clave) ?? [];
+        lineas.push(registro);
+        grupos.set(clave, lineas);
+    }
+
+    return [...grupos.entries()].map(([id, lineas]) => {
+        const frecuenciasFecha = new Map<string, number>();
+        const frecuenciasPago = new Map<string, number>();
+        for (const linea of lineas) {
+            if (linea.fecha) frecuenciasFecha.set(linea.fecha, (frecuenciasFecha.get(linea.fecha) ?? 0) + 1);
+            if (linea.metodoPago) frecuenciasPago.set(linea.metodoPago, (frecuenciasPago.get(linea.metodoPago) ?? 0) + 1);
+        }
+        const fecha = [...frecuenciasFecha.entries()].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] ?? '';
+        const metodoPago = [...frecuenciasPago.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+
+        return {
+            id,
+            numeroVenta: lineas[0].numeroVenta,
+            fecha,
+            tipoVenta: lineas[0].tipoVenta,
+            metodoPago,
+            lineas,
+            unidades: lineas.reduce((total, linea) => total + linea.cantidad, 0),
+            subtotal: lineas.reduce((total, linea) => total + linea.subtotal, 0),
+            ganancia: lineas.reduce((total, linea) => total + linea.ganancia, 0),
+        };
+    });
+}
+
+interface ResultadoCargaVentas {
+    registros: RegistroHistorialVenta[] | null;
+    productos: ItemInventario[] | null;
+    errores: string[];
+}
+
+async function cargarRegistroYProductos(): Promise<ResultadoCargaVentas> {
+    const [ventas, inventario] = await Promise.allSettled([
+        listarRegistroVentas(),
+        listarInventario(),
+    ]);
+    const errores: string[] = [];
+
+    if (ventas.status === 'rejected') {
+        errores.push(`No se pudo cargar el registro de ventas: ${mensajeError(ventas.reason)}`);
+    }
+    if (inventario.status === 'rejected') {
+        errores.push(`No se pudo cargar el inventario: ${mensajeError(inventario.reason)}`);
+    }
+
+    return {
+        registros: ventas.status === 'fulfilled' ? convertirRegistros(ventas.value) : null,
+        productos: inventario.status === 'fulfilled'
+            ? inventario.value.filter((producto) => producto.activo)
+            : null,
+        errores,
+    };
 }
 
 interface ModalRegistrarProps {
@@ -258,22 +360,105 @@ function ModalRegistrarVenta({ productos, onCerrar, onGuardar }: ModalRegistrarP
     );
 }
 
+function ModalVerBoleta({ boleta, onCerrar }: { boleta: BoletaHistorial; onCerrar: () => void }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onCerrar}>
+            <div
+                aria-label="Detalle de boleta"
+                aria-modal="true"
+                className="theme-dark-surface max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-400/20 bg-slate-900 p-5 shadow-2xl sm:p-7"
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+            >
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-400/15 pb-4">
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Boleta / factura</p>
+                        <h2 className="mt-1 text-xl font-extrabold text-slate-100">
+                            Venta {boleta.numeroVenta}
+                        </h2>
+                    </div>
+                    <button className={botonSecundarioCls} onClick={onCerrar} type="button">Cerrar</button>
+                </div>
+
+                <dl className="grid grid-cols-2 gap-4 py-4 text-sm sm:grid-cols-3">
+                    <div><dt className="text-xs text-slate-500">Fecha</dt><dd className="mt-1 font-medium text-slate-200">{fechaCorta(boleta.fecha)}</dd></div>
+                    <div><dt className="text-xs text-slate-500">Tipo de venta</dt><dd className="mt-1 font-medium text-slate-200">{boleta.tipoVenta === 'tac' ? 'TAC' : 'Normal'}</dd></div>
+                    <div><dt className="text-xs text-slate-500">Método de pago</dt><dd className="mt-1 font-medium capitalize text-slate-200">{boleta.metodoPago || 'No informado'}</dd></div>
+                </dl>
+
+                <div className="overflow-x-auto rounded-lg border border-slate-400/15">
+                    <table className="w-full min-w-[600px] border-collapse text-left text-sm">
+                        <thead className="border-y border-slate-400/20 bg-slate-400/10 text-[11px] font-bold uppercase tracking-wide text-slate-300">
+                            <tr>
+                                <th className="px-3 py-2">Producto</th>
+                                <th className="px-3 py-2 text-center">Cantidad</th>
+                                <th className="px-3 py-2 text-center">Subtotal</th>
+                                <th className="px-3 py-2 text-center">Ganancia</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-400/10">
+                            {boleta.lineas.map((linea) => (
+                                <tr key={linea.id}>
+                                    <td className="px-3 py-2">
+                                        <p className="font-medium text-slate-200">{linea.producto}</p>
+                                        <p className="font-mono text-[10px] text-slate-500">{[linea.sku, linea.variante].filter(Boolean).join(' · ') || '—'}</p>
+                                    </td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-slate-300">{linea.cantidad}</td>
+                                    <td className="px-3 py-2 text-center tabular-nums text-slate-300">{formatearCLP(linea.subtotal)}</td>
+                                    <td className="admin-sales-profit px-3 py-2 text-center font-semibold tabular-nums">{formatearCLP(linea.ganancia)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot className="border-t border-slate-400/15 bg-slate-400/5 font-bold text-slate-200">
+                            <tr>
+                                <td className="px-3 py-3">Total · {boleta.unidades} unidades</td>
+                                <td className="px-3 py-3 text-center">{boleta.lineas.length} productos</td>
+                                <td className="px-3 py-3 text-center">{formatearCLP(boleta.subtotal)}</td>
+                                <td className="admin-sales-profit px-3 py-3 text-center">{formatearCLP(boleta.ganancia)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function VentasTab() {
-    const [registro, setRegistro] = useState<RegistroVentaItem[]>([]);
+    const [registro, setRegistro] = useState<RegistroHistorialVenta[]>([]);
     const [productos, setProductos] = useState<ItemInventario[]>([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
     const [exito, setExito] = useState('');
+    const [exportando, setExportando] = useState(false);
     const [modal, setModal] = useState(false);
+    const [busqueda, setBusqueda] = useState('');
+    const [filtroTipo, setFiltroTipo] = useState('todos');
+    const [orden, setOrden] = useState('fecha-desc');
+    const [ventasVisibles, setVentasVisibles] = useState(4);
+    const [boletaSeleccionada, setBoletaSeleccionada] = useState<BoletaHistorial | null>(null);
 
-    const cargar = async () => {
+    const manejarExportar = async () => {
         try {
             setError('');
-            const [reg, inv] = await Promise.all([listarRegistroVentas(), listarInventario()]);
-            setRegistro(reg);
-            setProductos(inv.filter((p) => p.activo));
-        } catch (e) {
+            setExito('');
+            setExportando(true);
+            await exportarVentas();
+            setExito('Ventas exportadas correctamente.');
+        } catch (e: unknown) {
             setError(mensajeError(e));
+        } finally {
+            setExportando(false);
+        }
+    };
+
+    const cargar = async () => {
+        setCargando(true);
+        try {
+            const resultado = await cargarRegistroYProductos();
+            if (resultado.registros !== null) setRegistro(resultado.registros);
+            if (resultado.productos !== null) setProductos(resultado.productos);
+            setError(resultado.errores.join(' '));
         } finally {
             setCargando(false);
         }
@@ -281,14 +466,12 @@ export default function VentasTab() {
 
     useEffect(() => {
         let activo = true;
-        Promise.all([listarRegistroVentas(), listarInventario()])
-            .then(([reg, inv]) => {
+        cargarRegistroYProductos()
+            .then((resultado) => {
                 if (!activo) return;
-                setRegistro(reg);
-                setProductos(inv.filter((p) => p.activo));
-            })
-            .catch((e: unknown) => {
-                if (activo) setError(mensajeError(e));
+                if (resultado.registros !== null) setRegistro(resultado.registros);
+                if (resultado.productos !== null) setProductos(resultado.productos);
+                setError(resultado.errores.join(' '));
             })
             .finally(() => {
                 if (activo) setCargando(false);
@@ -303,12 +486,40 @@ export default function VentasTab() {
             (acc, r) => {
                 acc.cantidad += r.cantidad;
                 acc.subtotal += r.subtotal;
-                acc.ganancia += r.gananciaTotal;
+                acc.ganancia += r.ganancia;
                 return acc;
             },
             { cantidad: 0, subtotal: 0, ganancia: 0 },
         );
     }, [registro]);
+    const boletas = useMemo(() => agruparBoletas(registro), [registro]);
+
+    const ventasFiltradas = useMemo(() => {
+        const busquedaNormalizada = busqueda.toLocaleLowerCase('es-CL');
+        return boletas
+            .filter((boleta) => {
+                const productosVenta = boleta.lineas
+                    .map((linea) => `${linea.producto} ${linea.sku} ${linea.variante}`)
+                    .join(' ');
+                const texto = `${boleta.numeroVenta ?? ''} ${productosVenta}`
+                    .toLocaleLowerCase('es-CL');
+                return texto.includes(busquedaNormalizada)
+                    && (filtroTipo === 'todos' || boleta.tipoVenta === filtroTipo);
+            })
+            .sort((a, b) => {
+                if (orden === 'fecha-asc' || orden === 'fecha-desc') {
+                    const fechaA = a.fecha ? Date.parse(a.fecha) : Number.NaN;
+                    const fechaB = b.fecha ? Date.parse(b.fecha) : Number.NaN;
+                    if (Number.isNaN(fechaA) && Number.isNaN(fechaB)) return b.id.localeCompare(a.id);
+                    if (Number.isNaN(fechaA)) return 1;
+                    if (Number.isNaN(fechaB)) return -1;
+                    return orden === 'fecha-asc' ? fechaA - fechaB : fechaB - fechaA;
+                }
+                if (orden === 'subtotal') return b.subtotal - a.subtotal;
+                if (orden === 'cantidad') return b.unidades - a.unidades;
+                return (a.lineas[0]?.producto ?? '').localeCompare(b.lineas[0]?.producto ?? '', 'es-CL');
+            });
+    }, [boletas, busqueda, filtroTipo, orden]);
 
     const guardar = async (payload: PayloadRegistrarVenta) => {
         try {
@@ -318,7 +529,10 @@ export default function VentasTab() {
             setExito(
                 `Venta ${payload.tipoVenta.toUpperCase()} registrada · ${resultado.numeroDocumento} · ${formatearCLP(resultado.total)}`,
             );
-            await Promise.all([listarRegistroVentas().then(setRegistro), listarInventario().then((inv) => setProductos(inv.filter((p) => p.activo)))]);
+            const carga = await cargarRegistroYProductos();
+            if (carga.registros !== null) setRegistro(carga.registros);
+            if (carga.productos !== null) setProductos(carga.productos);
+            setError(carga.errores.join(' '));
         } catch (e) {
             setError(mensajeError(e));
         }
@@ -329,16 +543,19 @@ export default function VentasTab() {
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2 text-xs font-bold">
                     <span className="rounded-full border border-slate-400/15 bg-slate-950/50 px-3 py-1.5 text-slate-300">
-                        {registro.length} líneas · {totales.cantidad} unidades
+                        {boletas.length} boletas · {totales.cantidad} unidades
                     </span>
                     <span className="rounded-full border border-slate-400/15 bg-slate-950/50 px-3 py-1.5 text-slate-300">
                         Ingreso {formatearCLP(totales.subtotal)}
                     </span>
-                    <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-emerald-200">
+                    <span className="admin-sales-profit-total rounded-full border px-3 py-1.5">
                         Ganancia {formatearCLP(totales.ganancia)}
                     </span>
                 </div>
                 <div className="flex gap-2">
+                    <button type="button" className={botonSecundarioCls} onClick={() => void manejarExportar()} disabled={exportando}>
+                        {exportando ? 'Exportando...' : 'Exportar Excel'}
+                    </button>
                     <button type="button" className={botonSecundarioCls} onClick={cargar} disabled={cargando}>
                         {cargando ? 'Cargando...' : 'Refrescar'}
                     </button>
@@ -359,101 +576,89 @@ export default function VentasTab() {
                 </p>
             )}
 
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-slate-500">Historial de ventas registradas en la app</p>
+                <div className="flex flex-wrap gap-2">
+                    <input
+                        aria-label="Buscar en el historial de ventas"
+                        className="w-44 rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-slate-400/50"
+                        onChange={(event) => { setBusqueda(event.target.value); setVentasVisibles(4); }}
+                        placeholder="Buscar venta o producto"
+                        type="search"
+                        value={busqueda}
+                    />
+                    <select aria-label="Filtrar historial por tipo de venta" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setFiltroTipo(event.target.value); setVentasVisibles(4); }} value={filtroTipo}>
+                        <option value="todos">Todos los tipos</option>
+                        <option value="normal">Normal</option>
+                        <option value="tac">TAC</option>
+                    </select>
+                    <select aria-label="Ordenar historial de ventas" className="rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none" onChange={(event) => { setOrden(event.target.value); setVentasVisibles(4); }} value={orden}>
+                        <option value="fecha-desc">Fecha reciente</option>
+                        <option value="fecha-asc">Fecha antigua</option>
+                        <option value="subtotal">Mayor subtotal</option>
+                        <option value="cantidad">Mayor cantidad</option>
+                        <option value="producto">Producto A-Z</option>
+                    </select>
+                </div>
+            </div>
+
             {cargando ? (
                 <div className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-slate-100 before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:border-2 before:border-slate-400/20 before:border-r-violet-600 before:border-t-violet-300 before:animate-spin">
                     Cargando registro de ventas...
                 </div>
             ) : (
-                <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-400/15">
-                    <table className="w-full text-left text-sm">
-                        <thead className="theme-dark-surface bg-slate-950/50 text-xs uppercase tracking-wider text-slate-400">
+                <div className="mt-3 overflow-x-auto rounded-lg border border-slate-400/15">
+                    <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+                        <thead className="border-y border-slate-400/20 bg-slate-400/10 text-[11px] font-bold uppercase tracking-wide text-slate-300">
                             <tr>
-                                <th className="px-4 py-3">Venta</th>
-                                <th className="px-4 py-3">Producto</th>
-                                <th className="px-4 py-3 text-right">Cantidad</th>
-                                <th className="px-4 py-3">Pago</th>
-                                <th className="px-4 py-3">Tipo</th>
-                                <th className="px-4 py-3">N° TAC</th>
-                                <th className="px-4 py-3">TAC</th>
-                                <th className="px-4 py-3 text-right">Precio unit</th>
-                                <th className="px-4 py-3 text-right">Subtotal</th>
-                                <th className="px-4 py-3 text-right">Ganancia total</th>
-                                <th className="px-4 py-3">Obs.</th>
+                                <th className="px-3 py-2">Boleta</th>
+                                <th className="px-3 py-2 text-center">Productos</th>
+                                <th className="px-3 py-2 text-center">Unidades</th>
+                                <th className="px-3 py-2 text-center">Tipo</th>
+                                <th className="px-3 py-2 text-center">Total</th>
+                                <th className="px-3 py-2 text-center">Ganancia</th>
+                                <th className="px-3 py-2 text-center">Detalle</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-400/10">
-                            {registro.map((r) => (
-                                <tr
-                                    key={r.idSalida}
-                                    className={r.tipoVenta === 'tac' ? 'bg-purple-500/5' : ''}
-                                >
-                                    <td className="px-4 py-3">
-                                        <p className="font-semibold text-slate-100">{r.numeroDocumento}</p>
-                                        <p className="text-xs text-slate-400">{fechaCorta(r.fecha)}</p>
+                            {ventasFiltradas.slice(0, ventasVisibles).map((boleta) => (
+                                <tr className={`hover:bg-slate-400/[0.04] ${boleta.tipoVenta === 'tac' ? 'bg-purple-500/5' : ''}`} key={boleta.id}>
+                                    <td className="px-3 py-2">
+                                        <p className="font-semibold text-slate-200">Venta {boleta.numeroVenta}</p>
+                                        <p className="text-[10px] text-slate-500">{fechaCorta(boleta.fecha)}</p>
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <p className="text-slate-100">{r.producto}</p>
-                                        <p className="text-xs text-slate-400">
-                                            {r.sku} · talla {r.talla || 'única'}
-                                            {r.color ? ` · ${r.color}` : ''}
-                                        </p>
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-semibold text-slate-100">{r.cantidad}</td>
-                                    <td className="px-4 py-3 capitalize text-slate-300">{r.metodoPago}</td>
-                                    <td className="px-4 py-3">
-                                        <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${badgeTipo(r.tipoVenta)}`}>
-                                            {r.tipoVenta === 'tac' ? 'TAC' : 'Normal'}
+                                    <td className="px-3 py-2 text-center tabular-nums text-slate-300">{boleta.lineas.length}</td>
+                                    <td className="px-3 py-2 text-center font-semibold tabular-nums text-slate-300">{boleta.unidades}</td>
+                                    <td className="px-3 py-2 text-center">
+                                        <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${badgeTipo(boleta.tipoVenta)}`}>
+                                            {boleta.tipoVenta === 'tac' ? 'TAC' : 'Normal'}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 font-mono text-xs text-slate-300">{r.numeroTac ?? '—'}</td>
-                                    <td className="px-4 py-3">
-                                        {r.tacAprobado ? (
-                                            <span className={badgeAprobado(r.tacAprobado)}>{r.tacAprobado}</span>
-                                        ) : (
-                                            <span className="text-xs text-slate-500">—</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-slate-200">
-                                        {formatearCLP(r.precioUnitarioAplicado)}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-semibold text-slate-100">
-                                        {formatearCLP(r.subtotal)}
-                                    </td>
-                                    <td className={`px-4 py-3 text-right font-semibold ${r.tipoVenta === 'tac' ? 'text-slate-400' : 'text-emerald-200'}`}>
-                                        {formatearCLP(r.gananciaTotal)}
-                                    </td>
-                                    <td className="max-w-[140px] truncate px-4 py-3 text-xs text-slate-400" title={r.observaciones ?? ''}>
-                                        {r.observaciones || '—'}
+                                    <td className="px-3 py-2 text-center font-semibold tabular-nums text-slate-300">{formatearCLP(boleta.subtotal)}</td>
+                                    <td className="admin-sales-profit px-3 py-2 text-center font-semibold tabular-nums">{formatearCLP(boleta.ganancia)}</td>
+                                    <td className="px-3 py-2 text-center">
+                                        <button className={botonSecundarioCls} onClick={() => setBoletaSeleccionada(boleta)} type="button">Ver boleta</button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
-                        <tfoot className="theme-dark-surface bg-slate-950/50 text-sm">
-                            <tr>
-                                <td className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400" colSpan={6}>
-                                    Totales
-                                </td>
-                                <td className="px-4 py-3 text-xs font-bold text-slate-300" colSpan={1}></td>
-                                <td className="px-4 py-3"></td>
-                                <td className="px-4 py-3 text-right font-bold text-slate-100">
-                                    {formatearCLP(totales.subtotal)}
-                                </td>
-                                <td className="px-4 py-3 text-right font-bold text-emerald-200">
-                                    {formatearCLP(totales.ganancia)}
-                                </td>
-                                <td className="px-4 py-3"></td>
-                            </tr>
-                        </tfoot>
                     </table>
-                    {registro.length === 0 && (
-                        <p className="px-4 py-6 text-center text-sm text-slate-400">
-                            Aún no hay ventas registradas.
+                    {ventasFiltradas.length === 0 ? (
+                        <p className="border-t border-slate-400/10 px-4 py-6 text-center text-sm text-slate-500">
+                                No hay boletas que coincidan con estos filtros.
                         </p>
+                    ) : ventasVisibles < ventasFiltradas.length && (
+                        <div className="flex justify-center border-t border-slate-400/10 py-3">
+                            <button className="rounded-md border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]" onClick={() => setVentasVisibles((actual) => actual + 4)} type="button">
+                                Cargar más boletas (+{Math.min(4, ventasFiltradas.length - ventasVisibles)})
+                            </button>
+                        </div>
                     )}
                 </div>
             )}
 
             {modal && <ModalRegistrarVenta productos={productos} onCerrar={() => setModal(false)} onGuardar={guardar} />}
+            {boletaSeleccionada && <ModalVerBoleta boleta={boletaSeleccionada} onCerrar={() => setBoletaSeleccionada(null)} />}
         </div>
     );
 }

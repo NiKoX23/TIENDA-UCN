@@ -31,6 +31,10 @@
 $ npm install
 ```
 
+Antes de iniciar la aplicación, aplica una vez `src/reservas/reserva-schema.sql`
+a la base de datos configurada. La reserva descuenta stock de forma transaccional;
+cancelar o vencer una reserva pendiente devuelve las unidades.
+
 ## Compile and run the project
 
 ```bash
