@@ -20,7 +20,7 @@ interface ReservasPanelProps {
 const ETIQUETAS_ESTADO: Record<EstadoReserva, string> = {
   PENDIENTE: 'Pendiente',
   LISTA_PARA_RETIRO: 'Lista para retiro',
-  RETIRADA: 'Retirada',
+  RETIRADA: 'Entregada',
   CANCELADA: 'Cancelada',
   VENCIDA: 'Vencida',
 };
@@ -65,6 +65,15 @@ function IconoCalendario() {
     <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M16 3v4M8 3v4M3 10h18" />
+    </svg>
+  );
+}
+
+function IconoProductos() {
+  return (
+    <svg className="absolute left-3 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="m3 7 9-4 9 4-9 4-9-4Z" />
+      <path d="M3 7v10l9 4 9-4V7M12 11v10" />
     </svg>
   );
 }
@@ -343,10 +352,11 @@ export default function ReservasPanel({
                   <span className="reserva-admin-label">Acciones</span>
                   <button
                     type="button"
-                    className="vcm-btn vcm-btn--surface vcm-btn--sm w-full"
+                    className="vcm-btn vcm-btn--surface vcm-btn--sm relative w-full justify-center"
                     onClick={() => setDetalleAbierto(reserva)}
                   >
-                    Ver productos
+                    <IconoProductos />
+                    <span className="w-full text-center">Ver productos</span>
                   </button>
                   <label className="sr-only" htmlFor={`estado-reserva-${reserva.idReserva}`}>
                     Cambiar estado de {reserva.codigoReserva}
@@ -416,13 +426,11 @@ export default function ReservasPanel({
               <div className="mt-4 flex justify-end border-t border-[var(--border)] pt-3">
                 <button
                   type="button"
-                  className="vcm-btn vcm-btn--surface vcm-btn--sm"
+                  className="vcm-btn vcm-btn--surface vcm-btn--sm relative w-full justify-center"
                   onClick={() => setDetalleAbierto(reserva)}
                 >
-                  Ver productos reservados
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
+                  <IconoProductos />
+                  <span className="w-full text-center">Ver productos reservados</span>
                 </button>
               </div>
             </article>

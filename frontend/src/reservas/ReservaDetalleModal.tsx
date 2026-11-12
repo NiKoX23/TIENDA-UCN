@@ -5,7 +5,7 @@ import ReservaModal from './ReservaModal';
 const ETIQUETAS_ESTADO: Record<EstadoReserva, string> = {
   PENDIENTE: 'Pendiente',
   LISTA_PARA_RETIRO: 'Lista para retiro',
-  RETIRADA: 'Retirada',
+  RETIRADA: 'Entregada',
   CANCELADA: 'Cancelada',
   VENCIDA: 'Vencida',
 };
