@@ -15,11 +15,9 @@ import UserAvatarMenu from '../components/UserAvatarMenu';
 import { BrandLockup } from '../components/brand/BrandLogo';
 import { BrandBlocks, PatternStrip } from '../components/brand/BrandFigures';
 import { formatearCLP } from '../utils/precio';
-import ReservaForm from '../reservas/ReservaForm';
-import { crearReserva, type DatosCrearReserva } from '../services/reservas.service';
-import type { Reserva } from '../services/reservas.service';
-import ReservaConfirmacionModal from '../reservas/ReservaConfirmacionModal';
-import { mensajeErrorApi } from '../utils/mensajeErrorApi';
+import { usePaginacion } from '../hooks/usePaginacion';
+import Paginacion from '../components/Paginacion';
+import ImagenProducto from '../components/ImagenProducto';
 
 interface TiendaProps {
   usuario: Usuario | null;
@@ -50,6 +48,9 @@ const fondoPorCategoria: Record<string, string> = {
 };
 
 const claseChip = (activo: boolean) => `vcm-chip${activo ? ' vcm-chip--active' : ''}`;
+
+// 16 por página = 4 filas de 4 columnas en pantallas anchas.
+const PRODUCTOS_POR_PAGINA = 16;
 
 export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin, onLogout, onAdmin }: TiendaProps) {
   const navigate = useNavigate();
@@ -116,6 +117,15 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
       return Number(b.stock > 0) - Number(a.stock > 0);
     });
   }, [categoriaActiva, busqueda, favoritos, productos, orden]);
+
+  // Cambiar categoría, búsqueda u orden vuelve a la primera página.
+  const paginacion = usePaginacion<Producto>(productosFiltrados, PRODUCTOS_POR_PAGINA, [categoriaActiva, busqueda, orden]);
+
+  const cambiarPagina = (pagina: number) => {
+    paginacion.irA(pagina);
+    const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('productos')?.scrollIntoView({ behavior: sinMovimiento ? 'auto' : 'smooth', block: 'start' });
+  };
 
   // Producto destacado del hero: el primer vestuario con stock; si no hay, el primer producto con stock.
   const destacado = useMemo(
@@ -519,7 +529,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                   aria-label={`Ver ${destacado.nombre}`}
                 >
                   <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[var(--vcm-navy)]">Destacado</span>
-                  <img src={destacado.imagen} alt={destacado.nombre} className="h-full max-h-[220px] w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105" />
+                  <ImagenProducto src={destacado.imagen} alt={destacado.nombre} className="h-full max-h-[220px] w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105" />
                 </button>
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -585,7 +595,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                 No fue posible cargar el catálogo. Intenta actualizar la página en unos momentos.
               </p>
             )}
-            {productosFiltrados.map((producto) => {
+            {paginacion.visibles.map((producto) => {
               const agotado = producto.stock <= 0;
               const pocas = !agotado && producto.stock <= 3;
               const tipo = categoriaProducto(producto.categoria);
@@ -606,7 +616,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
                       onClick={irAlDetalle}
                       aria-label={`Ver ${producto.nombre}`}
                     >
-                      <img
+                      <ImagenProducto
                         src={producto.imagen}
                         alt={producto.nombre}
                         loading="lazy"
@@ -682,6 +692,18 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               </div>
             )}
           </div>
+
+          {!cargandoProductos && !errorProductos && (
+            <Paginacion
+              pagina={paginacion.pagina}
+              totalPaginas={paginacion.totalPaginas}
+              total={paginacion.total}
+              desde={paginacion.desde}
+              hasta={paginacion.hasta}
+              etiqueta="productos"
+              onCambiar={cambiarPagina}
+            />
+          )}
 
           {hayFiltros && productosFiltrados.length > 0 && (
             <div className="mt-7 text-center">

@@ -1,15 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import type { Usuario } from '../services/auth.service';
 import BackToStore from '../components/BackToStore';
 import { BrandBlocks } from '../components/brand/BrandFigures';
-import { listarUsuarios, cambiarRol, eliminarUsuario, type AdminUsuario } from '../services/admin.service';
+import { cambiarRol, eliminarUsuario, type AdminUsuario } from '../services/admin.service';
+import { listarUsuariosPaginado } from '../services/listados.service';
 import InventarioTab from './InventarioTab';
 import DashboardTab from './DashboardTab';
 import VentasTab from './VentasTab';
 import ControlTacTab from './ControlTacTab';
 import { exportarTodo, exportarUsuarios } from '../services/export.service';
-import ReservasPanel from '../reservas/ReservasPanel';
+import { useListaPaginada } from '../hooks/useListaPaginada';
+import Paginacion from '../components/Paginacion';
+import ReservasPanel from './ReservasPanel';
 
 interface AdminPanelProps {
     tema: 'dark' | 'light';
@@ -66,13 +69,16 @@ function mensajeError(e: unknown): string {
 
 export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelProps) {
     const [tab, setTab] = useState<TabId>('inicio');
-    const [usuarios, setUsuarios] = useState<AdminUsuario[]>([]);
-    const [cargando, setCargando] = useState(true);
+    const [busquedaUsuarios, setBusquedaUsuarios] = useState('');
     const [error, setError] = useState('');
     const [exito, setExito] = useState('');
     const [cambiandoUid, setCambiandoUid] = useState<number | null>(null);
     const [exportandoTodo, setExportandoTodo] = useState(false);
     const [exportandoUsuarios, setExportandoUsuarios] = useState(false);
+
+    // Página, búsqueda y orden se resuelven en el servidor.
+    const lista = useListaPaginada(listarUsuariosPaginado, { filtros: {}, busqueda: busquedaUsuarios });
+    const errorVisible = error || (lista.error ? 'No se pudo cargar la lista de usuarios. Revisa tu conexión.' : '');
 
     const manejarExportarTodo = async () => {
         try {
@@ -102,32 +108,12 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
         }
     };
 
-    useEffect(() => {
-        let activo = true;
-        listarUsuarios()
-            .then((datos) => {
-                if (!activo) return;
-                setUsuarios(datos);
-            })
-            .catch(() => {
-                if (activo) setError('No se pudo cargar la lista de usuarios. Revisa tu conexión.');
-            })
-            .finally(() => {
-                if (activo) setCargando(false);
-            });
-        return () => {
-            activo = false;
-        };
-    }, []);
-
     const alternarRol = async (target: AdminUsuario) => {
         try {
             setError('');
             setCambiandoUid(target.uid);
             await cambiarRol(target.uid, !target.esAdmin);
-            setUsuarios((actuales) =>
-                actuales.map((u) => (u.uid === target.uid ? { ...u, esAdmin: !target.esAdmin } : u)),
-            );
+            lista.recargar();
         } catch {
             setError(`No se pudo cambiar el rol de ${target.nombre}.`);
         } finally {
@@ -143,7 +129,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
             setError('');
             setCambiandoUid(target.uid);
             await eliminarUsuario(target.uid);
-            setUsuarios((actuales) => actuales.filter((u) => u.uid !== target.uid));
+            lista.recargar();
         } catch {
             setError(`No se pudo eliminar a ${target.nombre}.`);
         } finally {
@@ -193,7 +179,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                         ))}
                     </div>
 
-                    {error && <p className="vcm-alert mt-4 text-center" role="alert">{error}</p>}
+                    {errorVisible && <p className="vcm-alert mt-4 text-center" role="alert">{errorVisible}</p>}
                     {exito && <p className="vcm-alert vcm-alert--success mt-4 text-center" role="status">{exito}</p>}
 
                     <div key={tab} className="vcm-tab-panel" role="tabpanel">
@@ -213,7 +199,15 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
 
                         {tab === 'usuarios' && (
                             <>
-                                <div className="mt-6 flex justify-end">
+                                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                                    <input
+                                        type="search"
+                                        className="vcm-input vcm-input--sm"
+                                        placeholder="Buscar por nombre o correo"
+                                        aria-label="Buscar usuarios"
+                                        value={busquedaUsuarios}
+                                        onChange={(event) => setBusquedaUsuarios(event.target.value)}
+                                    />
                                     <button
                                         type="button"
                                         className="vcm-btn vcm-btn--surface vcm-btn--sm"
@@ -224,10 +218,11 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                                     </button>
                                 </div>
 
-                                {cargando ? (
+                                {lista.cargando && lista.data.length === 0 ? (
                                     <div className="vcm-spinner mt-8">Cargando usuarios...</div>
                                 ) : (
-                                    <div className="mt-6 overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
+                                    <>
+                                    <div aria-busy={lista.cargando} className={`mt-6 overflow-hidden rounded-[var(--radius)] border border-[var(--border)] transition-opacity ${lista.cargando ? 'opacity-60' : ''}`}>
                                         <table className="w-full text-left text-sm">
                                             <thead className="vcm-thead text-xs uppercase tracking-wider">
                                                 <tr>
@@ -238,7 +233,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-[var(--border)]">
-                                                {usuarios.map((u) => {
+                                                {lista.data.map((u) => {
                                                     const esTu = u.uid === usuario.uid;
                                                     const deshabilitado = esTu || cambiandoUid !== null;
                                                     return (
@@ -282,10 +277,20 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                                                 })}
                                             </tbody>
                                         </table>
-                                        {usuarios.length === 0 && (
-                                            <p className="px-4 py-6 text-center text-sm text-[var(--text-soft)]">No hay usuarios registrados.</p>
+                                        {lista.data.length === 0 && !lista.cargando && (
+                                            <p className="px-4 py-6 text-center text-sm text-[var(--text-soft)]">No hay usuarios que coincidan.</p>
                                         )}
                                     </div>
+                                    <Paginacion
+                                        pagina={lista.pagina}
+                                        totalPaginas={lista.totalPaginas}
+                                        total={lista.total}
+                                        desde={lista.desde}
+                                        hasta={lista.hasta}
+                                        etiqueta="usuarios"
+                                        onCambiar={lista.irA}
+                                    />
+                                    </>
                                 )}
                             </>
                         )}
