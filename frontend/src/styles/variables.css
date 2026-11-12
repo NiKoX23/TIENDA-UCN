@@ -1,16 +1,16 @@
 :root {
-  --color-brand-blue: #15548A;
-  --color-brand-orange: #F2A46F;
+  --color-brand-blue: var(--vcm-blue, #215fa8);
+  --color-brand-orange: var(--vcm-orange, #ffa829);
 
-  --color-card-papeleria: #E5F0FA;
-  --color-card-accesorios: #F8EDD9;
-  --color-card-vestuario: #E5F0E8;
-  --color-card-default: #F2E8E1;
+  --color-card-papeleria: var(--surface-2, #ede7d8);
+  --color-card-accesorios: var(--surface-2, #ede7d8);
+  --color-card-vestuario: var(--surface-2, #ede7d8);
+  --color-card-default: var(--surface-2, #ede7d8);
 
-  --color-stock-high: #2F7D4A;
-  --color-stock-high-bg: #E1F1E5;
-  --color-stock-low: #9A5B00;
-  --color-stock-low-bg: #FFF0C7;
-  --color-stock-empty: #A12D2D;
-  --color-stock-empty-bg: #FCE7E7;
+  --color-stock-high: var(--vcm-cyan, #00b0de);
+  --color-stock-high-bg: color-mix(in srgb, var(--vcm-cyan, #00b0de) 16%, var(--surface, #ffffff));
+  --color-stock-low: var(--vcm-orange, #ffa829);
+  --color-stock-low-bg: color-mix(in srgb, var(--vcm-orange, #ffa829) 18%, var(--surface, #ffffff));
+  --color-stock-empty: #b93616;
+  --color-stock-empty-bg: color-mix(in srgb, #f14e23 16%, var(--surface, #ffffff));
 }

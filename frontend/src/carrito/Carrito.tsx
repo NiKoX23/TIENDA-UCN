@@ -12,6 +12,10 @@ interface CarritoProps {
   onEliminar: (idVariante: number) => void;
   onCantidad: (idVariante: number, cantidad: number) => void;
   onIrAPagar: () => void;
+  onReservar: () => void;
+  errorCompra?: string;
+  procesandoCompra?: boolean;
+  bloqueandoAcciones?: boolean;
 }
 
 export default function Carrito({
@@ -24,6 +28,10 @@ export default function Carrito({
   onEliminar,
   onCantidad,
   onIrAPagar,
+  onReservar,
+  errorCompra = '',
+  procesandoCompra = false,
+  bloqueandoAcciones = false,
 }: CarritoProps) {
   useEffect(() => {
     if (!abierto) return;
@@ -39,6 +47,7 @@ export default function Carrito({
   if (!abierto) return null;
 
   const vacio = items.length === 0;
+  const stockInsuficiente = items.some((item) => item.cantidad > item.stock);
   const cantidadTotal = items.reduce((totalItems, item) => totalItems + item.cantidad, 0);
 
   return (
@@ -116,12 +125,18 @@ export default function Carrito({
                     <button
                       type="button"
                       onClick={() => onSumar(item.idVariante)}
+                      disabled={item.cantidad >= item.stock}
                       aria-label={`Agregar una unidad de ${item.nombre}`}
                     >
                       <span aria-hidden="true">+</span>
                     </button>
                   </div>
 
+                  {item.cantidad > item.stock && (
+                    <p className="mt-1 text-xs text-red-500" role="status">
+                      Disponibles: {item.stock}. Ajusta la cantidad o elimina este producto.
+                    </p>
+                  )}
                   <p className="cart-line-total whitespace-nowrap text-sm font-bold">{formatearCLP(item.precio * item.cantidad)}</p>
                   </div>
                 </div>
@@ -139,8 +154,22 @@ export default function Carrito({
             <span>Total</span>
             <strong>{formatearCLP(total)}</strong>
           </div>
-          <button type="button" className="cart-checkout" onClick={onIrAPagar} disabled={vacio}>
-            Ir a pagar <span aria-hidden="true">→</span>
+          {stockInsuficiente && (
+            <p className="vcm-alert text-xs" role="alert">
+              El stock disponible cambió. Ajusta o elimina los productos sin stock antes de continuar.
+            </p>
+          )}
+          {bloqueandoAcciones && (
+            <p className="text-xs text-[var(--text-soft)]" role="status">
+              Verificando el stock actual...
+            </p>
+          )}
+          {errorCompra && <p className="vcm-alert text-xs" role="alert">{errorCompra}</p>}
+          <button type="button" className="cart-checkout" onClick={onIrAPagar} disabled={vacio || stockInsuficiente || procesandoCompra || bloqueandoAcciones}>
+            {procesandoCompra ? 'Procesando compra...' : <>Ir a pagar <span aria-hidden="true">→</span></>}
+          </button>
+          <button type="button" className="cart-reserve" onClick={onReservar} disabled={vacio || stockInsuficiente || bloqueandoAcciones}>
+            Reservar productos
           </button>
           <button type="button" className="cart-continue" onClick={onCerrar}>
             Seguir comprando

@@ -5,11 +5,12 @@ interface UserAvatarMenuProps {
     usuario: Usuario | null;
     onLogin: () => void;
     onPerfil: () => void;
+    onReservas: () => void;
     onAdmin: () => void;
     onLogout: () => void;
 }
 
-export default function UserAvatarMenu({ usuario, onLogin, onPerfil, onAdmin, onLogout }: UserAvatarMenuProps) {
+export default function UserAvatarMenu({ usuario, onLogin, onPerfil, onReservas, onAdmin, onLogout }: UserAvatarMenuProps) {
     const [abierto, setAbierto] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
     const esInvitado = !usuario;
@@ -64,6 +65,7 @@ export default function UserAvatarMenu({ usuario, onLogin, onPerfil, onAdmin, on
                     ) : (
                         <>
                             <button type="button" role="menuitem" className="ucn-dropdown-item" onClick={() => ejecutar(onPerfil)}>Editar perfil</button>
+                            <button type="button" role="menuitem" className="ucn-dropdown-item" onClick={() => ejecutar(onReservas)}>Mis reservas</button>
                             {usuario.esAdmin && <button type="button" role="menuitem" className="ucn-dropdown-item ucn-dropdown-item--admin" onClick={() => ejecutar(onAdmin)}>Panel de administración</button>}
                             <button type="button" role="menuitem" className="ucn-dropdown-item ucn-dropdown-item--danger" onClick={() => ejecutar(onLogout)}>Cerrar sesión</button>
                         </>

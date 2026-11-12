@@ -1,6 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;0,800;1,400&display=swap');
 @import "tailwindcss";
 @import "./styles/variables.css";
+@import "./styles/brand-vcm.css";
 
 /* =========================================================
    PALETA UCN — Universidad Católica del Norte, Chile
@@ -103,7 +104,7 @@
 * { box-sizing: border-box; }
 html {
   scroll-behavior: auto;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-brand, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
 }
 body {
@@ -664,7 +665,7 @@ html[data-theme='light'] .theme-dark-overlay {
 }
 .cart-total { align-items: center; color: #f8fafc; font-size: 12px; font-weight: 700; }
 .cart-total strong { font-size: 22px; }
-.cart-checkout, .cart-continue {
+.cart-checkout, .cart-reserve, .cart-continue {
   min-height: 40px;
   border-radius: 11px;
   font-size: 12px;
@@ -680,8 +681,14 @@ html[data-theme='light'] .theme-dark-overlay {
   background: #35d3e4;
   color: #06202a;
 }
-.cart-checkout:hover:not(:disabled), .cart-continue:hover { filter: brightness(1.08); transform: translateY(-1px); }
-.cart-checkout:disabled { cursor: not-allowed; opacity: 0.45; }
+.cart-reserve {
+  border: 1px solid var(--vcm-orange);
+  background: transparent;
+  color: var(--vcm-orange);
+  font-weight: 800;
+}
+.cart-checkout:hover:not(:disabled), .cart-reserve:hover:not(:disabled), .cart-continue:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.cart-checkout:disabled, .cart-reserve:disabled { cursor: not-allowed; opacity: 0.45; }
 .cart-continue {
   border: 1px solid rgba(148, 163, 184, 0.2);
   background: transparent;
@@ -737,6 +744,9 @@ html[data-theme='light'] .cart-subtotal { border-bottom-color: #dfe7f1; }
 html[data-theme='light'] .cart-checkout {
   background: #0876bd;
   color: #fff;
+}
+html[data-theme='light'] .cart-reserve {
+  color: var(--vcm-navy);
 }
 html[data-theme='light'] .cart-continue {
   border-color: #dfe7f1;
@@ -798,6 +808,147 @@ button:not(:disabled):active { transform: translateY(1px) scale(0.985); }
 }
 
 [class*='bg-violet-'] { background-color: var(--ucn-blue-dark) !important; }
+
+/* Reservas: componentes que extienden las tarjetas y controles de marca. */
+.reserva-status {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.reserva-status--pendiente { background: #ffa829; color: #023359; }
+.reserva-status--lista-para-retiro { background: #00b0de; color: #023359; }
+.reserva-status--retirada { background: #18794e; color: #ffffff; }
+.reserva-status--cancelada { background: #b93616; color: #ffffff; }
+.reserva-status--vencida { background: #475569; color: #ffffff; }
+
+.reserva-admin-heading,
+.reserva-admin-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.05fr)
+    minmax(0, 1.5fr)
+    minmax(0, 1fr)
+    minmax(0, 0.75fr)
+    minmax(0, 0.9fr)
+    minmax(0, 0.9fr)
+    minmax(0, 1.1fr);
+  align-items: center;
+  gap: 0.7rem;
+}
+.reserva-admin-heading {
+  min-height: 42px;
+  padding: 0.55rem 1rem;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.reserva-admin-row {
+  min-height: 78px;
+  padding: 0.85rem 1rem;
+  background: var(--card);
+  font-size: 0.8rem;
+  transition: background-color 0.16s ease;
+}
+.reserva-admin-row:hover { background: color-mix(in srgb, var(--primary-soft) 46%, var(--card)); }
+.reserva-admin-cell { min-width: 0; }
+.reserva-admin-label { display: none; }
+.reserva-admin-actions { display: grid; gap: 0.4rem; }
+.reserva-client-card {
+  border-left: 4px solid var(--vcm-cyan);
+  transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+.reserva-client-card:hover {
+  border-left-color: var(--vcm-orange);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+}
+.reserva-thumbnails { display: flex; align-items: center; padding-left: 0.4rem; }
+.reserva-thumbnail {
+  position: relative;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  overflow: hidden;
+  margin-left: -0.5rem;
+  border: 2px solid var(--card);
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--text-soft);
+  font-size: 0.55rem;
+  font-weight: 800;
+}
+.reserva-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+.reserva-thumbnail--more { background: var(--vcm-blue); color: #ffffff; font-size: 0.65rem; }
+.reserva-empty { animation: vcm-rise 0.3s ease both; }
+.reserva-empty-icon {
+  background: color-mix(in srgb, var(--vcm-cyan) 16%, var(--card));
+  color: var(--vcm-cyan);
+}
+.reserva-modal-backdrop { animation: vcm-fade 0.16s ease both; }
+.reserva-modal-card { animation: vcm-pop 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.reserva-success-icon {
+  border: 1px solid color-mix(in srgb, #23a26d 45%, transparent);
+  background: color-mix(in srgb, #23a26d 16%, var(--card));
+  color: #23a26d;
+  animation: reserva-check-pop 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes reserva-check-pop {
+  from { opacity: 0; transform: scale(0.65); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 1100px) {
+  .reserva-admin-heading { display: none; }
+  .reserva-admin-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem 1rem;
+    margin: 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .reserva-admin-cell { display: grid; gap: 0.3rem; align-content: start; }
+  .reserva-admin-cell:nth-child(2),
+  .reserva-admin-actions { grid-column: 1 / -1; }
+  .reserva-admin-label {
+    display: block;
+    color: var(--text-soft);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .reserva-admin-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reserva-admin-actions .reserva-admin-label { grid-column: 1 / -1; }
+  .reserva-admin-actions .vcm-input { min-width: 0; }
+}
+
+@media (max-width: 520px) {
+  .reserva-client-card { padding: 1rem; }
+  .reserva-thumbnail { width: 32px; height: 32px; flex-basis: 32px; }
+  .reserva-admin-row { padding: 0.8rem; }
+  .reserva-admin-actions { grid-template-columns: 1fr; }
+  .reserva-admin-actions .reserva-admin-label { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reserva-empty,
+  .reserva-modal-backdrop,
+  .reserva-modal-card,
+  .reserva-success-icon { animation: none; }
+  .reserva-client-card { transition: none; }
+}
 [class*='text-violet-'] { color: var(--ucn-blue) !important; }
 [class*='border-violet-'] { border-color: var(--ucn-blue) !important; }
 [class*='shadow-violet-'] { --tw-shadow-color: rgba(54, 90, 122, 0.2) !important; }
@@ -882,6 +1033,51 @@ html[data-theme='light'] .admin-sales-profit-total {
   background: #263E54;
   color: #EAF1F8;
 }
+.admin-action-btn {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  padding: 0;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(30, 41, 59, 0.45);
+  color: #cbd5e1;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+.admin-action-btn:hover {
+  transform: translateY(-1px);
+  border-color: #00b0de;
+  background: rgba(0, 176, 222, 0.14);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 176, 222, 0.15);
+}
+.admin-action-btn:focus-visible {
+  outline: 2px solid #00b0de;
+  outline-offset: 2px;
+}
+.admin-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+html:root:root .admin-action-btn {
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
 .admin-variant-section {
   border: 1px solid #405A73;
   background: #1D3145;
@@ -907,6 +1103,17 @@ html[data-theme='light'] .admin-secondary-button {
   border-color: #B6C6D4;
   background: #E4EDF5;
   color: #26394B;
+}
+html[data-theme='light'] .admin-action-btn {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #334155;
+}
+html[data-theme='light'] .admin-action-btn:hover {
+  border-color: #00b0de;
+  background: #e0f2fe;
+  color: #0284c7;
+  box-shadow: 0 4px 12px rgba(0, 176, 222, 0.15);
 }
 html[data-theme='light'] .admin-variant-section {
   border-color: #C2D0DC;

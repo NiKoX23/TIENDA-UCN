@@ -1,9 +1,14 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
+import * as ExcelJS from 'exceljs';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Cliente } from '../clientes/cliente.entity';
 import { Factura } from '../facturacion/factura.entity';
 import { Salida } from '../facturacion/salida.entity';
@@ -32,6 +37,20 @@ function estadoTac(
 }
 
 const EMAIL_CLIENTE_RESPALDO = 'respaldo-admin@tienda.local';
+const HOJA_REGISTRO_VENTAS = 'Registro de ventas';
+
+interface LineaVentaHistorica {
+  sku: string;
+  cantidad: number;
+  total: number;
+}
+
+interface VentaHistorica {
+  id: number;
+  fecha: Date;
+  numeroDocumento: string;
+  lineas: LineaVentaHistorica[];
+}
 
 type DocumentoTacDetalle = {
   idTac: number;
@@ -53,8 +72,241 @@ type DocumentoTacDetalle = {
 };
 
 @Injectable()
-export class VentasService {
+export class VentasService implements OnModuleInit {
+  private readonly logger = new Logger(VentasService.name);
+
   constructor(private readonly dataSource: DataSource) {}
+
+  async onModuleInit(): Promise<void> {
+    const rutaExcel = this.obtenerRutaExcelHistorico();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(rutaExcel);
+    const hoja = workbook.getWorksheet(HOJA_REGISTRO_VENTAS);
+    if (!hoja) {
+      throw new Error(
+        `No se encontró la hoja "${HOJA_REGISTRO_VENTAS}" en ${rutaExcel}`,
+      );
+    }
+
+    const ventas = this.leerVentasHistoricas(hoja);
+    if (ventas.length === 0) {
+      this.logger.log(
+        `No hay ventas históricas para importar desde ${rutaExcel}`,
+      );
+      return;
+    }
+
+    const existentes = await this.dataSource.getRepository(Factura).find({
+      select: { numeroDocumento: true },
+      where: {
+        numeroDocumento: In(ventas.map((venta) => venta.numeroDocumento)),
+      },
+    });
+    const documentosExistentes = new Set(
+      existentes.map((factura) => factura.numeroDocumento),
+    );
+    const pendientes = ventas.filter(
+      (venta) => !documentosExistentes.has(venta.numeroDocumento),
+    );
+    if (pendientes.length === 0) {
+      this.logger.log(
+        'Las ventas históricas de Productos.xlsx ya están importadas',
+      );
+      return;
+    }
+
+    await this.importarVentasHistoricas(pendientes);
+    const cantidadLineas = pendientes.reduce(
+      (total, venta) => total + venta.lineas.length,
+      0,
+    );
+    this.logger.log(
+      `Importadas ${cantidadLineas} líneas históricas en ${pendientes.length} boletas; stock actual sin cambios.`,
+    );
+  }
+
+  private obtenerRutaExcelHistorico(): string {
+    const configurada = process.env.LEGACY_SALES_FILE;
+    if (configurada) {
+      if (!existsSync(configurada)) {
+        throw new Error(
+          `No se encontró el archivo de ventas históricas: ${configurada}`,
+        );
+      }
+      return configurada;
+    }
+
+    const rutas = [
+      resolve(process.cwd(), 'docs', 'Productos.xlsx'),
+      resolve(process.cwd(), '..', 'docs', 'Productos.xlsx'),
+    ];
+    const encontrada = rutas.find((ruta) => existsSync(ruta));
+    if (!encontrada) {
+      throw new Error(
+        'No se encontró docs/Productos.xlsx. Configura LEGACY_SALES_FILE con la ruta del archivo.',
+      );
+    }
+    return encontrada;
+  }
+
+  private leerVentasHistoricas(hoja: ExcelJS.Worksheet): VentaHistorica[] {
+    const ventas = new Map<string, VentaHistorica>();
+    hoja.eachRow((fila, numeroFila) => {
+      if (numeroFila <= 2) return;
+
+      const idOriginal = Number(fila.getCell(1).value);
+      const id = Math.round(idOriginal);
+      const fechaValor = fila.getCell(2).value;
+      const skuValor = fila.getCell(3).value;
+      const cantidad = Number(fila.getCell(4).value);
+      const totalCelda = fila.getCell(5).value;
+      const totalValor =
+        typeof totalCelda === 'object' &&
+        totalCelda !== null &&
+        'result' in totalCelda
+          ? totalCelda.result
+          : totalCelda;
+      const total = Number(totalValor);
+
+      if (
+        fila.getCell(1).value == null &&
+        fechaValor == null &&
+        skuValor == null &&
+        fila.getCell(4).value == null &&
+        totalCelda == null
+      ) {
+        return;
+      }
+
+      const fecha =
+        fechaValor instanceof Date
+          ? fechaValor
+          : typeof fechaValor === 'string' || typeof fechaValor === 'number'
+            ? new Date(fechaValor)
+            : new Date(Number.NaN);
+      if (
+        !Number.isFinite(idOriginal) ||
+        id < 1 ||
+        Number.isNaN(fecha.getTime()) ||
+        typeof skuValor !== 'string' ||
+        !skuValor.trim() ||
+        !Number.isInteger(cantidad) ||
+        cantidad <= 0 ||
+        !Number.isInteger(total) ||
+        total < 0 ||
+        total % cantidad !== 0
+      ) {
+        throw new Error(
+          `Datos inválidos en la fila ${numeroFila} de ${HOJA_REGISTRO_VENTAS}`,
+        );
+      }
+      if (!Number.isInteger(idOriginal)) {
+        this.logger.warn(
+          `ID de venta no entero en fila ${numeroFila}; se redondeó ${idOriginal} a ${id}.`,
+        );
+      }
+
+      const fechaKey = fecha.toISOString().slice(0, 10);
+      const clave = `${id}-${fechaKey}`;
+      let venta = ventas.get(clave);
+      if (!venta) {
+        const fechaDocumento = fechaKey.replaceAll('-', '');
+        const numeroDocumento = `XLSX-${id}-${fechaDocumento}`;
+        if (numeroDocumento.length > 20) {
+          throw new Error(
+            `El ID de venta ${id} excede el largo permitido para la boleta`,
+          );
+        }
+        venta = {
+          id,
+          fecha: new Date(`${fechaKey}T12:00:00.000Z`),
+          numeroDocumento,
+          lineas: [],
+        };
+        ventas.set(clave, venta);
+      }
+      venta.lineas.push({ sku: skuValor.trim(), cantidad, total });
+    });
+
+    return [...ventas.values()];
+  }
+
+  private async importarVentasHistoricas(
+    ventas: VentaHistorica[],
+  ): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const variantes = await manager.getRepository(VarianteProducto).find({
+        where: {
+          sku: In([
+            ...new Set(
+              ventas.flatMap((venta) => venta.lineas.map((linea) => linea.sku)),
+            ),
+          ]),
+        },
+        relations: { producto: true },
+      });
+      const variantesPorSku = new Map(
+        variantes.map((variante) => [variante.sku, variante]),
+      );
+      const skusFaltantes = [
+        ...new Set(
+          ventas.flatMap((venta) =>
+            venta.lineas
+              .filter((linea) => !variantesPorSku.has(linea.sku))
+              .map((linea) => linea.sku),
+          ),
+        ),
+      ];
+      if (skusFaltantes.length > 0) {
+        throw new NotFoundException(
+          `No se puede importar el historial; faltan SKU en el catálogo: ${skusFaltantes.join(', ')}`,
+        );
+      }
+
+      const facturaRepository = manager.getRepository(Factura);
+      const salidaRepository = manager.getRepository(Salida);
+      const cliente = await this.obtenerClienteRespaldo(
+        manager.getRepository(Cliente),
+      );
+
+      for (const venta of ventas) {
+        const total = venta.lineas.reduce(
+          (suma, linea) => suma + linea.total,
+          0,
+        );
+        const factura = await facturaRepository.save(
+          facturaRepository.create({
+            cliente,
+            tipoDocumento: 'boleta',
+            numeroDocumento: venta.numeroDocumento,
+            metodoPago: 'histórico Excel',
+            tipoVenta: 'normal',
+            observaciones: `Importada desde Productos.xlsx (ID ${venta.id})`,
+            fecha: venta.fecha,
+            total,
+          }),
+        );
+
+        await salidaRepository.save(
+          venta.lineas.map((linea) => {
+            const variante = variantesPorSku.get(linea.sku);
+            if (!variante) {
+              throw new NotFoundException(
+                `Variante no encontrada: ${linea.sku}`,
+              );
+            }
+            return salidaRepository.create({
+              factura,
+              variante,
+              cantidad: linea.cantidad,
+              precioUnitario: linea.total / linea.cantidad,
+              subtotal: linea.total,
+            });
+          }),
+        );
+      }
+    });
+  }
 
   async listarRegistroVentas() {
     const salidas = await this.dataSource

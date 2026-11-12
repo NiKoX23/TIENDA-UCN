@@ -4,13 +4,12 @@ import { formatearCLP } from '../utils/precio';
 import { listarInventario, type ItemInventario } from '../services/inventario.service';
 import {
     listarRegistroVentas,
-    listarRegistroVentasExcel,
     registrarVenta,
     type PayloadRegistrarVenta,
-    type RegistroVentaExcelItem,
     type RegistroVentaItem,
     type TipoVenta,
 } from '../services/ventas.service';
+import { exportarVentas } from '../services/export.service';
 
 const inputCls =
     'w-full rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-violet-400/60';
@@ -42,65 +41,57 @@ function fechaCorta(iso: string): string {
     return d.toLocaleDateString('es-CL');
 }
 
-type RegistroHistorialVenta = Omit<RegistroVentaExcelItem, 'id' | 'numeroVenta'> & {
+type RegistroHistorialVenta = {
     id: string;
-    numeroVenta: number | string | null;
-    fuente: 'excel' | 'app';
-    idFactura?: number;
+    idFactura: number;
+    numeroVenta: string;
+    fecha: string;
+    producto: string;
+    sku: string;
+    variante: string;
+    cantidad: number;
+    metodoPago: string;
+    tipoVenta: TipoVenta;
+    subtotal: number;
+    ganancia: number;
 };
 
 interface BoletaHistorial {
     id: string;
-    numeroVenta: number | string | null;
+    numeroVenta: string;
     fecha: string;
     tipoVenta: TipoVenta;
     metodoPago: string;
-    fuente: 'excel' | 'app';
     lineas: RegistroHistorialVenta[];
     unidades: number;
     subtotal: number;
     ganancia: number;
 }
 
-function combinarRegistros(
-    ventasExcel: RegistroVentaExcelItem[],
-    ventasApp: RegistroVentaItem[],
-): RegistroHistorialVenta[] {
-    return [
-        ...ventasExcel.map((venta) => ({
-            ...venta,
-            id: `excel-${venta.id}`,
-            fuente: 'excel' as const,
-        })),
-        ...ventasApp.map((venta) => ({
-            id: `app-${venta.idSalida}`,
-            idFactura: venta.idFactura,
-            numeroVenta: venta.numeroDocumento,
-            fecha: venta.fecha,
-            producto: venta.producto,
-            sku: venta.sku,
-            variante: [
-                venta.color,
-                venta.talla && venta.talla.toLowerCase() !== 'unica' ? venta.talla : '',
-            ].filter(Boolean).join(' '),
-            cantidad: venta.cantidad,
-            metodoPago: venta.metodoPago,
-            tipoVenta: venta.tipoVenta,
-            subtotal: venta.subtotal,
-            ganancia: venta.gananciaTotal,
-            fuente: 'app' as const,
-        })),
-    ];
+function convertirRegistros(ventasApp: RegistroVentaItem[]): RegistroHistorialVenta[] {
+    return ventasApp.map((venta) => ({
+        id: `app-${venta.idSalida}`,
+        idFactura: venta.idFactura,
+        numeroVenta: venta.numeroDocumento,
+        fecha: venta.fecha,
+        producto: venta.producto,
+        sku: venta.sku,
+        variante: [
+            venta.color,
+            venta.talla && venta.talla.toLowerCase() !== 'unica' ? venta.talla : '',
+        ].filter(Boolean).join(' '),
+        cantidad: venta.cantidad,
+        metodoPago: venta.metodoPago,
+        tipoVenta: venta.tipoVenta,
+        subtotal: venta.subtotal,
+        ganancia: venta.gananciaTotal,
+    }));
 }
 
 function agruparBoletas(registros: RegistroHistorialVenta[]): BoletaHistorial[] {
     const grupos = new Map<string, RegistroHistorialVenta[]>();
     for (const registro of registros) {
-        const clave = registro.fuente === 'app'
-            ? `app-${registro.idFactura ?? registro.id}`
-            : registro.numeroVenta === null
-                ? registro.id
-                : `excel-${registro.numeroVenta}`;
+        const clave = `app-${registro.idFactura}`;
         const lineas = grupos.get(clave) ?? [];
         lineas.push(registro);
         grupos.set(clave, lineas);
@@ -122,13 +113,41 @@ function agruparBoletas(registros: RegistroHistorialVenta[]): BoletaHistorial[] 
             fecha,
             tipoVenta: lineas[0].tipoVenta,
             metodoPago,
-            fuente: lineas[0].fuente,
             lineas,
             unidades: lineas.reduce((total, linea) => total + linea.cantidad, 0),
             subtotal: lineas.reduce((total, linea) => total + linea.subtotal, 0),
             ganancia: lineas.reduce((total, linea) => total + linea.ganancia, 0),
         };
     });
+}
+
+interface ResultadoCargaVentas {
+    registros: RegistroHistorialVenta[] | null;
+    productos: ItemInventario[] | null;
+    errores: string[];
+}
+
+async function cargarRegistroYProductos(): Promise<ResultadoCargaVentas> {
+    const [ventas, inventario] = await Promise.allSettled([
+        listarRegistroVentas(),
+        listarInventario(),
+    ]);
+    const errores: string[] = [];
+
+    if (ventas.status === 'rejected') {
+        errores.push(`No se pudo cargar el registro de ventas: ${mensajeError(ventas.reason)}`);
+    }
+    if (inventario.status === 'rejected') {
+        errores.push(`No se pudo cargar el inventario: ${mensajeError(inventario.reason)}`);
+    }
+
+    return {
+        registros: ventas.status === 'fulfilled' ? convertirRegistros(ventas.value) : null,
+        productos: inventario.status === 'fulfilled'
+            ? inventario.value.filter((producto) => producto.activo)
+            : null,
+        errores,
+    };
 }
 
 interface ModalRegistrarProps {
@@ -355,7 +374,7 @@ function ModalVerBoleta({ boleta, onCerrar }: { boleta: BoletaHistorial; onCerra
                     <div>
                         <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Boleta / factura</p>
                         <h2 className="mt-1 text-xl font-extrabold text-slate-100">
-                            Venta {boleta.fuente === 'excel' ? '#' : ''}{boleta.numeroVenta ?? 'sin folio'}
+                            Venta {boleta.numeroVenta}
                         </h2>
                     </div>
                     <button className={botonSecundarioCls} onClick={onCerrar} type="button">Cerrar</button>
@@ -411,6 +430,7 @@ export default function VentasTab() {
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
     const [exito, setExito] = useState('');
+    const [exportando, setExportando] = useState(false);
     const [modal, setModal] = useState(false);
     const [busqueda, setBusqueda] = useState('');
     const [filtroTipo, setFiltroTipo] = useState('todos');
@@ -418,18 +438,27 @@ export default function VentasTab() {
     const [ventasVisibles, setVentasVisibles] = useState(4);
     const [boletaSeleccionada, setBoletaSeleccionada] = useState<BoletaHistorial | null>(null);
 
-    const cargar = async () => {
+    const manejarExportar = async () => {
         try {
             setError('');
-            const [excel, app, inv] = await Promise.all([
-                listarRegistroVentasExcel(),
-                listarRegistroVentas(),
-                listarInventario(),
-            ]);
-            setRegistro(combinarRegistros(excel, app));
-            setProductos(inv.filter((p) => p.activo));
-        } catch (e) {
+            setExito('');
+            setExportando(true);
+            await exportarVentas();
+            setExito('Ventas exportadas correctamente.');
+        } catch (e: unknown) {
             setError(mensajeError(e));
+        } finally {
+            setExportando(false);
+        }
+    };
+
+    const cargar = async () => {
+        setCargando(true);
+        try {
+            const resultado = await cargarRegistroYProductos();
+            if (resultado.registros !== null) setRegistro(resultado.registros);
+            if (resultado.productos !== null) setProductos(resultado.productos);
+            setError(resultado.errores.join(' '));
         } finally {
             setCargando(false);
         }
@@ -437,14 +466,12 @@ export default function VentasTab() {
 
     useEffect(() => {
         let activo = true;
-        Promise.all([listarRegistroVentasExcel(), listarRegistroVentas(), listarInventario()])
-            .then(([excel, app, inv]) => {
+        cargarRegistroYProductos()
+            .then((resultado) => {
                 if (!activo) return;
-                setRegistro(combinarRegistros(excel, app));
-                setProductos(inv.filter((p) => p.activo));
-            })
-            .catch((e: unknown) => {
-                if (activo) setError(mensajeError(e));
+                if (resultado.registros !== null) setRegistro(resultado.registros);
+                if (resultado.productos !== null) setProductos(resultado.productos);
+                setError(resultado.errores.join(' '));
             })
             .finally(() => {
                 if (activo) setCargando(false);
@@ -502,13 +529,10 @@ export default function VentasTab() {
             setExito(
                 `Venta ${payload.tipoVenta.toUpperCase()} registrada · ${resultado.numeroDocumento} · ${formatearCLP(resultado.total)}`,
             );
-            const [excel, app, inv] = await Promise.all([
-                listarRegistroVentasExcel(),
-                listarRegistroVentas(),
-                listarInventario(),
-            ]);
-            setRegistro(combinarRegistros(excel, app));
-            setProductos(inv.filter((p) => p.activo));
+            const carga = await cargarRegistroYProductos();
+            if (carga.registros !== null) setRegistro(carga.registros);
+            if (carga.productos !== null) setProductos(carga.productos);
+            setError(carga.errores.join(' '));
         } catch (e) {
             setError(mensajeError(e));
         }
@@ -529,6 +553,9 @@ export default function VentasTab() {
                     </span>
                 </div>
                 <div className="flex gap-2">
+                    <button type="button" className={botonSecundarioCls} onClick={() => void manejarExportar()} disabled={exportando}>
+                        {exportando ? 'Exportando...' : 'Exportar Excel'}
+                    </button>
                     <button type="button" className={botonSecundarioCls} onClick={cargar} disabled={cargando}>
                         {cargando ? 'Cargando...' : 'Refrescar'}
                     </button>
@@ -550,7 +577,7 @@ export default function VentasTab() {
             )}
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-slate-500">Historial Excel + ventas registradas en la app</p>
+                <p className="text-xs text-slate-500">Historial de ventas registradas en la app</p>
                 <div className="flex flex-wrap gap-2">
                     <input
                         aria-label="Buscar en el historial de ventas"
@@ -597,7 +624,7 @@ export default function VentasTab() {
                             {ventasFiltradas.slice(0, ventasVisibles).map((boleta) => (
                                 <tr className={`hover:bg-slate-400/[0.04] ${boleta.tipoVenta === 'tac' ? 'bg-purple-500/5' : ''}`} key={boleta.id}>
                                     <td className="px-3 py-2">
-                                        <p className="font-semibold text-slate-200">{boleta.numeroVenta ? `Venta ${boleta.fuente === 'excel' ? '#' : ''}${boleta.numeroVenta}` : 'Sin folio'}</p>
+                                        <p className="font-semibold text-slate-200">Venta {boleta.numeroVenta}</p>
                                         <p className="text-[10px] text-slate-500">{fechaCorta(boleta.fecha)}</p>
                                     </td>
                                     <td className="px-3 py-2 text-center tabular-nums text-slate-300">{boleta.lineas.length}</td>

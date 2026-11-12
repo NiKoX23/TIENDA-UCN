@@ -1,100 +1,101 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { register } from '../services/auth.service';
-import axios from 'axios';
-import type { Usuario } from '../services/auth.service';
-import BackToStore from '../components/BackToStore';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { register } from "../services/auth.service";
+import axios from "axios";
+import type { Usuario } from "../services/auth.service";
+import AuthShell from "../components/brand/AuthShell";
 
-export default function Register({ tema, onAuthenticated }: { tema: 'dark' | 'light'; onAuthenticated: (usuario: Usuario) => void }) {
-    const [nombre, setNombre] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmarPassword, setConfirmarPassword] = useState('');
-    const [error, setError] = useState('');
+export default function Register({ onAuthenticated }: { tema: "dark" | "light"; onAuthenticated: (usuario: Usuario) => void }) {
+    const [nombre, setNombre] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmarPassword, setConfirmarPassword] = useState("");
+    const [error, setError] = useState("");
+    const [mostrarPassword, setMostrarPassword] = useState(false);
+    const [mostrarConfirmarPassword, setMostrarConfirmarPassword] = useState(false);
+    const [cargando, setCargando] = useState(false);
     const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {e.preventDefault();
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
 
         if (!nombre || !email || !password || !confirmarPassword) {
-            setError('Completa todos los campos');
+            setError("Completa todos los campos");
             return;
         }
 
         if (password !== confirmarPassword) {
-            setError('Las contraseñas no coinciden');
+            setError("Las contraseñas no coinciden");
             return;
         }
 
         if (password.length < 6) {
-            setError('La contraseña debe tener al menos 6 caracteres');
+            setError("La contraseña debe tener al menos 6 caracteres");
             return;
         }
 
         try {
-            setError('');
+            setError("");
+            setCargando(true);
             const usuario = await register(nombre, email, password);
             onAuthenticated(usuario);
-            navigate('/');
+            navigate("/");
         } catch (err: unknown) {
             if (axios.isAxiosError(err) && err.response?.status === 409) {
-                setError('Ese correo ya está registrado');
+                setError("Ese correo ya está registrado");
             } else {
-                setError('No se pudo completar el registro');
+                setError("No se pudo completar el registro");
             }
+        } finally {
+            setCargando(false);
         }
     };
 
     return (
-        <div className={`grid min-h-screen place-items-center px-5 py-8 ${tema === 'light' ? 'bg-[#f7f9fc]' : 'bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_30%),linear-gradient(180deg,#050816,#0b1220)] text-slate-100'}`}>
-            <BackToStore className="fixed left-5 top-5 z-10 max-[480px]:left-3 max-[480px]:top-3" />
-            <form className="theme-dark-surface flex w-full max-w-md flex-col gap-4 rounded-[28px] border border-slate-400/20 bg-slate-900/80 p-8 shadow-2xl backdrop-blur-xl max-[480px]:p-6" onSubmit={handleSubmit}>
-                <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-50">Crear cuenta</h1>
+        <AuthShell title="Crear cuenta" onSubmit={handleSubmit}>
+            <label className="vcm-auth-field" htmlFor="register-name">
+                Nombre completo
+                <input id="register-name" className="vcm-input" type="text" placeholder="Nombre completo" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            </label>
 
-                <input
-                    className="rounded-xl border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15"
-                    type="text"
-                    placeholder="Nombre completo"
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                />
+            <label className="vcm-auth-field" htmlFor="register-email">
+                Correo electrónico
+                <input id="register-email" className="vcm-input" type="email" placeholder="Correo electrónico" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
 
-                <input
-                    className="rounded-xl border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15"
-                    type="email"
-                    placeholder="Correo electrónico"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
+            <label className="vcm-auth-field" htmlFor="register-password">
+                Contraseña
+                <span className="vcm-password-field">
+                    <input id="register-password" className="vcm-input" type={mostrarPassword ? "text" : "password"} placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <button className="vcm-password-toggle" type="button" aria-label={mostrarPassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setMostrarPassword((mostrar) => !mostrar)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></svg>
+                    </button>
+                </span>
+            </label>
 
-                <input
-                    className="rounded-xl border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15"
-                    type="password"
-                    placeholder="Contraseña"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
+            <label className="vcm-auth-field" htmlFor="register-confirm-password">
+                Confirmar contraseña
+                <span className="vcm-password-field">
+                    <input id="register-confirm-password" className="vcm-input" type={mostrarConfirmarPassword ? "text" : "password"} placeholder="Confirmar contraseña" value={confirmarPassword} onChange={(e) => setConfirmarPassword(e.target.value)} />
+                    <button className="vcm-password-toggle" type="button" aria-label={mostrarConfirmarPassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setMostrarConfirmarPassword((mostrar) => !mostrar)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></svg>
+                    </button>
+                </span>
+            </label>
 
-                <input
-                    className="rounded-xl border border-slate-400/20 bg-slate-900/70 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/15"
-                    type="password"
-                    placeholder="Confirmar contraseña"
-                    value={confirmarPassword}
-                    onChange={(e) => setConfirmarPassword(e.target.value)}
-                />
+            {error && <p className="vcm-alert" role="alert"><span aria-hidden="true">!</span> {error}</p>}
 
-                {error && <p className="rounded-xl border border-red-400/20 bg-red-950/30 px-3 py-2 text-sm font-semibold text-red-200">{error}</p>}
+            <button className="vcm-btn vcm-btn--primary w-full" type="submit" disabled={cargando} aria-busy={cargando}>
+                {cargando && <span className="vcm-button-spinner" aria-hidden="true" />}
+                Registrarme
+            </button>
 
-                <button className="ucn-btn-primary w-full" type="submit">
-                    Registrarme
-                </button>
-
-                <p className="text-center text-sm text-slate-400">
-                    ¿Ya tienes cuenta?{' '}
-                    <Link to="/login" className="font-semibold text-violet-300 hover:text-violet-200">
-                        Inicia sesión
-                    </Link>
-                </p>
-            </form>
-        </div>
+            <p className="text-center text-sm text-[var(--text-soft)]">
+                ¿Ya tienes cuenta?{" "}
+                <Link to="/login" className="font-bold text-[var(--primary)] underline-offset-2 hover:underline">
+                    Inicia sesión
+                </Link>
+            </p>
+        </AuthShell>
     );
 }

@@ -29,6 +29,9 @@ services:
     environment:
       DB_HOST: postgres
       ANALITICA_URL: http://analitica:8000
+      LEGACY_SALES_FILE: /app/docs/Productos.xlsx
+    volumes:
+      - ./docs/Productos.xlsx:/app/docs/Productos.xlsx:ro
     depends_on:
       - postgres
     networks:
@@ -52,9 +55,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      INVENTARIO_XLSX_PATH: /app/Productos.xlsx
-    volumes:
-      - ./docs/Productos.xlsx:/app/Productos.xlsx:ro
+      DB_HOST: postgres
+    depends_on:
+      - postgres
     networks:
       - tienda-net
 
