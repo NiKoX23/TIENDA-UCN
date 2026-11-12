@@ -69,20 +69,26 @@ export default function ReservaConfirmacionModal({
       descripcionId="reserva-confirmacion-descripcion"
       onCerrar={onSeguirComprando}
       clase="max-w-xl"
+      botonCerrar={
+        <button
+          type="button"
+          className="absolute right-4 top-4 z-10 grid h-10 w-10 cursor-pointer place-items-center rounded-[var(--radius)] border-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{
+            backgroundColor: 'var(--vcm-orange)',
+          }}
+          onClick={onSeguirComprando}
+          aria-label="Cerrar confirmación"
+          title="Cerrar"
+          data-modal-initial-focus
+        >
+          <svg className="pointer-events-none h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="#023359" strokeWidth="2.5" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      }
     >
       {reserva && (
         <div className="text-center">
-          <button
-            type="button"
-            className="vcm-btn vcm-btn--surface absolute right-4 top-4 h-10 min-h-10 w-10 p-0"
-            onClick={onSeguirComprando}
-            aria-label="Cerrar confirmación"
-            data-modal-initial-focus
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="m6 6 12 12M18 6 6 18" />
-            </svg>
-          </button>
 
           <div className="reserva-success-icon mx-auto grid h-20 w-20 place-items-center rounded-full" aria-hidden="true">
             <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

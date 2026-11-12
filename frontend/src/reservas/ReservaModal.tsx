@@ -7,6 +7,7 @@ interface ReservaModalProps {
   onCerrar: () => void;
   children: ReactNode;
   clase?: string;
+  botonCerrar?: ReactNode;
 }
 
 export default function ReservaModal({
@@ -16,6 +17,7 @@ export default function ReservaModal({
   onCerrar,
   children,
   clase = '',
+  botonCerrar,
 }: ReservaModalProps) {
   const modalRef = useRef<HTMLDivElement | null>(null);
   const onCerrarRef = useRef(onCerrar);
@@ -105,6 +107,7 @@ export default function ReservaModal({
         aria-describedby={descripcionId}
         tabIndex={-1}
       >
+        {botonCerrar}
         {children}
       </div>
     </div>
