@@ -1,6 +1,14 @@
 :root {
   --color-brand-blue: var(--vcm-blue, #215fa8);
   --color-brand-orange: var(--vcm-orange, #ffa829);
+  --admin-radius: 12px;
+  --admin-control-height: 44px;
+  --admin-cell-inline: 1rem;
+  --admin-cell-block: 0.75rem;
+  --admin-space-1: 0.25rem;
+  --admin-space-2: 0.5rem;
+  --admin-focus-ring: color-mix(in srgb, var(--color-brand-orange) 52%, transparent);
+  --admin-table-shadow: 0 12px 28px rgba(2, 20, 38, 0.18);
 
   --color-card-papeleria: var(--surface-2, #ede7d8);
   --color-card-accesorios: var(--surface-2, #ede7d8);
@@ -13,4 +21,8 @@
   --color-stock-low-bg: color-mix(in srgb, var(--vcm-orange, #ffa829) 18%, var(--surface, #ffffff));
   --color-stock-empty: #b93616;
   --color-stock-empty-bg: color-mix(in srgb, #f14e23 16%, var(--surface, #ffffff));
+}
+
+:root[data-theme='light'] {
+  --admin-table-shadow: 0 12px 28px rgba(2, 51, 89, 0.08);
 }

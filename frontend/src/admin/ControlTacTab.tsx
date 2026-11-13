@@ -15,6 +15,7 @@ import {
     type PayloadDocumentoTac,
 } from '../services/ventas.service';
 import { exportarTac } from '../services/export.service';
+import AdminSectionHeader from '../components/AdminSectionHeader';
 
 const inputCls =
     'tac-filter-input w-full';
@@ -259,8 +260,8 @@ export default function ControlTacTab() {
     const errorVisible = error || (lista.error ? mensajeError(lista.error) : '');
 
     return (
-        <div className="tac-control-panel mt-6">
-            <div className="tac-panel-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4">
+        <div className="tac-control-panel vcm-admin-view mt-6">
+            <div className="tac-panel-surface admin-summary-bar flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4">
                 <div className="flex flex-wrap gap-2.5 text-sm font-semibold">
                     <button type="button" aria-pressed={filtroEstado === 'todos'} onClick={() => setFiltroEstado('todos')} className="tac-filter-chip tac-filter-chip--primary">
                         <strong className="text-base tabular-nums">{resumen.total}</strong><span>documentos</span>
@@ -275,7 +276,7 @@ export default function ControlTacTab() {
                         <strong className="text-base tabular-nums">{resumen.rechazados}</strong><span>rechazados</span>
                     </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="admin-toolbar">
                     <button type="button" className={botonSecundarioCls} onClick={() => void manejarExportar()} disabled={exportando}>
                         {exportando ? 'Exportando...' : 'Exportar Excel'}
                     </button>
@@ -299,9 +300,12 @@ export default function ControlTacTab() {
                 </p>
             )}
 
-            <div className="tac-panel-surface mt-5 flex flex-col gap-3 rounded-2xl border p-4 lg:flex-row lg:items-center lg:justify-between">
-                <p className="text-sm text-[var(--text-soft)]">{lista.total} de {resumen.total} documentos TAC</p>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]">
+            <AdminSectionHeader
+                titulo="Control TAC"
+                descripcion={`${lista.total} de ${resumen.total} documentos TAC`}
+                className="mt-5"
+            >
+                <div className="admin-toolbar admin-toolbar--filters">
                     <input
                         aria-label="Buscar documentos TAC"
                         className="tac-filter-input sm:w-64"
@@ -333,7 +337,7 @@ export default function ControlTacTab() {
                         <option value="producto">Producto A-Z</option>
                     </select>
                 </div>
-            </div>
+            </AdminSectionHeader>
 
             {formularioAbierto && createPortal(
                 <div
@@ -471,8 +475,8 @@ export default function ControlTacTab() {
                 </div>
             ) : (
                 <>
-                <div aria-busy={cargando} className={`tac-table-shell mt-4 overflow-x-auto rounded-2xl border shadow-sm transition-opacity ${cargando ? 'opacity-60' : ''}`}>
-                    <table className="tac-document-table w-full min-w-[900px] text-sm">
+                <div aria-busy={cargando} className={`vcm-admin-table-shell tac-table-shell mt-3 overflow-x-auto rounded-2xl border shadow-sm transition-opacity ${cargando ? 'opacity-60' : ''}`}>
+                    <table className="tac-document-table vcm-admin-table vcm-admin-table--tac w-full min-w-[900px] text-sm">
                         <thead className="sticky top-0 z-10 text-xs uppercase tracking-wide">
                             <tr>
                                 <th className="px-5 py-4 text-left font-semibold">Documento</th>
@@ -480,7 +484,7 @@ export default function ControlTacTab() {
                                 <th className="px-5 py-4 text-left font-semibold">Responsable</th>
                                 <th className="px-5 py-4 text-right font-semibold">Total</th>
                                 <th className="px-5 py-4 text-left font-semibold">Estado</th>
-                                <th className="px-5 py-4 text-left font-semibold">Acción</th>
+                                <th className="px-5 py-4 text-center font-semibold">Acción</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -502,7 +506,7 @@ export default function ControlTacTab() {
                                         </td>
                                         <td className="whitespace-nowrap px-5 py-4 text-right font-semibold tabular-nums tac-total">{formatearCLP(d.total)}</td>
                                         <td className="px-5 py-4 text-left"><span className={`${badgeEstado(d.estado)} inline-flex items-center gap-2`}><span className={`tac-status-dot tac-status-dot--${d.estado === 'Aprobado' ? 'approved' : d.estado === 'Pendiente' ? 'pending' : 'rejected'}`} aria-hidden="true" />{d.estado}</span></td>
-                                        <td className="px-5 py-4 text-left">
+                                        <td className="px-5 py-4 text-center">
                                             <button type="button" className="tac-secondary-button min-h-9 rounded-lg px-3 text-xs" onClick={() => verDocumento(d)}>Ver documento</button>
                                         </td>
                                     </tr>
@@ -523,8 +527,10 @@ export default function ControlTacTab() {
                     total={lista.total}
                     desde={lista.desde}
                     hasta={lista.hasta}
+                    mostrarTodos={lista.mostrarTodos}
                     etiqueta="documentos"
                     onCambiar={lista.irA}
+                    onAlternarMostrarTodos={lista.alternarMostrarTodos}
                 />
                 </>
             )}

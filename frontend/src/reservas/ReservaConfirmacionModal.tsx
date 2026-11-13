@@ -132,6 +132,14 @@ export default function ReservaConfirmacionModal({
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-soft)]">Fecha de retiro</p>
               <p className="mt-1 font-bold">{mostrarFecha(reserva.fechaRetiro)}</p>
+              {reserva.horario && (
+                <p className="mt-1 text-sm text-[var(--text-soft)]">
+                  {reserva.horario.horaInicio}–{reserva.horario.horaTermino}
+                  <span className="block">
+                    Vendedor: <strong className="text-[var(--text)]">{reserva.horario.vendedor.nombre}</strong>
+                  </span>
+                </p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-soft)]">Total</p>

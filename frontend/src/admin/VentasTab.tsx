@@ -12,6 +12,7 @@ import { exportarVentas } from '../services/export.service';
 import { useListaPaginada } from '../hooks/useListaPaginada';
 import { listarBoletas, obtenerTotalesVentas, type BoletaVenta, type OrdenBoleta, type TotalesVentas } from '../services/listados.service';
 import Paginacion from '../components/Paginacion';
+import AdminSectionHeader from '../components/AdminSectionHeader';
 
 const inputCls =
     'w-full rounded-xl border border-slate-400/20 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-violet-400/60';
@@ -170,7 +171,7 @@ function ModalRegistrarVenta({ productos, onCerrar, onGuardar }: ModalRegistrarP
             onClick={onCerrar}
         >
             <div
-                className="theme-dark-surface max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-400/20 bg-slate-900 p-6 shadow-2xl"
+                className="admin-sales-modal theme-dark-surface max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-400/20 bg-slate-900 p-6 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 <h2 className="text-lg font-extrabold tracking-tight">Registrar venta</h2>
@@ -351,7 +352,7 @@ function ModalVerBoleta({ boleta, onCerrar }: { boleta: BoletaHistorial; onCerra
             <div
                 aria-label="Detalle de boleta"
                 aria-modal="true"
-                className="theme-dark-surface max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-400/20 bg-slate-900 p-5 shadow-2xl sm:p-7"
+                className="admin-sales-modal theme-dark-surface max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-400/20 bg-slate-900 p-5 shadow-2xl sm:p-7"
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"
             >
@@ -371,8 +372,8 @@ function ModalVerBoleta({ boleta, onCerrar }: { boleta: BoletaHistorial; onCerra
                     <div><dt className="text-xs text-slate-500">Método de pago</dt><dd className="mt-1 font-medium capitalize text-slate-200">{boleta.metodoPago || 'No informado'}</dd></div>
                 </dl>
 
-                <div className="overflow-x-auto rounded-lg border border-slate-400/15">
-                    <table className="w-full min-w-[600px] border-collapse text-left text-sm">
+                <div className="vcm-admin-table-shell overflow-x-auto rounded-lg border border-slate-400/15">
+                    <table className="vcm-admin-table vcm-admin-table--sales-lines w-full min-w-[600px] border-collapse text-left text-sm">
                         <thead className="border-y border-slate-400/20 bg-slate-400/10 text-[11px] font-bold uppercase tracking-wide text-slate-300">
                             <tr>
                                 <th className="px-3 py-2">Producto</th>
@@ -486,8 +487,8 @@ export default function VentasTab() {
     const errorVisible = [error, lista.error ? `No se pudo cargar el registro de ventas: ${mensajeError(lista.error)}` : ''].filter(Boolean).join(' ');
 
     return (
-        <div className="mt-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="admin-sales-tab mt-6">
+            <div className="admin-summary-bar flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2 text-xs font-bold">
                     <span className="rounded-full border border-slate-400/15 bg-slate-950/50 px-3 py-1.5 text-slate-300">
                         {totales.boletas} boletas · {totales.cantidad} unidades
@@ -499,7 +500,7 @@ export default function VentasTab() {
                         Ganancia {formatearCLP(totales.ganancia)}
                     </span>
                 </div>
-                <div className="flex gap-2">
+                <div className="admin-toolbar">
                     <button type="button" className={botonSecundarioCls} onClick={() => void manejarExportar()} disabled={exportando}>
                         {exportando ? 'Exportando...' : 'Exportar Excel'}
                     </button>
@@ -523,12 +524,11 @@ export default function VentasTab() {
                 </p>
             )}
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-slate-500">Historial de ventas registradas en la app</p>
-                <div className="flex flex-wrap gap-2">
+            <AdminSectionHeader titulo="Historial de ventas registradas en la app" className="mt-5">
+                <div className="admin-toolbar">
                     <input
                         aria-label="Buscar en el historial de ventas"
-                        className="w-44 rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-slate-400/50"
+                        className="admin-toolbar__search w-44 rounded-md border border-slate-400/20 bg-slate-950/30 px-3 py-2 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-slate-400/50"
                         onChange={(event) => { setBusqueda(event.target.value); }}
                         placeholder="Buscar venta o producto"
                         type="search"
@@ -547,7 +547,7 @@ export default function VentasTab() {
                         <option value="producto">Producto A-Z</option>
                     </select>
                 </div>
-            </div>
+            </AdminSectionHeader>
 
             {cargando && boletas.length === 0 ? (
                 <div className="mt-8 text-xs font-bold uppercase tracking-[0.18em] text-slate-100 before:mb-3 before:block before:h-10 before:w-10 before:rounded-full before:border-2 before:border-slate-400/20 before:border-r-violet-600 before:border-t-violet-300 before:animate-spin">
@@ -555,8 +555,8 @@ export default function VentasTab() {
                 </div>
             ) : (
                 <>
-                <div aria-busy={cargando} className={`mt-3 overflow-x-auto rounded-lg border border-slate-400/15 transition-opacity ${cargando ? 'opacity-60' : ''}`}>
-                    <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+                <div aria-busy={cargando} className={`vcm-admin-table-shell mt-3 overflow-x-auto rounded-lg border border-slate-400/15 transition-opacity ${cargando ? 'opacity-60' : ''}`}>
+                    <table className="vcm-admin-table vcm-admin-table--sales-history w-full min-w-[820px] border-collapse text-left text-sm">
                         <thead className="border-y border-slate-400/20 bg-slate-400/10 text-[11px] font-bold uppercase tracking-wide text-slate-300">
                             <tr>
                                 <th className="px-3 py-2">Boleta</th>
@@ -603,8 +603,10 @@ export default function VentasTab() {
                     total={lista.total}
                     desde={lista.desde}
                     hasta={lista.hasta}
+                    mostrarTodos={lista.mostrarTodos}
                     etiqueta="boletas"
                     onCambiar={lista.irA}
+                    onAlternarMostrarTodos={lista.alternarMostrarTodos}
                 />
                 </>
             )}

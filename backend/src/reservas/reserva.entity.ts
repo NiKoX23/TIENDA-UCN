@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Usuario } from '../auth/usuario.entity';
 import { EstadoReserva } from './estado-reserva.enum';
+import { HorarioVenta } from './horario-venta.entity';
 import { ItemReserva } from './item-reserva.entity';
 
 @Entity('reservas')
@@ -29,6 +30,16 @@ export class Reserva {
 
   @Column({ name: 'fecha_retiro', type: 'date' })
   fechaRetiro!: string;
+
+  @Column({ name: 'id_horario', type: 'integer', nullable: true })
+  idHorario!: number | null;
+
+  @ManyToOne(() => HorarioVenta, (horario) => horario.reservas, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'id_horario' })
+  horarioVenta!: HorarioVenta | null;
 
   @Column({
     name: 'bloque_horario',

@@ -4,9 +4,11 @@ interface PaginacionProps {
   total: number;
   desde: number;
   hasta: number;
+  mostrarTodos?: boolean;
   /** Nombre de lo que se pagina, en plural: "productos", "ventas"… */
   etiqueta?: string;
   onCambiar: (pagina: number) => void;
+  onAlternarMostrarTodos?: () => void;
   className?: string;
 }
 
@@ -38,11 +40,13 @@ export default function Paginacion({
   total,
   desde,
   hasta,
+  mostrarTodos = false,
   etiqueta = 'resultados',
   onCambiar,
+  onAlternarMostrarTodos,
   className = '',
 }: PaginacionProps) {
-  if (totalPaginas <= 1) return null;
+  if (totalPaginas <= 1 && !mostrarTodos) return null;
 
   return (
     <nav className={`vcm-pager ${className}`} aria-label={`Paginación de ${etiqueta}`}>
@@ -51,45 +55,61 @@ export default function Paginacion({
       </p>
 
       <div className="vcm-pager__list">
-        <button
-          type="button"
-          className="vcm-pager__btn"
-          disabled={pagina <= 1}
-          aria-label="Página anterior"
-          onClick={() => onCambiar(pagina - 1)}
-        >
-          <Flecha direccion="izquierda" />
-        </button>
-
-        {elementos(pagina, totalPaginas).map((el, i) =>
-          el === 'hueco' ? (
-            <span key={`hueco-${i}`} className="vcm-pager__gap" aria-hidden="true">…</span>
-          ) : (
+        {!mostrarTodos && (
+          <>
             <button
-              key={el}
               type="button"
-              className="vcm-pager__btn vcm-pager__btn--num"
-              aria-current={el === pagina ? 'page' : undefined}
-              aria-label={el === pagina ? `Página ${el}, página actual` : `Ir a la página ${el}`}
-              onClick={() => onCambiar(el)}
+              className="vcm-pager__btn"
+              disabled={pagina <= 1}
+              aria-label="Página anterior"
+              onClick={() => onCambiar(pagina - 1)}
             >
-              {el}
+              <Flecha direccion="izquierda" />
             </button>
-          ),
+
+            {elementos(pagina, totalPaginas).map((el, i) =>
+              el === 'hueco' ? (
+                <span key={`hueco-${i}`} className="vcm-pager__gap" aria-hidden="true">…</span>
+              ) : (
+                <button
+                  key={el}
+                  type="button"
+                  className="vcm-pager__btn vcm-pager__btn--num"
+                  aria-current={el === pagina ? 'page' : undefined}
+                  aria-label={el === pagina ? `Página ${el}, página actual` : `Ir a la página ${el}`}
+                  onClick={() => onCambiar(el)}
+                >
+                  {el}
+                </button>
+              ),
+            )}
+
+            <span className="vcm-pager__mobile" aria-hidden="true">{pagina} / {totalPaginas}</span>
+
+            <button
+              type="button"
+              className="vcm-pager__btn"
+              disabled={pagina >= totalPaginas}
+              aria-label="Página siguiente"
+              onClick={() => onCambiar(pagina + 1)}
+            >
+              <Flecha direccion="derecha" />
+            </button>
+          </>
         )}
-
-        <span className="vcm-pager__mobile" aria-hidden="true">{pagina} / {totalPaginas}</span>
-
-        <button
-          type="button"
-          className="vcm-pager__btn"
-          disabled={pagina >= totalPaginas}
-          aria-label="Página siguiente"
-          onClick={() => onCambiar(pagina + 1)}
-        >
-          <Flecha direccion="derecha" />
-        </button>
       </div>
+      {onAlternarMostrarTodos && (
+        <div className="vcm-pager__all">
+          <button
+            type="button"
+            className="vcm-btn vcm-btn--surface vcm-btn--sm"
+            aria-pressed={mostrarTodos}
+            onClick={onAlternarMostrarTodos}
+          >
+            {mostrarTodos ? 'Volver a paginar' : 'Mostrar todos'}
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

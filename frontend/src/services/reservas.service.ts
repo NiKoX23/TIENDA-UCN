@@ -14,7 +14,7 @@ export interface LineaReserva {
 
 export interface DatosCrearReserva {
   fechaRetiro: string;
-  bloqueHorario?: string;
+  idHorario: number;
   observaciones?: string;
   lineas: LineaReserva[];
 }
@@ -45,6 +45,15 @@ export interface Reserva {
     email: string;
   };
   fechaRetiro: string;
+  horario: {
+    idHorario: number;
+    horaInicio: string;
+    horaTermino: string;
+    vendedor: {
+      idVendedor: number;
+      nombre: string;
+    };
+  } | null;
   bloqueHorario: string | null;
   observaciones: string | null;
   estado: EstadoReserva;

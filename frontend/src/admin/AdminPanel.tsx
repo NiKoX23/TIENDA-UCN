@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import type { Usuario } from '../services/auth.service';
 import BackToStore from '../components/BackToStore';
+import AdminSectionHeader from '../components/AdminSectionHeader';
 import { BrandBlocks } from '../components/brand/BrandFigures';
 import { cambiarRol, eliminarUsuario, type AdminUsuario } from '../services/admin.service';
 import { listarUsuariosPaginado } from '../services/listados.service';
@@ -12,7 +13,8 @@ import ControlTacTab from './ControlTacTab';
 import { exportarTodo, exportarUsuarios } from '../services/export.service';
 import { useListaPaginada } from '../hooks/useListaPaginada';
 import Paginacion from '../components/Paginacion';
-import ReservasPanel from './ReservasPanel';
+import ReservasPanel from '../reservas/ReservasPanel';
+import VendedoresTab from './VendedoresTab';
 
 interface AdminPanelProps {
     tema: 'dark' | 'light';
@@ -20,7 +22,7 @@ interface AdminPanelProps {
     usuario: Usuario;
 }
 
-type TabId = 'inicio' | 'inventario' | 'ventas' | 'tac' | 'reservas' | 'usuarios';
+type TabId = 'inicio' | 'inventario' | 'ventas' | 'tac' | 'reservas' | 'vendedores' | 'usuarios';
 
 const TABS: { id: TabId; label: string }[] = [
     { id: 'inicio', label: 'Inicio' },
@@ -28,6 +30,7 @@ const TABS: { id: TabId; label: string }[] = [
     { id: 'ventas', label: 'Ventas' },
     { id: 'tac', label: 'Control TAC' },
     { id: 'reservas', label: 'Reservas' },
+    { id: 'vendedores', label: 'Vendedores' },
     { id: 'usuarios', label: 'Usuarios' },
 ];
 
@@ -51,6 +54,10 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
     reservas: {
         titulo: 'Reservas de productos',
         descripcion: 'Consulta las reservas, sus productos, usuarios y estado de retiro.',
+    },
+    vendedores: {
+        titulo: 'Vendedores de biblioteca',
+        descripcion: 'Administra vendedores y asigna horarios para las ventas presenciales.',
     },
     usuarios: {
         titulo: 'Usuarios',
@@ -138,7 +145,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
     };
 
     return (
-        <main className="vcm-page flex flex-col items-center px-5 pb-12 pt-8">
+        <main className="vcm-page vcm-admin-page flex flex-col items-center px-5 pb-12 pt-8">
             <BackToStore className="mb-8 self-start" />
 
             <div className="vcm-card w-full max-w-6xl overflow-hidden shadow-2xl">
@@ -197,12 +204,15 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
 
                         {tab === 'reservas' && <ReservasPanel administrador />}
 
+                        {tab === 'vendedores' && <VendedoresTab />}
+
                         {tab === 'usuarios' && (
                             <>
-                                <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                                <AdminSectionHeader titulo="Usuarios" className="mt-6">
+                                    <div className="admin-toolbar w-full">
                                     <input
                                         type="search"
-                                        className="vcm-input vcm-input--sm"
+                                        className="vcm-input vcm-input--sm admin-toolbar__search"
                                         placeholder="Buscar por nombre o correo"
                                         aria-label="Buscar usuarios"
                                         value={busquedaUsuarios}
@@ -216,20 +226,21 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                                     >
                                         {exportandoUsuarios ? 'Exportando...' : 'Exportar Excel'}
                                     </button>
-                                </div>
+                                    </div>
+                                </AdminSectionHeader>
 
                                 {lista.cargando && lista.data.length === 0 ? (
                                     <div className="vcm-spinner mt-8">Cargando usuarios...</div>
                                 ) : (
                                     <>
-                                    <div aria-busy={lista.cargando} className={`mt-6 overflow-hidden rounded-[var(--radius)] border border-[var(--border)] transition-opacity ${lista.cargando ? 'opacity-60' : ''}`}>
-                                        <table className="w-full text-left text-sm">
+                                    <div aria-busy={lista.cargando} className={`vcm-admin-table-shell mt-3 overflow-x-auto rounded-[var(--radius)] border border-[var(--border)] transition-opacity ${lista.cargando ? 'opacity-60' : ''}`}>
+                                        <table className="vcm-admin-table vcm-admin-table--users w-full min-w-[560px] text-left text-sm">
                                             <thead className="vcm-thead text-xs uppercase tracking-wider">
                                                 <tr>
                                                     <th className="px-4 py-3">Usuario</th>
                                                     <th className="hidden px-4 py-3 sm:table-cell">Proveedor</th>
                                                     <th className="px-4 py-3">Rol</th>
-                                                    <th className="px-4 py-3 text-right">Acción</th>
+                                                    <th className="px-4 py-3 text-center">Acción</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-[var(--border)]">
@@ -248,7 +259,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                                                                     {u.esAdmin ? 'Admin' : 'Usuario'}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-4 py-3 text-right">
+                                                            <td className="px-4 py-3 text-center">
                                                                 {esTu ? (
                                                                     <span className="text-xs text-[var(--text-muted)]">Tú</span>
                                                                 ) : (
@@ -287,8 +298,10 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                                         total={lista.total}
                                         desde={lista.desde}
                                         hasta={lista.hasta}
+                                        mostrarTodos={lista.mostrarTodos}
                                         etiqueta="usuarios"
                                         onCambiar={lista.irA}
+                                        onAlternarMostrarTodos={lista.alternarMostrarTodos}
                                     />
                                     </>
                                 )}

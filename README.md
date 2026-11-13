@@ -47,7 +47,14 @@ No se deben guardar credenciales reales en el repositorio.
 
 Al crear una base de datos nueva, el servicio de PostgreSQL carga `docs/DB.sql` y `docs/catalogo.sql`. Estos scripts de inicialización se ejecutan cuando el volumen de datos está vacío; no se vuelven a aplicar automáticamente sobre una base existente.
 
-Para habilitar las reservas, hay que ejecutar una vez `backend/src/reservas/reserva-schema.sql` en la base de datos configurada. Las reservas descuentan las unidades disponibles; al cancelar una reserva pendiente o marcarla como vencida, el stock se devuelve.
+El servicio PostgreSQL carga `backend/src/reservas/reserva-schema.sql` automáticamente al crear una base nueva. En un volumen Podman existente, los scripts de inicialización no se repiten. Desde PowerShell, en la raíz del proyecto y con el contenedor `tienda-db` activo, aplica el esquema así:
+
+```powershell
+podman cp .\backend\src\reservas\reserva-schema.sql tienda-db:/tmp/reserva-schema.sql
+podman exec tienda-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -f /tmp/reserva-schema.sql'
+```
+
+El esquema es idempotente y se puede aplicar sin borrar el volumen ni los datos existentes. Las reservas descuentan las unidades disponibles; al cancelar una reserva pendiente o marcarla como vencida, el stock se devuelve.
 
 ## Ejecución
 

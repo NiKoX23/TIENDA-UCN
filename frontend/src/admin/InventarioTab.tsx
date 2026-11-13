@@ -21,6 +21,7 @@ import {
 import { exportarInventario } from '../services/export.service';
 import { usePaginacion } from '../hooks/usePaginacion';
 import Paginacion from '../components/Paginacion';
+import AdminSectionHeader from '../components/AdminSectionHeader';
 import { FILAS_POR_PAGINA_ADMIN } from '../utils/paginacion';
 
 const inputCls =
@@ -152,9 +153,10 @@ interface ModalProps {
     titulo: string;
     onCerrar: () => void;
     children: ReactNode;
+    ancho?: 'max-w-md' | 'max-w-2xl';
 }
 
-function Modal({ titulo, onCerrar, children }: ModalProps) {
+function Modal({ titulo, onCerrar, children, ancho = 'max-w-md' }: ModalProps) {
     return createPortal(
         <div
             className="fixed inset-0 z-[150] grid place-items-center overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-md"
@@ -164,11 +166,11 @@ function Modal({ titulo, onCerrar, children }: ModalProps) {
                 role="dialog"
                 aria-modal="true"
                 aria-label={titulo}
-                className="theme-dark-surface my-auto max-h-[min(90vh,720px)] w-full max-w-md overflow-y-auto rounded-[28px] border border-slate-400/25 bg-slate-900 p-7 shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-white/10 max-[480px]:rounded-2xl max-[480px]:p-5"
+                className={`admin-product-modal theme-dark-surface my-auto max-h-[min(90vh,720px)] w-full ${ancho} overflow-y-auto rounded-[28px] border border-slate-400/25 bg-slate-900 p-7 shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-white/10 max-[480px]:rounded-2xl max-[480px]:p-5`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="mb-5 flex items-center gap-3">
-                    <span className="h-8 w-1.5 rounded-full bg-gradient-to-b from-violet-500 to-cyan-400" aria-hidden="true" />
+                    <span className="admin-modal-accent" aria-hidden="true" />
                     <h2 className="text-xl font-extrabold tracking-tight text-slate-100">{titulo}</h2>
                 </div>
                 {children}
@@ -309,7 +311,7 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
     };
 
     return (
-        <Modal titulo={esNuevo ? 'Nuevo producto' : `Editar ${item.codigoProducto}`} onCerrar={onCerrar}>
+        <Modal titulo={esNuevo ? 'Nuevo producto' : `Editar ${item.codigoProducto}`} onCerrar={onCerrar} ancho="max-w-2xl">
             <form
                 className="mt-4 space-y-4"
                 onSubmit={(e) => {
@@ -364,7 +366,7 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
                     <input id="nombre" className={inputCls} value={nombre} onChange={(e) => setNombre(e.target.value)} />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                         <label htmlFor="costoAdquisicion" className={labelCls}>
                             Costo adquisición *
@@ -908,7 +910,7 @@ export default function InventarioTab() {
 
         return (
             <div className="overflow-x-auto border-t border-slate-400/10 bg-slate-500/[0.035] px-4 py-3">
-                <table className="w-full min-w-[560px] text-center text-xs">
+                <table className="vcm-admin-table vcm-admin-table--variants w-full min-w-[560px] text-center text-xs">
                     <thead className="text-center text-[11px] uppercase tracking-wider text-[var(--text-soft)]">
                         <tr>
                             {tieneTalla && <th className="px-3 py-2 font-medium">Talla</th>}
@@ -976,8 +978,10 @@ export default function InventarioTab() {
                 </div>)}
             </section>
 
-            <section aria-label="Herramientas de inventario" className="flex flex-wrap items-center gap-2">
-                <input aria-label="Buscar por nombre o SKU" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar producto o SKU" className={`${inputCls} min-w-[210px] flex-1 rounded-md`} />
+            <section aria-label="Herramientas de inventario" className="mt-2">
+            <AdminSectionHeader titulo="Inventario">
+                <div className="admin-toolbar">
+                <input aria-label="Buscar por nombre o SKU" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar producto o SKU" className={`${inputCls} admin-toolbar__search min-w-[210px] flex-1 rounded-md`} />
                 <select aria-label="Filtrar por categoría" value={categoriaFiltro} onChange={(e) => setCategoriaFiltro(e.target.value)} className={`${inputCls} w-full rounded-md sm:w-auto`}>
                     <option value="">Todas las categorías</option>{categorias.map((categoria) => <option key={categoria.idCategoria} value={categoria.nombre}>{categoria.nombre}</option>)}
                 </select>
@@ -989,7 +993,9 @@ export default function InventarioTab() {
                 </button>
                 <button type="button" className={`${botonPrimarioCls} rounded-md`} onClick={() => abrirModal('producto')}>Nuevo producto</button>
                 <button type="button" className={`${botonSecundarioCls} rounded-md`} onClick={() => void recargar()}>Refrescar</button>
-                <p aria-live="polite" className="w-full text-xs text-slate-400 sm:ml-auto sm:w-auto">{gruposFiltrados.length} {gruposFiltrados.length === 1 ? 'producto' : 'productos'}</p>
+                <p aria-live="polite" className="admin-toolbar__count">{gruposFiltrados.length} {gruposFiltrados.length === 1 ? 'producto' : 'productos'}</p>
+                </div>
+            </AdminSectionHeader>
             </section>
 
             {error && (
@@ -1005,15 +1011,15 @@ export default function InventarioTab() {
                 </div>
             ) : (
                 <>
-                <div className="overflow-x-auto rounded-lg border border-slate-400/15 bg-slate-950/10">
-                    <table className="hidden w-full min-w-[760px] table-fixed text-left text-sm md:table">
+                <div className="vcm-admin-table-shell overflow-x-auto rounded-lg border border-slate-400/15 bg-slate-950/10">
+                    <table className="vcm-admin-table vcm-admin-table--inventory hidden w-full min-w-[760px] table-fixed text-left text-sm md:table">
                         <colgroup>
-                            <col className="w-[30%] min-w-[200px]" />
+                            <col className="w-[28%] min-w-[200px]" />
                             <col className="hidden w-[10%] xl:table-column" />
-                            <col className="w-[20%] min-w-[140px]" />
+                            <col className="w-[18%] min-w-[140px]" />
                             <col className="w-[16%] min-w-[120px]" />
                             <col className="w-[12%] min-w-[110px]" />
-                            <col className="w-[12%] min-w-[150px]" />
+                            <col className="w-[16%] min-w-[150px]" />
                         </colgroup>
                         <thead className="border-b border-slate-400/15 text-sm text-[var(--text-soft)]">
                             <tr>
@@ -1187,8 +1193,10 @@ export default function InventarioTab() {
                     total={paginacion.total}
                     desde={paginacion.desde}
                     hasta={paginacion.hasta}
+                    mostrarTodos={paginacion.mostrarTodos}
                     etiqueta="productos"
                     onCambiar={paginacion.irA}
+                    onAlternarMostrarTodos={paginacion.alternarMostrarTodos}
                 />
                 </>
             )}

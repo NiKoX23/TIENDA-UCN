@@ -696,7 +696,6 @@ html:root:root .cart-checkout:disabled { background: color-mix(in srgb, var(--te
   color: var(--text);
 }
 .vcm-section-title::before { content: ''; width: 12px; height: 12px; background: var(--vcm-orange); }
-html:root[data-theme='light'] .vcm-section-title::before { background: var(--vcm-red); }
 
 .vcm-kpi {
   position: relative;
@@ -1140,7 +1139,7 @@ html:root[data-theme='light'] [class*='text-slate-500'] { color: var(--text-mute
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1.25rem;
-  margin-top: 1.75rem;
+  margin-top: 1rem;
 }
 .vcm-pager__summary { font-size: 0.8125rem; color: var(--text-soft); }
 .vcm-pager__summary strong { color: var(--text); font-weight: 800; }
@@ -1176,6 +1175,7 @@ html:root[data-theme='light'] [class*='text-slate-500'] { color: var(--text-mute
 .vcm-pager__btn:disabled { opacity: 0.38; cursor: not-allowed; }
 .vcm-pager__gap { min-width: 1.25rem; text-align: center; color: var(--text-muted); font-weight: 700; }
 .vcm-pager__mobile { display: none; padding: 0 0.5rem; font-size: 0.875rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.vcm-pager__all { display: flex; flex-basis: 100%; justify-content: center; }
 @media (max-width: 520px) {
   .vcm-pager { justify-content: center; }
   .vcm-pager__summary { width: 100%; text-align: center; }

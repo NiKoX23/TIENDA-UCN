@@ -48,7 +48,9 @@ export default function ReservaDetalleModal({
               </h2>
               <p id="reserva-detalle-descripcion" className="mt-1 text-sm text-[var(--text-soft)]">
                 Retiro {mostrarFecha(reserva.fechaRetiro)}
-                {reserva.bloqueHorario && ` · ${reserva.bloqueHorario}`}
+                {(reserva.horario
+                  ? ` · ${reserva.horario.horaInicio}–${reserva.horario.horaTermino}`
+                  : reserva.bloqueHorario && ` · ${reserva.bloqueHorario}`)}
               </p>
             </div>
             <button
@@ -68,6 +70,13 @@ export default function ReservaDetalleModal({
             <p className="mt-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm">
               <span className="font-bold">{reserva.usuario.nombre}</span>
               <span className="ml-2 text-[var(--text-soft)]">{reserva.usuario.email}</span>
+            </p>
+          )}
+
+          {reserva.horario && (
+            <p className="mt-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm">
+              <span className="text-[var(--text-soft)]">Vendedor asignado: </span>
+              <strong>{reserva.horario.vendedor.nombre}</strong>
             </p>
           )}
 

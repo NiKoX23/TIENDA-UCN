@@ -10,6 +10,7 @@ import {
 import CountUp from '../components/brand/CountUp';
 import { usePaginacion } from '../hooks/usePaginacion';
 import Paginacion from '../components/Paginacion';
+import AdminSectionHeader from '../components/AdminSectionHeader';
 import { FILAS_POR_PAGINA_DASHBOARD } from '../utils/paginacion';
 
 const botonSecundarioCls = 'vcm-btn vcm-btn--surface vcm-btn--sm';
@@ -56,7 +57,7 @@ function badgeEstado(estado: AlertaStock['estado'] | 'AGOTADO') {
 }
 
 function TituloSeccion({ children }: { children: string }) {
-    return <h2 className="vcm-section-title">{children}</h2>;
+    return <AdminSectionHeader titulo={children} />;
 }
 
 function mensajeError(e: unknown): string {
@@ -83,8 +84,8 @@ function TablaProductos({ productos, reinicio }: TablaProductosProps) {
     const paginacion = usePaginacion<ResumenProducto>(productos, FILAS_POR_PAGINA_DASHBOARD, [reinicio]);
     return (
         <>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
-                <table className="w-full min-w-[650px] border-collapse text-left text-sm">
+            <div className="vcm-admin-table-shell mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
+                <table className="vcm-admin-table vcm-admin-table--dashboard-products w-full min-w-[650px] border-collapse text-left text-sm">
                         <thead className="vcm-thead border-y border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
                             <tr>
                                 <th className="px-3 py-2 font-semibold">Producto</th>
@@ -119,8 +120,10 @@ function TablaProductos({ productos, reinicio }: TablaProductosProps) {
                     total={paginacion.total}
                     desde={paginacion.desde}
                     hasta={paginacion.hasta}
+                    mostrarTodos={paginacion.mostrarTodos}
                     etiqueta="productos"
                     onCambiar={paginacion.irA}
+                    onAlternarMostrarTodos={paginacion.alternarMostrarTodos}
                 />
         </>
     );
@@ -140,8 +143,8 @@ function TablaAlertas({ alertas, reinicio }: TablaAlertasProps) {
     }
     return (
         <>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
-                <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+            <div className="vcm-admin-table-shell mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
+                <table className="vcm-admin-table vcm-admin-table--dashboard-alerts w-full min-w-[560px] border-collapse text-left text-sm">
                             <thead className="vcm-thead border-y border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
                                 <tr>
                                     <th className="px-3 py-2 font-semibold">Producto</th>
@@ -174,8 +177,10 @@ function TablaAlertas({ alertas, reinicio }: TablaAlertasProps) {
                     total={paginacion.total}
                     desde={paginacion.desde}
                     hasta={paginacion.hasta}
+                    mostrarTodos={paginacion.mostrarTodos}
                     etiqueta="alertas"
                     onCambiar={paginacion.irA}
+                    onAlternarMostrarTodos={paginacion.alternarMostrarTodos}
                 />
         </>
     );
@@ -310,9 +315,8 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
             </section>
 
             <section className="mt-8 border-t border-[var(--border)] pt-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <TituloSeccion>Resumen por producto</TituloSeccion>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
+                <AdminSectionHeader titulo="Resumen por producto">
+                    <div className="admin-toolbar">
                         <button
                             aria-checked={tema === 'dark'}
                             aria-label="Modo oscuro"
@@ -345,17 +349,16 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                             <option value="nombre">Nombre A-Z</option>
                         </select>
                     </div>
-                </div>
+                </AdminSectionHeader>
                 <TablaProductos productos={productosFiltrados} reinicio={`${busquedaProducto}|${ordenProducto}`} />
             </section>
 
             <section className="mt-6 border-t border-[var(--border)] pt-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <TituloSeccion>Alertas de stock bajo</TituloSeccion>
-                        <p className="mt-1 text-xs text-[var(--text-muted)]">{num(resumen.alertasStockBajo.length)} variantes requieren atención</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
+                <AdminSectionHeader
+                    titulo="Alertas de stock bajo"
+                    descripcion={`${num(resumen.alertasStockBajo.length)} variantes requieren atención`}
+                >
+                    <div className="admin-toolbar">
                         <input
                             aria-label="Buscar alerta"
                             className="vcm-input vcm-input--sm"
@@ -377,7 +380,7 @@ export default function DashboardTab({ tema, onToggleTema }: DashboardTabProps) 
                             <option value="nombre-za">Nombre Z-A</option>
                         </select>
                     </div>
-                </div>
+                </AdminSectionHeader>
                 <TablaAlertas alertas={alertasFiltradas} reinicio={`${busquedaAlerta}|${filtroAlerta}|${ordenAlerta}`} />
             </section>
         </div>

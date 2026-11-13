@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatearCLP } from '../utils/precio';
 import { mensajeErrorApi } from '../utils/mensajeErrorApi';
+import AdminSectionHeader from '../components/AdminSectionHeader';
 import {
   cancelarMiReserva,
   cambiarEstadoReserva,
@@ -200,12 +201,51 @@ export default function ReservasPanel({
       data-reserva-focus-fallback
     >
       {administrador ? (
-        <div className="mb-5 text-center">
-          <h2 className="text-2xl font-extrabold">Reservas de productos</h2>
-          <p className="mt-1 text-sm text-[var(--text-soft)]">
-            Revisa productos, clientes y estados de retiro.
-          </p>
-        </div>
+        <AdminSectionHeader
+          titulo="Reservas de productos"
+          descripcion="Revisa productos, clientes y estados de retiro."
+          className="mb-5"
+        >
+          <div className="admin-toolbar admin-toolbar--reservation">
+            <label className="admin-toolbar__field">
+              Buscar por código o cliente
+              <input
+                className="vcm-input"
+                type="search"
+                value={busqueda}
+                onChange={(event) => setBusqueda(event.target.value)}
+                placeholder="RES-... o correo"
+              />
+            </label>
+            <label className="admin-toolbar__field">
+              Estado
+              <select
+                className="vcm-input"
+                value={filtroEstado}
+                onChange={(event) => {
+                  const estado = ESTADOS_RESERVA.find((opcion) => opcion === event.target.value);
+                  setFiltroEstado(estado ?? 'TODOS');
+                }}
+              >
+                <option value="TODOS">Todos los estados</option>
+                {ESTADOS_RESERVA.map((estado) => (
+                  <option key={estado} value={estado}>{ETIQUETAS_ESTADO[estado]}</option>
+                ))}
+              </select>
+            </label>
+            <label className="admin-toolbar__field">
+              Ordenar retiro
+              <select
+                className="vcm-input"
+                value={ordenFecha}
+                onChange={(event) => setOrdenFecha(event.target.value === 'lejana' ? 'lejana' : 'proxima')}
+              >
+                <option value="proxima">Fecha más próxima</option>
+                <option value="lejana">Fecha más lejana</option>
+              </select>
+            </label>
+          </div>
+        </AdminSectionHeader>
       ) : (
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -221,48 +261,6 @@ export default function ReservasPanel({
       )}
 
       {error && <p className="vcm-alert mb-4" role="alert">{error}</p>}
-
-      {administrador && (
-        <div className="mb-4 grid gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:grid-cols-[minmax(12rem,1fr)_12rem_12rem]">
-          <label className="block text-xs font-bold text-[var(--text-soft)]">
-            Buscar por código o cliente
-            <input
-              className="vcm-input mt-1.5 min-h-11"
-              type="search"
-              value={busqueda}
-              onChange={(event) => setBusqueda(event.target.value)}
-              placeholder="RES-... o correo"
-            />
-          </label>
-          <label className="block text-xs font-bold text-[var(--text-soft)]">
-            Estado
-            <select
-              className="vcm-input mt-1.5 min-h-11"
-              value={filtroEstado}
-              onChange={(event) => {
-                const estado = ESTADOS_RESERVA.find((opcion) => opcion === event.target.value);
-                setFiltroEstado(estado ?? 'TODOS');
-              }}
-            >
-              <option value="TODOS">Todos los estados</option>
-              {ESTADOS_RESERVA.map((estado) => (
-                <option key={estado} value={estado}>{ETIQUETAS_ESTADO[estado]}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs font-bold text-[var(--text-soft)]">
-            Ordenar retiro
-            <select
-              className="vcm-input mt-1.5 min-h-11"
-              value={ordenFecha}
-              onChange={(event) => setOrdenFecha(event.target.value === 'lejana' ? 'lejana' : 'proxima')}
-            >
-              <option value="proxima">Fecha más próxima</option>
-              <option value="lejana">Fecha más lejana</option>
-            </select>
-          </label>
-        </div>
-      )}
 
       {cargando && <div className="vcm-spinner py-10">Cargando reservas...</div>}
 
@@ -333,6 +331,11 @@ export default function ReservasPanel({
                     <span className="block font-semibold">{mostrarFecha(reserva.fechaRetiro)}</span>
                     {reserva.bloqueHorario && (
                       <span className="block text-xs text-[var(--text-soft)]">{reserva.bloqueHorario}</span>
+                    )}
+                    {reserva.horario && (
+                      <span className="block text-xs text-[var(--text-soft)]">
+                        Vendedor: {reserva.horario.vendedor.nombre}
+                      </span>
                     )}
                   </span>
                 </div>
@@ -409,6 +412,11 @@ export default function ReservasPanel({
                     <strong>{mostrarFecha(reserva.fechaRetiro)}</strong>
                     {reserva.bloqueHorario && (
                       <span className="ml-1 text-xs text-[var(--text-soft)]">· {reserva.bloqueHorario}</span>
+                    )}
+                    {reserva.horario && (
+                      <span className="mt-1 block text-xs text-[var(--text-soft)]">
+                        Vendedor: {reserva.horario.vendedor.nombre}
+                      </span>
                     )}
                   </span>
                 </div>

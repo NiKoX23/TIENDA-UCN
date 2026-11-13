@@ -9,7 +9,9 @@ export interface ResultadoPaginacion<T> {
   desde: number;
   hasta: number;
   visibles: T[];
+  mostrarTodos: boolean;
   irA: (pagina: number) => void;
+  alternarMostrarTodos: () => void;
 }
 
 /**
@@ -23,23 +25,30 @@ export function usePaginacion<T>(
   reiniciarCon: ReadonlyArray<string | number | boolean | null | undefined> = [],
 ): ResultadoPaginacion<T> {
   const clave = reiniciarCon.join('|');
-  const [estado, setEstado] = useState({ pagina: 1, clave });
+  const [estado, setEstado] = useState({ pagina: 1, clave, mostrarTodos: false });
 
   const total = items.length;
-  const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
-  const solicitada = estado.clave === clave ? estado.pagina : 1;
+  const mostrarTodos = estado.clave === clave && estado.mostrarTodos;
+  const totalPaginas = mostrarTodos ? 1 : Math.max(1, Math.ceil(total / porPagina));
+  const solicitada = mostrarTodos || estado.clave !== clave ? 1 : estado.pagina;
   const pagina = Math.min(Math.max(1, solicitada), totalPaginas);
 
   const visibles = useMemo(
-    () => items.slice((pagina - 1) * porPagina, pagina * porPagina),
-    [items, pagina, porPagina],
+    () => mostrarTodos ? [...items] : items.slice((pagina - 1) * porPagina, pagina * porPagina),
+    [items, mostrarTodos, pagina, porPagina],
   );
 
-  const desde = total === 0 ? 0 : (pagina - 1) * porPagina + 1;
-  const hasta = Math.min(pagina * porPagina, total);
+  const desde = total === 0 ? 0 : mostrarTodos ? 1 : (pagina - 1) * porPagina + 1;
+  const hasta = mostrarTodos ? total : Math.min(pagina * porPagina, total);
 
   const irA = (destino: number) =>
-    setEstado({ pagina: Math.min(Math.max(1, destino), totalPaginas), clave });
+    setEstado({ pagina: Math.min(Math.max(1, destino), totalPaginas), clave, mostrarTodos: false });
+  const alternarMostrarTodos = () =>
+    setEstado((actual) => ({
+      pagina: 1,
+      clave,
+      mostrarTodos: !(actual.clave === clave && actual.mostrarTodos),
+    }));
 
-  return { pagina, totalPaginas, total, desde, hasta, visibles, irA };
+  return { pagina, totalPaginas, total, desde, hasta, visibles, mostrarTodos, irA, alternarMostrarTodos };
 }

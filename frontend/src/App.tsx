@@ -4,6 +4,8 @@ import Login from './login/Login';
 import Register from './register/Register';
 import { logout, obtenerPerfil } from './services/auth.service';
 import type { Usuario } from './services/auth.service';
+import { claveAvisoTurnosVendedor } from './services/horarios-venta.service';
+import TurnoVendedorAviso from './components/TurnoVendedorAviso';
 import Tienda from './tienda/Tienda';
 import Perfil from './perfil/Perfil';
 import DetalleProducto from './productos/DetalleProducto';
@@ -33,6 +35,7 @@ export default function App() {
     }, [tema]);
 
     const handleLogout = async () => {
+        if (usuario) sessionStorage.removeItem(claveAvisoTurnosVendedor(usuario.uid));
         try {
             await logout();
             window.location.replace('/');
@@ -55,6 +58,8 @@ export default function App() {
                     {tema === 'dark' ? '☀' : '☾'}
                 </button>
             )}
+
+            {usuario && <TurnoVendedorAviso usuario={usuario} />}
 
             {usuario === undefined ? (
                 <div className="vcm-auth">

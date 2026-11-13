@@ -1,5 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { DatosCrearReserva } from '../services/reservas.service';
+import { listarHorariosDisponibles, type HorarioVenta } from '../services/horarios-venta.service';
+import { mensajeErrorApi } from '../utils/mensajeErrorApi';
 import ReservaModal from './ReservaModal';
 
 interface ReservaFormProps {
@@ -31,16 +33,83 @@ export default function ReservaForm({
   onConfirmar,
 }: ReservaFormProps) {
   const [fechaRetiro, setFechaRetiro] = useState(fechaLocal);
-  const [bloqueHorario, setBloqueHorario] = useState('');
+  const [idHorario, setIdHorario] = useState('');
+  const [consultaHorarios, setConsultaHorarios] = useState<{
+    fecha: string;
+    horarios: HorarioVenta[];
+    error: string;
+  } | null>(null);
   const [observaciones, setObservaciones] = useState('');
+
+  useEffect(() => {
+    if (!abierto || !fechaRetiro) return;
+    let activo = true;
+    let enCurso = false;
+    const consultarHorarios = async () => {
+      if (!activo || enCurso) return;
+      enCurso = true;
+      try {
+        const disponibles = await listarHorariosDisponibles(fechaRetiro);
+        if (activo) {
+          setConsultaHorarios({
+          fecha: fechaRetiro,
+          horarios: disponibles,
+          error: '',
+          });
+          setIdHorario((actual) =>
+            disponibles.some((horario) => String(horario.idHorario) === actual)
+              ? actual
+              : '',
+          );
+        }
+      } catch (error: unknown) {
+        if (activo) {
+          setConsultaHorarios({
+            fecha: fechaRetiro,
+            horarios: [],
+            error: mensajeErrorApi(
+              error,
+              'No se pudieron consultar los horarios disponibles.',
+            ),
+          });
+        }
+      } finally {
+        enCurso = false;
+      }
+    };
+    const consultarSiVisible = () => {
+      if (document.visibilityState === 'visible') void consultarHorarios();
+    };
+    void consultarHorarios();
+    const intervalo = window.setInterval(consultarSiVisible, 10000);
+    window.addEventListener('focus', consultarSiVisible);
+    document.addEventListener('visibilitychange', consultarSiVisible);
+    return () => {
+      activo = false;
+      window.clearInterval(intervalo);
+      window.removeEventListener('focus', consultarSiVisible);
+      document.removeEventListener('visibilitychange', consultarSiVisible);
+    };
+  }, [abierto, fechaRetiro]);
+
+  const consultaActual = consultaHorarios?.fecha === fechaRetiro
+    ? consultaHorarios
+    : null;
+  const horarios = consultaActual?.horarios ?? [];
+  const errorHorarios = consultaActual?.error ?? '';
+  const cargandoHorarios = abierto && consultaActual === null;
+  const horarioSeleccionadoDisponible = horarios.some(
+    (horario) => String(horario.idHorario) === idHorario,
+  );
 
   if (!abierto) return null;
 
   const enviar = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!horarioSeleccionadoDisponible) return;
     onConfirmar({
       fechaRetiro,
-      bloqueHorario: bloqueHorario || undefined,
+      idHorario: Number(idHorario),
       observaciones: observaciones.trim() || undefined,
     });
   };
@@ -70,26 +139,44 @@ export default function ReservaForm({
             type="date"
             min={fechaLocal()}
             value={fechaRetiro}
-            onChange={(event) => setFechaRetiro(event.target.value)}
+            onChange={(event) => {
+              setFechaRetiro(event.target.value);
+              setIdHorario('');
+            }}
             data-modal-initial-focus
             required
           />
         </label>
 
         <label className="block space-y-1.5 text-sm font-semibold">
-          Bloque horario <span className="font-normal text-[var(--text-soft)]">(opcional)</span>
+          Horario disponible
           <select
             className="vcm-input w-full"
-            value={bloqueHorario}
-            onChange={(event) => setBloqueHorario(event.target.value)}
+            value={idHorario}
+            onChange={(event) => setIdHorario(event.target.value)}
+            disabled={cargandoHorarios || horarios.length === 0}
+            required
           >
-            <option value="">Sin preferencia</option>
-            <option value="09:00-11:00">09:00–11:00</option>
-            <option value="11:00-13:00">11:00–13:00</option>
-            <option value="14:00-16:00">14:00–16:00</option>
-            <option value="16:00-18:00">16:00–18:00</option>
+            <option value="">
+              {cargandoHorarios
+                ? 'Buscando horarios...'
+                : horarios.length === 0
+                  ? 'No hay horarios disponibles'
+                  : 'Selecciona un horario'}
+            </option>
+            {horarios.map((horario) => (
+              <option key={horario.idHorario} value={horario.idHorario}>
+                {horario.horaInicio}–{horario.horaTermino} · {horario.vendedor.nombre}
+              </option>
+            ))}
           </select>
         </label>
+        {errorHorarios && <p className="vcm-alert" role="alert">{errorHorarios}</p>}
+        {!cargandoHorarios && !errorHorarios && horarios.length === 0 && (
+          <p className="text-sm text-[var(--text-soft)]">
+            No hay turnos asignados para esta fecha. Prueba con otro día.
+          </p>
+        )}
 
         <label className="block space-y-1.5 text-sm font-semibold">
           Observaciones <span className="font-normal text-[var(--text-soft)]">(opcional)</span>
@@ -115,7 +202,7 @@ export default function ReservaForm({
           <button
             type="submit"
             className="vcm-btn vcm-btn--primary"
-            disabled={procesando}
+            disabled={procesando || cargandoHorarios || !horarioSeleccionadoDisponible}
           >
             {procesando ? 'Reservando...' : 'Confirmar reserva'}
           </button>

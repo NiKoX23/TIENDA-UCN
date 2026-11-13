@@ -15,6 +15,10 @@ import UserAvatarMenu from '../components/UserAvatarMenu';
 import { BrandLockup } from '../components/brand/BrandLogo';
 import { BrandBlocks, PatternStrip } from '../components/brand/BrandFigures';
 import { formatearCLP } from '../utils/precio';
+import ReservaForm from '../reservas/ReservaForm';
+import { crearReserva, type DatosCrearReserva, type Reserva } from '../services/reservas.service';
+import ReservaConfirmacionModal from '../reservas/ReservaConfirmacionModal';
+import { mensajeErrorApi } from '../utils/mensajeErrorApi';
 import { usePaginacion } from '../hooks/usePaginacion';
 import Paginacion from '../components/Paginacion';
 import ImagenProducto from '../components/ImagenProducto';
@@ -119,7 +123,7 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
   }, [categoriaActiva, busqueda, favoritos, productos, orden]);
 
   // Cambiar categoría, búsqueda u orden vuelve a la primera página.
-  const paginacion = usePaginacion<Producto>(productosFiltrados, PRODUCTOS_POR_PAGINA, [categoriaActiva, busqueda, orden]);
+  const paginacion = usePaginacion<ProductoCatalogo>(productosFiltrados, PRODUCTOS_POR_PAGINA, [categoriaActiva, busqueda, orden]);
 
   const cambiarPagina = (pagina: number) => {
     paginacion.irA(pagina);
@@ -700,8 +704,10 @@ export default function Tienda({ usuario, tema, onToggleTema, onPerfil, onLogin,
               total={paginacion.total}
               desde={paginacion.desde}
               hasta={paginacion.hasta}
+              mostrarTodos={paginacion.mostrarTodos}
               etiqueta="productos"
               onCambiar={cambiarPagina}
+              onAlternarMostrarTodos={paginacion.alternarMostrarTodos}
             />
           )}
 

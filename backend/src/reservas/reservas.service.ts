@@ -9,11 +9,17 @@ import { Usuario } from '../auth/usuario.entity';
 import { VarianteProducto } from '../productos/variante-producto.entity';
 import { EstadoReserva } from './estado-reserva.enum';
 import { ItemReserva } from './item-reserva.entity';
+import { HorarioVenta } from './horario-venta.entity';
 import { Reserva } from './reserva.entity';
 import { CrearReservaDto } from './reservas.dto';
+import {
+  fechaYHoraEnSantiago,
+  horarioComienzaEnFuturo,
+} from './horarios-venta.util';
 
 const relacionesReserva = {
   usuario: true,
+  horarioVenta: { vendedor: true },
   items: { variante: { producto: true } },
 } as const;
 
@@ -56,6 +62,27 @@ export class ReservasService {
         where: { uid },
       });
       if (!usuario) throw new NotFoundException('Usuario no encontrado');
+
+      const horario = await manager.getRepository(HorarioVenta).findOne({
+        where: { idHorario: dto.idHorario },
+        relations: { vendedor: true },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (
+        !horario ||
+        !horario.activo ||
+        !horario.vendedor.activo ||
+        horario.fecha !== dto.fechaRetiro ||
+        !horarioComienzaEnFuturo(
+          horario.fecha,
+          horario.horaInicio.slice(0, 5),
+          fechaYHoraEnSantiago(),
+        )
+      ) {
+        throw new BadRequestException(
+          'El horario seleccionado ya no está disponible para esa fecha',
+        );
+      }
 
       const variantes = new Map<number, VarianteProducto>();
       for (const idVariante of [...ids].sort((a, b) => a - b)) {
@@ -106,8 +133,10 @@ export class ReservasService {
           codigoReserva: `RES-${randomUUID().replace(/-/g, '').slice(0, 20).toUpperCase()}`,
           uid: usuario.uid,
           usuario,
-          fechaRetiro: dto.fechaRetiro,
-          bloqueHorario: dto.bloqueHorario?.trim() || null,
+          fechaRetiro: horario.fecha,
+          idHorario: horario.idHorario,
+          horarioVenta: horario,
+          bloqueHorario: `${horario.horaInicio.slice(0, 5)}-${horario.horaTermino.slice(0, 5)}`,
           observaciones: dto.observaciones?.trim() || null,
           estado: EstadoReserva.PENDIENTE,
           total,
@@ -282,6 +311,17 @@ export class ReservasService {
           }
         : {}),
       fechaRetiro: reserva.fechaRetiro,
+      horario: reserva.horarioVenta
+        ? {
+            idHorario: reserva.horarioVenta.idHorario,
+            horaInicio: reserva.horarioVenta.horaInicio.slice(0, 5),
+            horaTermino: reserva.horarioVenta.horaTermino.slice(0, 5),
+            vendedor: {
+              idVendedor: reserva.horarioVenta.vendedor.idVendedor,
+              nombre: reserva.horarioVenta.vendedor.nombre,
+            },
+          }
+        : null,
       bloqueHorario: reserva.bloqueHorario,
       observaciones: reserva.observaciones,
       estado: reserva.estado,

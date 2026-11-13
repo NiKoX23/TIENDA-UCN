@@ -159,9 +159,10 @@ export class VentasListadoService {
   /** Totales de todo el historial (no dependen de la página ni de los filtros). */
   async totalesVentas(): Promise<TotalesVentas> {
     const [fila] = await this.dataSource.query<
-      Array<{ cantidad: number; subtotal: number; ganancia: number }>
+      Array<{ boletas: number; cantidad: number; subtotal: number; ganancia: number }>
     >(`
       SELECT
+        COUNT(DISTINCT f.id_factura)::int AS boletas,
         COALESCE(SUM(s.cantidad), 0)::int AS cantidad,
         COALESCE(SUM(s.subtotal), 0)::int AS subtotal,
         COALESCE(SUM(CASE WHEN f.tipo_venta = 'tac' THEN 0
@@ -172,6 +173,7 @@ export class VentasListadoService {
       JOIN productos p ON p.codigo_producto = v.codigo_producto
     `);
     return {
+      boletas: Number(fila?.boletas ?? 0),
       cantidad: Number(fila?.cantidad ?? 0),
       subtotal: Number(fila?.subtotal ?? 0),
       ganancia: Number(fila?.ganancia ?? 0),
