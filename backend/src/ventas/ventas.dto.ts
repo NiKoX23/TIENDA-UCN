@@ -6,9 +6,11 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  MinLength,
   MaxLength,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export type TipoVentaDto = 'normal' | 'tac';
 export type FirmaEstadoDto = 'Firmado' | 'Pendiente' | 'Rechazado';
@@ -36,6 +38,12 @@ export class RegistrarVentaDto {
   tipoVenta!: TipoVentaDto;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  idVendedor?: number;
+
+  @IsOptional()
   @IsString()
   @MaxLength(30)
   numeroTac?: string;
@@ -44,6 +52,16 @@ export class RegistrarVentaDto {
   @IsString()
   @MaxLength(200)
   observaciones?: string;
+}
+
+export class BuscarVendedoresVentaQueryDto {
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  q!: string;
 }
 
 export class FirmasDto {

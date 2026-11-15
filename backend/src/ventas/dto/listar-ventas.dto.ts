@@ -1,4 +1,4 @@
-import { IsIn, IsOptional } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, Matches } from 'class-validator';
 import { PaginacionQueryDto } from '../../common/paginacion';
 
 export const ORDENES_BOLETA = [
@@ -19,6 +19,16 @@ export class ListarBoletasQueryDto extends PaginacionQueryDto {
   @IsOptional()
   @IsIn([...ORDENES_BOLETA])
   orden?: OrdenBoleta;
+
+  @IsOptional()
+  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  desde?: string;
+
+  @IsOptional()
+  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  hasta?: string;
 }
 
 export const ORDENES_TAC = ['fecha-desc', 'fecha-asc', 'total', 'producto'] as const;

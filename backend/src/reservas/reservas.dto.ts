@@ -99,3 +99,8 @@ export class ActualizarEstadoReservaDto {
   @IsIn(Object.values(EstadoReserva))
   estado!: EstadoReserva;
 }
+
+export class ActualizarEstadoReservaVendedorDto {
+  @IsIn([EstadoReserva.LISTA_PARA_RETIRO, EstadoReserva.RETIRADA])
+  estado!: EstadoReserva;
+}

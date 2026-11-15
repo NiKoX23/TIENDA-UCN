@@ -183,6 +183,15 @@ export class ReservasService {
     return reservas.map((reserva) => this.serializar(reserva, true));
   }
 
+  async listarParaVendedor(uid: number) {
+    const reservas = await this.dataSource.getRepository(Reserva).find({
+      where: { horarioVenta: { vendedor: { usuario: { uid } } } },
+      relations: relacionesReserva,
+      order: { fechaCreacion: 'DESC' },
+    });
+    return reservas.map((reserva) => this.serializar(reserva, true));
+  }
+
   async cancelarPropia(uid: number, idReserva: number) {
     return this.dataSource
       .transaction(async (manager) => {
@@ -235,6 +244,40 @@ export class ReservasService {
       if (!permitidos[reserva.estado].includes(estado)) {
         throw new BadRequestException(
           `No se puede cambiar una reserva ${reserva.estado} a ${estado}`,
+        );
+      }
+
+      await this.cambiarEstado(manager, reserva, estado);
+    });
+
+    return this.obtenerDetalle(idReserva);
+  }
+
+  async actualizarEstadoVendedor(
+    uid: number,
+    idReserva: number,
+    estado: EstadoReserva,
+  ) {
+    await this.dataSource.transaction(async (manager) => {
+      const reserva = await manager
+        .getRepository(Reserva)
+        .createQueryBuilder('reserva')
+        .innerJoin('reserva.horarioVenta', 'horario')
+        .innerJoin('horario.vendedor', 'vendedor')
+        .where('reserva.id_reserva = :idReserva', { idReserva })
+        .andWhere('vendedor.uid = :uid', { uid })
+        .setLock('pessimistic_write')
+        .getOne();
+      if (!reserva) throw new NotFoundException('Reserva no encontrada');
+      if (reserva.estado === estado) return;
+
+      const siguienteEstado: Partial<Record<EstadoReserva, EstadoReserva>> = {
+        [EstadoReserva.PENDIENTE]: EstadoReserva.LISTA_PARA_RETIRO,
+        [EstadoReserva.LISTA_PARA_RETIRO]: EstadoReserva.RETIRADA,
+      };
+      if (siguienteEstado[reserva.estado] !== estado) {
+        throw new BadRequestException(
+          'El vendedor solo puede marcar reservas pendientes como listas para retiro y las listas como retiradas',
         );
       }
 

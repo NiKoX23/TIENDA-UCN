@@ -13,17 +13,17 @@ interface TimePickerFieldProps {
   value: string;
   onChange: (value: string) => void;
   onValidityChange: (valid: boolean) => void;
+  minTime?: string;
   disabled?: boolean;
 }
 
 type ColumnaHora = 'horas' | 'minutos';
 
 const HORAS = Array.from({ length: 24 }, (_, indice) => indice);
-const MINUTOS = Array.from({ length: 12 }, (_, indice) => indice * 5);
+const MINUTOS = Array.from({ length: 60 }, (_, indice) => indice);
 
 function horaValida(value: string): boolean {
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) return false;
-  return Number(value.slice(3)) % 5 === 0;
+  return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
 function partesHora(value: string): { hora: number; minuto: number } {
@@ -36,6 +36,13 @@ function partesHora(value: string): { hora: number; minuto: number } {
 
 function formatearHora(hora: number, minuto: number): string {
   return `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
+}
+
+function enmascararHora(value: string): string {
+  const digitos = value.replace(/\D/g, '').slice(0, 4);
+  return digitos.length > 2
+    ? `${digitos.slice(0, 2)}:${digitos.slice(2)}`
+    : digitos;
 }
 
 function IconoReloj() {
@@ -52,6 +59,7 @@ export default function TimePickerField({
   value,
   onChange,
   onValidityChange,
+  minTime,
   disabled = false,
 }: TimePickerFieldProps) {
   const [abierto, setAbierto] = useState(false);
@@ -74,11 +82,24 @@ export default function TimePickerField({
     panelRef,
     anchoMinimo: 300,
   });
+  const horaPermitida = (hora: string) =>
+    horaValida(hora) && (!minTime || !horaValida(minTime) || hora > minTime);
+  const opcionesMinuto = (hora: number) =>
+    MINUTOS.filter((minuto) => horaPermitida(formatearHora(hora, minuto)));
   const errorHora = texto.length === 0
     ? (tocado ? 'Selecciona una hora.' : '')
     : !horaValida(texto)
-      ? 'Usa formato 24 h HH:mm y minutos de 5 en 5.'
+      ? 'Ingresa una hora válida en formato HH:mm.'
+      : minTime && horaValida(minTime) && texto <= minTime
+        ? `Debe ser posterior a ${minTime}.`
       : '';
+
+  useEffect(() => {
+    onValidityChange(
+      horaValida(value) &&
+      (!minTime || !horaValida(minTime) || value > minTime),
+    );
+  }, [value, minTime, onValidityChange]);
 
   useEffect(() => {
     if (!abierto) return;
@@ -115,9 +136,13 @@ export default function TimePickerField({
   const abrirSelector = () => {
     if (disabled) return;
     setTocado(true);
-    const seleccionado = partesHora(value);
+    const seleccionado = partesHora(horaPermitida(value) ? value : (minTime ?? '09:00'));
+    const minutosDisponibles = opcionesMinuto(seleccionado.hora);
+    const minuto = minutosDisponibles.includes(seleccionado.minuto)
+      ? seleccionado.minuto
+      : minutosDisponibles[0] ?? 0;
     setHoraActiva(seleccionado.hora);
-    setMinutoActivo(seleccionado.minuto);
+    setMinutoActivo(minuto);
     setColumnaActiva('horas');
     setPortal(
       campoRef.current?.closest<HTMLElement>('[role="dialog"]') ?? document.body,
@@ -133,15 +158,20 @@ export default function TimePickerField({
   };
 
   const seleccionarHora = (hora: number) => {
-    const minuto = horaValida(value) ? Number(value.slice(3, 5)) : minutoActivo;
+    const disponibles = opcionesMinuto(hora);
+    if (disponibles.length === 0) return;
+    const minutoActual = horaValida(value) ? Number(value.slice(3, 5)) : minutoActivo;
+    const minuto = disponibles.includes(minutoActual) ? minutoActual : disponibles[0];
     setHoraActiva(hora);
+    setMinutoActivo(minuto);
     setColumnaActiva('minutos');
     guardarHora(hora, minuto);
-    enfocarOpcion('minutos', MINUTOS.indexOf(minuto));
+    enfocarOpcion('minutos', minuto);
   };
 
   const seleccionarMinuto = (minuto: number) => {
     const hora = horaValida(value) ? Number(value.slice(0, 2)) : horaActiva;
+    if (!horaPermitida(formatearHora(hora, minuto))) return;
     setMinutoActivo(minuto);
     guardarHora(hora, minuto);
     setAbierto(false);
@@ -161,7 +191,7 @@ export default function TimePickerField({
       event.preventDefault();
       abrirSelector();
       window.requestAnimationFrame(() => {
-        const partes = partesHora(value);
+        const partes = partesHora(horaPermitida(value) ? value : (minTime ?? '09:00'));
         enfocarOpcion('horas', partes.hora);
       });
       return;
@@ -172,9 +202,15 @@ export default function TimePickerField({
       event.preventDefault();
       const columna = columnaActiva === 'horas' ? 'minutos' : 'horas';
       setColumnaActiva(columna);
+      const horasDisponibles = HORAS.filter((hora) =>
+        horaPermitida(formatearHora(hora, 59)),
+      );
+      const minutosDisponibles = opcionesMinuto(horaActiva);
       const indice = columna === 'horas'
-        ? (horaValida(value) ? Number(value.slice(0, 2)) : horaActiva)
-        : (horaValida(value) ? MINUTOS.indexOf(Number(value.slice(3, 5))) : MINUTOS.indexOf(minutoActivo));
+        ? (horasDisponibles.includes(horaActiva) ? horaActiva : horasDisponibles[0] ?? 0)
+        : (minutosDisponibles.includes(minutoActivo) ? minutoActivo : minutosDisponibles[0] ?? 0);
+      if (columna === 'horas') setHoraActiva(indice);
+      else setMinutoActivo(indice);
       enfocarOpcion(columna, indice);
       return;
     }
@@ -182,36 +218,47 @@ export default function TimePickerField({
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       event.preventDefault();
       if (columnaActiva === 'horas') {
-        const siguiente = (horaActiva + (event.key === 'ArrowDown' ? 1 : 23)) % 24;
+        const siguiente = HORAS.find((hora) =>
+          horaPermitida(formatearHora(hora, 59)) &&
+          (event.key === 'ArrowDown' ? hora > horaActiva : hora < horaActiva),
+        ) ?? HORAS.find((hora) => horaPermitida(formatearHora(hora, 59)));
+        if (siguiente === undefined) return;
         setHoraActiva(siguiente);
         enfocarOpcion('horas', siguiente);
       } else {
-        const actual = MINUTOS.indexOf(minutoActivo);
-        const siguiente = (actual + (event.key === 'ArrowDown' ? 1 : MINUTOS.length - 1)) % MINUTOS.length;
-        const minuto = MINUTOS[siguiente];
+        const disponibles = opcionesMinuto(horaActiva);
+        const minuto = disponibles.find((opcion) =>
+          event.key === 'ArrowDown' ? opcion > minutoActivo : opcion < minutoActivo,
+        ) ?? (event.key === 'ArrowDown'
+          ? disponibles[0]
+          : disponibles[disponibles.length - 1]);
+        if (minuto === undefined) return;
         setMinutoActivo(minuto);
-        enfocarOpcion('minutos', siguiente);
+        enfocarOpcion('minutos', minuto);
       }
       return;
     }
 
     if (event.key === 'Enter' && event.target === inputRef.current) {
       event.preventDefault();
-      if (columnaActiva === 'horas') seleccionarHora(horaActiva);
-      else seleccionarMinuto(minutoActivo);
+      if (horaPermitida(texto)) {
+        setAbierto(false);
+        enfocarCampo();
+      }
     }
   };
 
   const cambiarBorrador = (nuevoTexto: string) => {
-    setBorrador({ value, draft: nuevoTexto });
-    const valido = horaValida(nuevoTexto);
+    const textoEnmascarado = enmascararHora(nuevoTexto);
+    setBorrador({ value, draft: textoEnmascarado });
+    const valido = horaPermitida(textoEnmascarado);
+    onChange(textoEnmascarado);
     onValidityChange(valido);
     if (!valido) return;
 
-    const partes = partesHora(nuevoTexto);
+    const partes = partesHora(textoEnmascarado);
     setHoraActiva(partes.hora);
     setMinutoActivo(partes.minuto);
-    onChange(nuevoTexto);
   };
 
   const popover = abierto && portal
@@ -253,6 +300,12 @@ export default function TimePickerField({
                       aria-selected={opcion === seleccionado}
                       data-time-column={columna}
                       data-index={indice}
+                      disabled={columna === 'horas'
+                        ? !horaPermitida(formatearHora(opcion, 59))
+                        : !horaPermitida(formatearHora(
+                          horaValida(value) ? Number(value.slice(0, 2)) : horaActiva,
+                          opcion,
+                        ))}
                       className={`time-picker-option${opcion === seleccionado ? ' is-selected' : ''}`}
                       onFocus={() => {
                         setColumnaActiva(columna);
@@ -279,7 +332,7 @@ export default function TimePickerField({
   return (
     <div
       ref={campoRef}
-      className="picker-field"
+      className="picker-field picker-field--time"
       onKeyDownCapture={manejarTeclado}
     >
       <div className="picker-input-wrap">
@@ -304,9 +357,7 @@ export default function TimePickerField({
           onFocus={() => {
             if (omitirAperturaAlEnfocar.current) {
               omitirAperturaAlEnfocar.current = false;
-              return;
             }
-            abrirSelector();
           }}
           onChange={(event) => cambiarBorrador(event.target.value)}
         />

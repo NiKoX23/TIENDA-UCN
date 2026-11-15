@@ -54,7 +54,16 @@ podman cp .\backend\src\reservas\reserva-schema.sql tienda-db:/tmp/reserva-schem
 podman exec tienda-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -f /tmp/reserva-schema.sql'
 ```
 
-El esquema es idempotente y se puede aplicar sin borrar el volumen ni los datos existentes. Las reservas descuentan las unidades disponibles; al cancelar una reserva pendiente o marcarla como vencida, el stock se devuelve.
+La migración `docs/vendedor_responsable_facturas.sql` también se aplica automáticamente al crear una base nueva. En un volumen existente, aplícala después del esquema de reservas:
+
+```powershell
+podman cp .\docs\vendedor_responsable_facturas.sql tienda-db:/tmp/vendedor-responsable-facturas.sql
+podman exec tienda-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -f /tmp/vendedor-responsable-facturas.sql'
+podman compose restart backend
+podman compose logs --tail=100 backend
+```
+
+Ambos esquemas son idempotentes y se pueden aplicar sin borrar el volumen ni los datos existentes. Las reservas descuentan las unidades disponibles; al cancelar una reserva pendiente o marcarla como vencida, el stock se devuelve.
 
 ## Ejecución
 

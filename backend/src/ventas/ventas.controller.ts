@@ -14,12 +14,16 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
+  BuscarVendedoresVentaQueryDto,
   ActualizarDocumentoTacDto,
   CrearDocumentoTacDto,
   FirmasDto,
   RegistrarVentaDto,
 } from './ventas.dto';
-import { ListarBoletasQueryDto, ListarTacQueryDto } from './dto/listar-ventas.dto';
+import {
+  ListarBoletasQueryDto,
+  ListarTacQueryDto,
+} from './dto/listar-ventas.dto';
 import { VentasService } from './ventas.service';
 import { VentasListadoService } from './ventas-listado.service';
 
@@ -46,6 +50,11 @@ export class VentasController {
   @Get('registro/totales')
   totalesRegistro() {
     return this.ventasListado.totalesVentas();
+  }
+
+  @Get('vendedores')
+  buscarVendedores(@Query() query: BuscarVendedoresVentaQueryDto) {
+    return this.ventasService.buscarVendedoresVenta(query.q);
   }
 
   @Post('registro')

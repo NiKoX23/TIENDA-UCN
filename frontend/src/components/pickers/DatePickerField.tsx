@@ -25,10 +25,25 @@ function fechaValida(value: string): string | null {
   let day: number;
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   const local = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  const localizada = /^(?:[a-záéíóúüñ]+,?\s+)?(\d{1,2})\s+([a-záéíóúüñ.]+)\s+(\d{4})$/i.exec(value.trim());
   if (iso) {
     [, year, month, day] = iso.map(Number);
   } else if (local) {
     [, day, month, year] = local.map(Number);
+  } else if (localizada) {
+    day = Number(localizada[1]);
+    year = Number(localizada[3]);
+    const mesTexto = localizada[2].toLocaleLowerCase('es-CL').replace(/\.$/, '');
+    month = Array.from({ length: 12 }, (_, indice) => indice + 1).find((mes) => {
+      const fecha = new Date(Date.UTC(2020, mes - 1, 1, 12));
+      const formatos = ['short', 'long'].map((monthStyle) =>
+        new Intl.DateTimeFormat('es-CL', {
+          month: monthStyle as 'short' | 'long',
+          timeZone: 'UTC',
+        }).format(fecha).toLocaleLowerCase('es-CL').replace(/\.$/, ''),
+      );
+      return formatos.includes(mesTexto);
+    }) ?? 0;
   } else {
     return null;
   }
@@ -52,9 +67,19 @@ function partesISO(value: string): { year: number; month: number; day: number } 
 
 function mostrarFecha(value: string): string {
   const partes = partesISO(value);
-  return partes
-    ? `${String(partes.day).padStart(2, '0')}/${String(partes.month).padStart(2, '0')}/${partes.year}`
-    : value;
+  if (!partes) return value;
+  const fecha = new Date(Date.UTC(partes.year, partes.month - 1, partes.day, 12));
+  const valores = Object.fromEntries(
+    new Intl.DateTimeFormat('es-CL', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).formatToParts(fecha).map((parte) => [parte.type, parte.value]),
+  );
+  const diaSemana = valores.weekday.charAt(0).toLocaleUpperCase('es-CL') + valores.weekday.slice(1);
+  return `${diaSemana} ${valores.day} ${valores.month} ${valores.year}`;
 }
 
 function claveFecha(year: number, month: number, day: number): string {
@@ -218,7 +243,9 @@ export default function DatePickerField({
     }
     if (event.key === 'Enter' && event.target === inputRef.current) {
       event.preventDefault();
-      seleccionarFecha(fechaEnFoco);
+      if (fechaConvertida && fechaConvertida >= minDate) {
+        seleccionarFecha(fechaConvertida);
+      }
     }
   };
 
@@ -250,6 +277,7 @@ export default function DatePickerField({
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(mesVisible.year, mesVisible.month - 1, 1, 12)));
+  const mesFormateado = etiquetaMes.charAt(0).toLocaleUpperCase('es-CL') + etiquetaMes.slice(1);
 
   const popover = abierto && portal
     ? createPortal(
@@ -271,7 +299,7 @@ export default function DatePickerField({
             <button type="button" className="date-picker-nav" onClick={() => desplazarMes(-1)} aria-label="Mes anterior">
               ‹
             </button>
-            <h3 aria-live="polite">{etiquetaMes}</h3>
+            <h3 aria-live="polite">{mesFormateado}</h3>
             <button type="button" className="date-picker-nav" onClick={() => desplazarMes(1)} aria-label="Mes siguiente">
               ›
             </button>
@@ -284,12 +312,13 @@ export default function DatePickerField({
               if (!dia) return <span className="date-picker-empty" aria-hidden="true" key={`vacio-${indice}`} />;
               const fecha = claveFecha(mesVisible.year, mesVisible.month, dia);
               const seleccionada = fecha === value;
+              const hoy = fecha === minDate;
               return (
                 <button
                   type="button"
                   key={fecha}
                   data-calendar-date={fecha}
-                  className={`date-picker-day${seleccionada ? ' is-selected' : ''}`}
+                  className={`date-picker-day${seleccionada ? ' is-selected' : ''}${hoy ? ' is-today' : ''}`}
                   aria-label={new Date(`${fecha}T12:00:00Z`).toLocaleDateString('es-CL', {
                     weekday: 'long',
                     day: 'numeric',
@@ -298,6 +327,7 @@ export default function DatePickerField({
                     timeZone: 'America/Santiago',
                   })}
                   aria-selected={seleccionada}
+                  aria-current={hoy ? 'date' : undefined}
                   disabled={fecha < minDate}
                   onFocus={() => setFechaEnFoco(fecha)}
                   onClick={() => seleccionarFecha(fecha)}
@@ -315,8 +345,19 @@ export default function DatePickerField({
   return (
     <div
       ref={campoRef}
-      className="picker-field"
+      className="picker-field picker-field--date"
       onKeyDownCapture={manejarTeclado}
+      onBlurCapture={(event) => {
+        const destino = event.relatedTarget;
+        if (
+          abierto &&
+          (!(destino instanceof Node) ||
+            (!campoRef.current?.contains(destino) &&
+              !panelRef.current?.contains(destino)))
+        ) {
+          setAbierto(false);
+        }
+      }}
     >
       <div className="picker-input-wrap">
         <input
@@ -328,7 +369,7 @@ export default function DatePickerField({
           placeholder="DD/MM/AAAA"
           inputMode="numeric"
           autoComplete="off"
-          maxLength={10}
+          maxLength={24}
           aria-haspopup="dialog"
           aria-expanded={abierto}
           aria-controls={abierto ? panelId : undefined}

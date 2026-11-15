@@ -6,15 +6,34 @@ interface UserAvatarMenuProps {
     onLogin: () => void;
     onPerfil: () => void;
     onReservas: () => void;
+    onMisHorarios: () => void;
+    onVendedorReservas: () => void;
+    onMisVentas: () => void;
     onAdmin: () => void;
     onLogout: () => void;
 }
 
-export default function UserAvatarMenu({ usuario, onLogin, onPerfil, onReservas, onAdmin, onLogout }: UserAvatarMenuProps) {
+export default function UserAvatarMenu({
+    usuario,
+    onLogin,
+    onPerfil,
+    onReservas,
+    onMisHorarios,
+    onVendedorReservas,
+    onMisVentas,
+    onAdmin,
+    onLogout,
+}: UserAvatarMenuProps) {
     const [abierto, setAbierto] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
     const esInvitado = !usuario;
-    const rol = esInvitado ? 'Invitado' : usuario.esAdmin ? 'Administrador' : 'Usuario';
+    const rol = esInvitado
+        ? 'Invitado'
+        : usuario.esAdmin
+            ? 'Administrador'
+            : usuario.esVendedor
+                ? 'Vendedor'
+                : 'Usuario';
     const iniciales = esInvitado ? 'IN' : obtenerIniciales(usuario.nombre, usuario.email);
 
     useEffect(() => {
@@ -58,14 +77,35 @@ export default function UserAvatarMenu({ usuario, onLogin, onPerfil, onReservas,
                     <div className="mb-1 border-b border-slate-400/15 px-3 pb-3 pt-1">
                         <p className="truncate text-sm font-bold text-[var(--text)]">{usuario?.nombre ?? 'Sesión de invitado'}</p>
                         {usuario?.email && <p className="mt-0.5 truncate text-xs font-medium text-[var(--text-soft)]">{usuario.email}</p>}
-                        <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-bold ${usuario?.esAdmin ? 'ucn-dropdown-role--admin' : esInvitado ? 'ucn-dropdown-role--guest' : 'ucn-dropdown-role--user'}`}>{rol}</span>
+                        <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-xs font-bold ${usuario?.esAdmin ? 'ucn-dropdown-role--admin' : usuario?.esVendedor ? 'ucn-dropdown-role--seller' : esInvitado ? 'ucn-dropdown-role--guest' : 'ucn-dropdown-role--user'}`}>{rol}</span>
                     </div>
                     {esInvitado ? (
                         <button type="button" role="menuitem" className="ucn-dropdown-item ucn-dropdown-item--guest" onClick={() => ejecutar(onLogin)}>Iniciar sesión</button>
                     ) : (
                         <>
                             <button type="button" role="menuitem" className="ucn-dropdown-item" onClick={() => ejecutar(onPerfil)}>Editar perfil</button>
-                            <button type="button" role="menuitem" className="ucn-dropdown-item" onClick={() => ejecutar(onReservas)}>Mis reservas</button>
+                            {!usuario.esAdmin && (
+                                <>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        className="ucn-dropdown-item"
+                                        onClick={() => ejecutar(usuario.esVendedor ? onMisHorarios : onReservas)}
+                                    >
+                                        {usuario.esVendedor ? 'Ver horarios' : 'Mis reservas'}
+                                    </button>
+                                    {usuario.esVendedor && (
+                                        <>
+                                            <button type="button" role="menuitem" className="ucn-dropdown-item" onClick={() => ejecutar(onVendedorReservas)}>
+                                                Reservas por atender
+                                            </button>
+                                            <button type="button" role="menuitem" className="ucn-dropdown-item" onClick={() => ejecutar(onMisVentas)}>
+                                                Mis ventas
+                                            </button>
+                                        </>
+                                    )}
+                                </>
+                            )}
                             {usuario.esAdmin && <button type="button" role="menuitem" className="ucn-dropdown-item ucn-dropdown-item--admin" onClick={() => ejecutar(onAdmin)}>Panel de administración</button>}
                             <button type="button" role="menuitem" className="ucn-dropdown-item ucn-dropdown-item--danger" onClick={() => ejecutar(onLogout)}>Cerrar sesión</button>
                         </>

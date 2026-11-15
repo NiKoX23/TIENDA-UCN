@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, type EntityManager } from 'typeorm';
 import { Usuario } from '../auth/usuario.entity';
 import { patronBusqueda } from '../common/paginacion';
 import {
@@ -17,8 +17,11 @@ import {
   esRangoHorarioValido,
   fechaYHoraEnSantiago,
   horarioComienzaEnFuturo,
+  seSuperponenHorarios,
 } from './horarios-venta.util';
 import { VendedorBiblioteca } from './vendedor-biblioteca.entity';
+
+const HORARIOS_LOCK_NAMESPACE = 0x55434e48;
 
 @Injectable()
 export class HorariosVentaService {
@@ -185,6 +188,21 @@ export class HorariosVentaService {
     return horarios.map((horario) => this.serializarHorario(horario));
   }
 
+  async listarMisHorarios(uid: number) {
+    const vendedor = await this.dataSource
+      .getRepository(VendedorBiblioteca)
+      .findOne({ where: { usuario: { uid } } });
+    if (!vendedor) return [];
+
+    const horarios = await this.dataSource.getRepository(HorarioVenta).find({
+      where: { idVendedor: vendedor.idVendedor },
+      relations: { vendedor: { usuario: true } },
+      order: { fecha: 'ASC', horaInicio: 'ASC' },
+    });
+
+    return horarios.map((horario) => this.serializarHorario(horario));
+  }
+
   async listarDisponibles(fecha: string) {
     if (!esFechaISOValida(fecha)) {
       throw new BadRequestException('La fecha seleccionada no es válida');
@@ -221,6 +239,7 @@ export class HorariosVentaService {
     }
 
     return this.dataSource.transaction(async (manager) => {
+      await this.bloquearFechaHorario(manager, dto.fecha);
       const vendedorRepository = manager.getRepository(VendedorBiblioteca);
       const vendedor = await vendedorRepository.findOne({
         where: { idVendedor: dto.idVendedor },
@@ -230,23 +249,15 @@ export class HorariosVentaService {
         throw new NotFoundException('Vendedor no encontrado o inactivo');
       }
 
-      const horariosDelVendedor = await manager
-        .getRepository(HorarioVenta)
-        .find({
-          where: {
-            idVendedor: vendedor.idVendedor,
-            fecha: dto.fecha,
-            activo: true,
-          },
-        });
-      const seSuperpone = horariosDelVendedor.some(
-        (horario) =>
-          dto.horaInicio < horario.horaTermino.slice(0, 5) &&
-          dto.horaTermino > horario.horaInicio.slice(0, 5),
+      const seSuperpone = await this.existeSuperposicion(
+        manager,
+        dto.fecha,
+        dto.horaInicio,
+        dto.horaTermino,
       );
       if (seSuperpone) {
-        throw new BadRequestException(
-          'El vendedor ya tiene un horario asignado que se superpone',
+        throw new ConflictException(
+          'El rango se superpone con otro horario activo de venta para esa fecha',
         );
       }
 
@@ -270,6 +281,10 @@ export class HorariosVentaService {
       const repository = manager.getRepository(HorarioVenta);
       const horarioInicial = await repository.findOne({ where: { idHorario } });
       if (!horarioInicial) throw new NotFoundException('Horario no encontrado');
+
+      if (activo && !horarioInicial.activo) {
+        await this.bloquearFechaHorario(manager, horarioInicial.fecha);
+      }
 
       const vendedor = await manager.getRepository(VendedorBiblioteca).findOne({
         where: { idVendedor: horarioInicial.idVendedor },
@@ -298,22 +313,16 @@ export class HorariosVentaService {
             'Solo se pueden activar horarios futuros de vendedores activos',
           );
         }
-        const otrosHorarios = await repository.find({
-          where: {
-            idVendedor: vendedor.idVendedor,
-            fecha: horario.fecha,
-            activo: true,
-          },
-        });
-        const seSuperpone = otrosHorarios.some(
-          (otro) =>
-            otro.idHorario !== horario.idHorario &&
-            horario.horaInicio.slice(0, 5) < otro.horaTermino.slice(0, 5) &&
-            horario.horaTermino.slice(0, 5) > otro.horaInicio.slice(0, 5),
+        const seSuperpone = await this.existeSuperposicion(
+          manager,
+          horario.fecha,
+          horario.horaInicio.slice(0, 5),
+          horario.horaTermino.slice(0, 5),
+          horario.idHorario,
         );
         if (seSuperpone) {
-          throw new BadRequestException(
-            'El vendedor ya tiene un horario asignado que se superpone',
+          throw new ConflictException(
+            'El rango se superpone con otro horario activo de venta para esa fecha',
           );
         }
       }
@@ -322,6 +331,36 @@ export class HorariosVentaService {
       await repository.save(horario);
       return this.serializarHorario(horario);
     });
+  }
+
+  private async bloquearFechaHorario(manager: EntityManager, fecha: string) {
+    const claveFecha = Number(fecha.replace(/-/g, ''));
+    await manager.query('SELECT pg_advisory_xact_lock($1, $2)', [
+      HORARIOS_LOCK_NAMESPACE,
+      claveFecha,
+    ]);
+  }
+
+  private async existeSuperposicion(
+    manager: EntityManager,
+    fecha: string,
+    horaInicio: string,
+    horaTermino: string,
+    excluirIdHorario?: number,
+  ): Promise<boolean> {
+    const horariosActivos = await manager.getRepository(HorarioVenta).find({
+      where: { fecha, activo: true },
+    });
+    return horariosActivos.some(
+      (horario) =>
+        horario.idHorario !== excluirIdHorario &&
+        seSuperponenHorarios(
+          horaInicio,
+          horaTermino,
+          horario.horaInicio.slice(0, 5),
+          horario.horaTermino.slice(0, 5),
+        ),
+    );
   }
 
   private serializarVendedor(vendedor: VendedorBiblioteca) {

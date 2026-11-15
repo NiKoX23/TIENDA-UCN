@@ -3,6 +3,7 @@ import { api } from './api';
 export interface VendedorBiblioteca {
   idVendedor: number;
   nombre: string;
+  email?: string;
   activo: boolean;
   fechaCreacion: string;
 }
@@ -55,6 +56,17 @@ export async function eliminarVendedorBiblioteca(
   return data;
 }
 
+export async function cambiarDisponibilidadVendedor(
+  idVendedor: number,
+  activo: boolean,
+): Promise<VendedorBiblioteca> {
+  const { data } = await api.patch<VendedorBiblioteca>(
+    `/reservas/admin/vendedores/${idVendedor}/estado`,
+    { activo },
+  );
+  return data;
+}
+
 export async function buscarUsuariosVendedores(
   texto: string,
 ): Promise<UsuarioElegibleVendedor[]> {
@@ -103,6 +115,11 @@ export async function listarHorariosDisponibles(
 
 export async function listarMisTurnos(): Promise<HorarioVenta[]> {
   const { data } = await api.get<HorarioVenta[]>('/reservas/mis-turnos');
+  return data;
+}
+
+export async function listarMisHorarios(): Promise<HorarioVenta[]> {
+  const { data } = await api.get<HorarioVenta[]>('/reservas/mis-horarios');
   return data;
 }
 

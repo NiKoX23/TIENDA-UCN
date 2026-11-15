@@ -18,6 +18,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   ActualizarDisponibilidadHorarioDto,
   ActualizarEstadoReservaDto,
+  ActualizarEstadoReservaVendedorDto,
   BuscarUsuariosVendedoresQueryDto,
   CrearHorarioVentaDto,
   CrearReservaDto,
@@ -67,6 +68,26 @@ export class ReservasController {
     return this.reservasService.listarTodas();
   }
 
+  @Get('vendedor/mias')
+  @Roles('vendedor')
+  listarReservasVendedor(@Req() request: AuthenticatedRequest) {
+    return this.reservasService.listarParaVendedor(request.user.uid);
+  }
+
+  @Patch('vendedor/:idReserva/estado')
+  @Roles('vendedor')
+  actualizarEstadoVendedor(
+    @Req() request: AuthenticatedRequest,
+    @Param('idReserva', ParseIntPipe) idReserva: number,
+    @Body() dto: ActualizarEstadoReservaVendedorDto,
+  ) {
+    return this.reservasService.actualizarEstadoVendedor(
+      request.user.uid,
+      idReserva,
+      dto.estado,
+    );
+  }
+
   @Get('admin/vendedores')
   @Roles('admin')
   listarVendedores() {
@@ -112,6 +133,12 @@ export class ReservasController {
   @Get('mis-turnos')
   listarMisTurnos(@Req() request: AuthenticatedRequest) {
     return this.horariosVentaService.listarMisTurnos(request.user.uid);
+  }
+
+  @Get('mis-horarios')
+  @Roles('vendedor')
+  listarMisHorarios(@Req() request: AuthenticatedRequest) {
+    return this.horariosVentaService.listarMisHorarios(request.user.uid);
   }
 
   @Post('admin/horarios')

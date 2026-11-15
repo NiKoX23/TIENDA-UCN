@@ -3,10 +3,12 @@ import axios from 'axios';
 import { formatearCLP } from '../utils/precio';
 import { listarInventario, type ItemInventario } from '../services/inventario.service';
 import {
+    buscarVendedoresVenta,
     registrarVenta,
     type PayloadRegistrarVenta,
     type RegistroVentaItem,
     type TipoVenta,
+    type VendedorVenta,
 } from '../services/ventas.service';
 import { exportarVentas } from '../services/export.service';
 import { useListaPaginada } from '../hooks/useListaPaginada';
@@ -150,8 +152,52 @@ function ModalRegistrarVenta({ productos, onCerrar, onGuardar }: ModalRegistrarP
     const [tipoVenta, setTipoVenta] = useState<TipoVenta>('normal');
     const [numeroTac, setNumeroTac] = useState('');
     const [observaciones, setObservaciones] = useState('');
+    const [correoVendedor, setCorreoVendedor] = useState('');
+    const [busquedaVendedor, setBusquedaVendedor] = useState<{
+        consulta: string;
+        resultados: VendedorVenta[];
+        error: string;
+    }>({ consulta: '', resultados: [], error: '' });
+    const consultaVendedor = correoVendedor.trim();
+
+    useEffect(() => {
+        let activo = true;
+        if (!consultaVendedor) return () => { activo = false; };
+        const temporizador = window.setTimeout(() => {
+            buscarVendedoresVenta(consultaVendedor)
+                .then((resultados) => {
+                    if (activo) {
+                        setBusquedaVendedor({ consulta: consultaVendedor, resultados, error: '' });
+                    }
+                })
+                .catch((error: unknown) => {
+                    if (activo) {
+                        setBusquedaVendedor({
+                            consulta: consultaVendedor,
+                            resultados: [],
+                            error: mensajeError(error),
+                        });
+                    }
+                });
+        }, 200);
+
+        return () => {
+            activo = false;
+            window.clearTimeout(temporizador);
+        };
+    }, [consultaVendedor]);
 
     const producto = productos.find((p) => p.sku === sku);
+    const vendedores = busquedaVendedor.consulta === consultaVendedor
+        ? busquedaVendedor.resultados
+        : [];
+    const buscandoVendedor = Boolean(consultaVendedor && busquedaVendedor.consulta !== consultaVendedor);
+    const errorVendedor = busquedaVendedor.consulta === consultaVendedor
+        ? busquedaVendedor.error
+        : '';
+    const vendedorSeleccionado = vendedores.find(
+        (vendedor) => vendedor.email.toLocaleLowerCase() === correoVendedor.trim().toLocaleLowerCase(),
+    );
     const cantidadNum = Number(cantidad);
     const cantidadValida = cantidadNum >= 1;
     const stockSuficiente = producto ? cantidadNum <= producto.stock : false;
@@ -163,7 +209,13 @@ function ModalRegistrarVenta({ productos, onCerrar, onGuardar }: ModalRegistrarP
     const subtotal = producto && cantidadValida ? precio * cantidadNum : 0;
     const gananciaUnitaria =
         producto && tipoVenta === 'normal' ? producto.precioVenta - producto.precioTac : 0;
-    const puedeGuardar = Boolean(producto && cantidadValida && stockSuficiente);
+    const puedeGuardar = Boolean(
+        producto &&
+        cantidadValida &&
+        stockSuficiente &&
+        !buscandoVendedor &&
+        (tipoVenta === 'tac' || vendedorSeleccionado),
+    );
 
     return (
         <div
@@ -261,6 +313,40 @@ function ModalRegistrarVenta({ productos, onCerrar, onGuardar }: ModalRegistrarP
                         </div>
                     </div>
 
+                    <div>
+                        <label htmlFor="venta-vendedor" className={labelCls}>
+                            Vendedor responsable {tipoVenta === 'normal' ? '(obligatorio)' : '(opcional)'}
+                        </label>
+                        <input
+                            id="venta-vendedor"
+                            type="email"
+                            list="venta-vendedores-disponibles"
+                            className={inputCls}
+                            autoComplete="off"
+                            placeholder="Escribe el correo del vendedor"
+                            value={correoVendedor}
+                            onChange={(event) => setCorreoVendedor(event.target.value)}
+                            aria-describedby="venta-vendedor-ayuda"
+                            aria-invalid={Boolean(errorVendedor || (correoVendedor && !vendedorSeleccionado))}
+                        />
+                        <datalist id="venta-vendedores-disponibles">
+                            {vendedores.map((vendedor) => (
+                                <option key={vendedor.idVendedor} value={vendedor.email}>
+                                    {vendedor.nombre}
+                                </option>
+                            ))}
+                        </datalist>
+                        <p id="venta-vendedor-ayuda" className="mt-1 text-xs text-slate-400" role={errorVendedor ? 'alert' : undefined}>
+                            {errorVendedor
+                                ? errorVendedor
+                                : vendedorSeleccionado
+                                    ? `Seleccionado: ${vendedorSeleccionado.nombre}`
+                                    : tipoVenta === 'normal'
+                                        ? 'Elige un correo de la lista para registrar una venta normal.'
+                                        : 'Puedes asociar la venta TAC con un vendedor.'}
+                        </p>
+                    </div>
+
                     {tipoVenta === 'tac' && (
                         <div>
                             <label htmlFor="venta-tac" className={labelCls}>
@@ -332,6 +418,7 @@ function ModalRegistrarVenta({ productos, onCerrar, onGuardar }: ModalRegistrarP
                                 cantidad: cantidadNum,
                                 metodoPago: metodoPago.trim() || 'efectivo',
                                 tipoVenta,
+                                idVendedor: vendedorSeleccionado?.idVendedor,
                                 numeroTac: numeroTac.trim() || undefined,
                                 observaciones: observaciones.trim() || undefined,
                                 fecha: fecha || undefined,

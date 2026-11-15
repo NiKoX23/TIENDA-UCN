@@ -8,10 +8,11 @@ import {
 import { OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { ILike, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { Usuario } from './usuario.entity';
+import { VendedorBiblioteca } from '../reservas/vendedor-biblioteca.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -27,6 +28,8 @@ export class AuthService implements OnModuleInit {
   constructor(
     @InjectRepository(Usuario)
     private usuarioRepository: Repository<Usuario>,
+    @InjectRepository(VendedorBiblioteca)
+    private vendedorRepository: Repository<VendedorBiblioteca>,
     private jwtService: JwtService,
     private config: ConfigService,
   ) {}
@@ -172,6 +175,26 @@ export class AuthService implements OnModuleInit {
     return { uid, nombre, email, proveedorAuth, esAdmin, fechaRegistro };
   }
 
+  private async aUsuariosPublicos(usuarios: Usuario[]) {
+    if (usuarios.length === 0) return [];
+
+    const vendedores = await this.vendedorRepository.find({
+      where: { usuario: { uid: In(usuarios.map(({ uid }) => uid)) } },
+      relations: { usuario: true },
+      select: { idVendedor: true, usuario: { uid: true } },
+    });
+    const uidsVendedores = new Set(
+      vendedores.flatMap((vendedor) =>
+        vendedor.usuario ? [vendedor.usuario.uid] : [],
+      ),
+    );
+
+    return usuarios.map((usuario) => ({
+      ...this.aUsuarioPublico(usuario),
+      esVendedor: uidsVendedores.has(usuario.uid),
+    }));
+  }
+
   /**
    * Sin `page`: arreglo completo (comportamiento anterior).
    * Con `page`: { data, total, page, limit, totalPages }.
@@ -181,7 +204,7 @@ export class AuthService implements OnModuleInit {
       const usuarios = await this.usuarioRepository.find({
         order: { fechaRegistro: 'ASC' },
       });
-      return usuarios.map((usuario) => this.aUsuarioPublico(usuario));
+      return this.aUsuariosPublicos(usuarios);
     }
 
     const { page, limit, offset } = resolverPagina(query);
@@ -205,7 +228,7 @@ export class AuthService implements OnModuleInit {
       .getManyAndCount();
 
     return crearPagina(
-      usuarios.map((usuario) => this.aUsuarioPublico(usuario)),
+      await this.aUsuariosPublicos(usuarios),
       total,
       page,
       limit,
@@ -261,12 +284,19 @@ export class AuthService implements OnModuleInit {
     return { uid: usuarioUid, eliminado: true };
   }
 
-  private generarToken(usuario: Usuario) {
+  private async generarToken(usuario: Usuario) {
+    const esVendedor = Boolean(
+      await this.vendedorRepository.findOne({
+        where: { usuario: { uid: usuario.uid } },
+        select: { idVendedor: true },
+      }),
+    );
     const payload = {
       sub: usuario.uid,
       email: usuario.email,
       nombre: usuario.nombre,
       esAdmin: usuario.esAdmin,
+      esVendedor,
     };
 
     return {
@@ -276,6 +306,7 @@ export class AuthService implements OnModuleInit {
         nombre: usuario.nombre,
         email: usuario.email,
         esAdmin: usuario.esAdmin,
+        esVendedor,
       },
     };
   }

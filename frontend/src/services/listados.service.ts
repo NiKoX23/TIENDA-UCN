@@ -27,10 +27,17 @@ export interface ParametrosBoletas {
     q?: string;
     tipo?: 'todos' | TipoVenta;
     orden?: OrdenBoleta;
+    desde?: string;
+    hasta?: string;
 }
 
 export async function listarBoletas(params: ParametrosBoletas): Promise<PaginaApi<BoletaVenta>> {
     const { data } = await api.get<PaginaApi<BoletaVenta>>('/ventas/admin/registro', { params });
+    return data;
+}
+
+export async function listarMisVentas(params: ParametrosBoletas): Promise<PaginaApi<BoletaVenta>> {
+    const { data } = await api.get<PaginaApi<BoletaVenta>>('/ventas/vendedor/registro', { params });
     return data;
 }
 

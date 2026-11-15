@@ -62,7 +62,7 @@ export default function TurnoVendedorAviso({ usuario }: TurnoVendedorAvisoProps)
   const [intento, setIntento] = useState(0);
 
   useEffect(() => {
-    if (usuario.esAdmin) return;
+    if (usuario.esAdmin || !usuario.esVendedor) return;
 
     const uid = usuario.uid;
     const clave = claveAvisoTurnosVendedor(uid);
@@ -87,10 +87,11 @@ export default function TurnoVendedorAviso({ usuario }: TurnoVendedorAvisoProps)
     return () => {
       activo = false;
     };
-  }, [usuario.esAdmin, usuario.uid, intento]);
+  }, [usuario.esAdmin, usuario.esVendedor, usuario.uid, intento]);
 
   if (
     usuario.esAdmin ||
+    !usuario.esVendedor ||
     !resultado ||
     resultado.uid !== usuario.uid ||
     cerradoUid === usuario.uid ||

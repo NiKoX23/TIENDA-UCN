@@ -465,6 +465,9 @@ export default function DetalleProducto({ usuario, tema, onToggleTema, onPerfil,
             onLogin={onLogin}
             onPerfil={onPerfil}
             onReservas={() => navigate('/reservas')}
+            onMisHorarios={() => navigate('/mis-horarios')}
+            onVendedorReservas={() => navigate('/vendedor/reservas')}
+            onMisVentas={() => navigate('/vendedor/ventas')}
             onAdmin={onAdmin}
             onLogout={onLogout}
           />

@@ -6,6 +6,7 @@ export interface AdminUsuario {
     email: string;
     proveedorAuth: string;
     esAdmin: boolean;
+    esVendedor: boolean;
     fechaRegistro: string;
 }
 

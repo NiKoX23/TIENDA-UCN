@@ -84,12 +84,28 @@ export async function listarTodasLasReservas(): Promise<Reserva[]> {
   return data;
 }
 
+export async function listarReservasVendedor(): Promise<Reserva[]> {
+  const { data } = await api.get<Reserva[]>('/reservas/vendedor/mias');
+  return data;
+}
+
 export async function cambiarEstadoReserva(
   idReserva: number,
   estado: EstadoReserva,
 ): Promise<Reserva> {
   const { data } = await api.patch<Reserva>(
     `/reservas/admin/${idReserva}/estado`,
+    { estado },
+  );
+  return data;
+}
+
+export async function cambiarEstadoReservaVendedor(
+  idReserva: number,
+  estado: Extract<EstadoReserva, 'LISTA_PARA_RETIRO' | 'RETIRADA'>,
+): Promise<Reserva> {
+  const { data } = await api.patch<Reserva>(
+    `/reservas/vendedor/${idReserva}/estado`,
     { estado },
   );
   return data;

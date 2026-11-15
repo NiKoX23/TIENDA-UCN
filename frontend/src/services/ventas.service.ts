@@ -62,8 +62,15 @@ export interface PayloadRegistrarVenta {
     cantidad: number;
     metodoPago: string;
     tipoVenta: TipoVenta;
+    idVendedor?: number;
     numeroTac?: string;
     observaciones?: string;
+}
+
+export interface VendedorVenta {
+    idVendedor: number;
+    nombre: string;
+    email: string;
 }
 
 export interface PayloadFirmas {
@@ -85,6 +92,13 @@ export async function listarRegistroVentas(): Promise<RegistroVentaItem[]> {
 
 export async function registrarVenta(payload: PayloadRegistrarVenta): Promise<ResultadoRegistroVenta> {
     const { data } = await api.post<ResultadoRegistroVenta>('/ventas/admin/registro', payload);
+    return data;
+}
+
+export async function buscarVendedoresVenta(q: string): Promise<VendedorVenta[]> {
+    const { data } = await api.get<VendedorVenta[]>('/ventas/admin/vendedores', {
+      params: { q },
+    });
     return data;
 }
 

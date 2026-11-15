@@ -2,6 +2,7 @@ import {
   esFechaISOValida,
   esRangoHorarioValido,
   horarioComienzaEnFuturo,
+  seSuperponenHorarios,
 } from './horarios-venta.util';
 
 describe('validación de horarios de venta', () => {
@@ -10,6 +11,17 @@ describe('validación de horarios de venta', () => {
     expect(esRangoHorarioValido('09:00', '07:00')).toBe(false);
     expect(esRangoHorarioValido('09:00', '09:00')).toBe(false);
     expect(esRangoHorarioValido('24:00', '25:00')).toBe(false);
+  });
+
+  it('detecta rangos que se cruzan y permite turnos consecutivos', () => {
+    expect(seSuperponenHorarios('12:00', '17:00', '16:00', '18:00')).toBe(true);
+    expect(seSuperponenHorarios('12:00', '17:00', '13:00', '14:00')).toBe(true);
+    expect(seSuperponenHorarios('12:00', '17:00', '17:00', '18:00')).toBe(
+      false,
+    );
+    expect(seSuperponenHorarios('12:00', '17:00', '09:00', '12:00')).toBe(
+      false,
+    );
   });
 
   it('valida fechas de calendario reales en formato ISO', () => {

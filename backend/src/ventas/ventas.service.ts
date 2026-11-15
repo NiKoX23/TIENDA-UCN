@@ -13,7 +13,9 @@ import { Cliente } from '../clientes/cliente.entity';
 import { Factura } from '../facturacion/factura.entity';
 import { Salida } from '../facturacion/salida.entity';
 import { VarianteProducto } from '../productos/variante-producto.entity';
+import { VendedorBiblioteca } from '../reservas/vendedor-biblioteca.entity';
 import { DocumentoTac } from './documento-tac.entity';
+import { patronBusqueda } from '../common/paginacion';
 import {
   ActualizarDocumentoTacDto,
   CrearDocumentoTacDto,
@@ -381,6 +383,21 @@ export class VentasService implements OnModuleInit {
 
   async registrarVenta(dto: RegistrarVentaDto) {
     return this.dataSource.transaction(async (manager) => {
+      const vendedor = dto.idVendedor
+        ? await manager.getRepository(VendedorBiblioteca).findOne({
+            where: { idVendedor: dto.idVendedor, activo: true },
+            relations: { usuario: true },
+          })
+        : null;
+      if (dto.idVendedor && !vendedor?.usuario) {
+        throw new NotFoundException('Vendedor no encontrado o inactivo');
+      }
+      if (dto.tipoVenta === 'normal' && !vendedor) {
+        throw new BadRequestException(
+          'Selecciona el vendedor responsable de la venta',
+        );
+      }
+
       const varianteRepository = manager.getRepository(VarianteProducto);
       const variante = await varianteRepository.findOne({
         where: { sku: dto.sku },
@@ -434,6 +451,7 @@ export class VentasService implements OnModuleInit {
           metodoPago: dto.metodoPago,
           tipoVenta: esTac ? 'tac' : 'normal',
           documento,
+          vendedorResponsable: vendedor,
           observaciones: dto.observaciones?.trim() || null,
           fecha: dto.fecha ? new Date(dto.fecha) : undefined,
           total,
@@ -460,6 +478,34 @@ export class VentasService implements OnModuleInit {
         total,
       };
     });
+  }
+
+  async buscarVendedoresVenta(q: string) {
+    const patron = patronBusqueda(q);
+    if (!patron) return [];
+
+    const vendedores = await this.dataSource
+      .getRepository(VendedorBiblioteca)
+      .createQueryBuilder('vendedor')
+      .innerJoinAndSelect('vendedor.usuario', 'usuario')
+      .select([
+        'vendedor.idVendedor',
+        'vendedor.nombre',
+        'usuario.uid',
+        'usuario.nombre',
+        'usuario.email',
+      ])
+      .where('vendedor.activo = true')
+      .andWhere('usuario.email ILIKE :patron', { patron })
+      .orderBy('usuario.email', 'ASC')
+      .take(8)
+      .getMany();
+
+    return vendedores.map((vendedor) => ({
+      idVendedor: vendedor.idVendedor,
+      nombre: vendedor.usuario?.nombre ?? vendedor.nombre,
+      email: vendedor.usuario?.email ?? '',
+    }));
   }
 
   private async obtenerDetalleTac(idTac: number): Promise<DocumentoTacDetalle> {

@@ -21,6 +21,15 @@ export function esRangoHorarioValido(
   );
 }
 
+export function seSuperponenHorarios(
+  inicioA: string,
+  terminoA: string,
+  inicioB: string,
+  terminoB: string,
+): boolean {
+  return inicioA < terminoB && terminoA > inicioB;
+}
+
 export function fechaYHoraEnSantiago(fechaActual = new Date()): {
   fecha: string;
   hora: string;

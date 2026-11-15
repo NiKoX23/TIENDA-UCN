@@ -6,12 +6,15 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Usuario } from '../usuario.entity';
+import { VendedorBiblioteca } from '../../reservas/vendedor-biblioteca.entity';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     config: ConfigService,
     @InjectRepository(Usuario) private usuarioRepository: Repository<Usuario>,
+    @InjectRepository(VendedorBiblioteca)
+    private vendedorRepository: Repository<VendedorBiblioteca>,
   ) {
     super({
       jwtFromRequest: (req: Request) => req?.cookies?.access_token ?? null,
@@ -30,12 +33,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { uid: payload.sub },
     });
     if (!usuario) return null;
+    const esVendedor = Boolean(
+      await this.vendedorRepository.findOne({
+        where: { usuario: { uid: usuario.uid } },
+        select: { idVendedor: true },
+      }),
+    );
 
     return {
       uid: usuario.uid,
       nombre: usuario.nombre,
       email: usuario.email,
       esAdmin: usuario.esAdmin,
+      esVendedor,
     };
   }
 }

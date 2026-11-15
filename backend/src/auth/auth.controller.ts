@@ -29,7 +29,12 @@ import { AdminRolDto } from './dto/admin-rol.dto';
 import { ListarUsuariosQueryDto } from './dto/listar-usuarios.dto';
 
 type AuthRequest = Request & {
-  user: { uid: number; email: string; esAdmin: boolean };
+  user: {
+    uid: number;
+    email: string;
+    esAdmin: boolean;
+    esVendedor: boolean;
+  };
 };
 type GoogleAuthRequest = Request & {
   user: { googleId: string; nombre: string; email: string };

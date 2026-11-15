@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Cliente } from '../clientes/cliente.entity';
+import { VendedorBiblioteca } from '../reservas/vendedor-biblioteca.entity';
 import { DocumentoTac } from '../ventas/documento-tac.entity';
 
 @Entity('facturas')
@@ -59,6 +60,10 @@ export class Factura {
   @ManyToOne(() => DocumentoTac, { nullable: true })
   @JoinColumn({ name: 'id_tac' })
   documento!: DocumentoTac | null;
+
+  @ManyToOne(() => VendedorBiblioteca, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'id_vendedor' })
+  vendedorResponsable!: VendedorBiblioteca | null;
 
   @Column({ type: 'varchar', length: 200, nullable: true })
   observaciones!: string | null;

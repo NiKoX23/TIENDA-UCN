@@ -5,6 +5,8 @@ import AdminSectionHeader from '../components/AdminSectionHeader';
 import {
   cancelarMiReserva,
   cambiarEstadoReserva,
+  cambiarEstadoReservaVendedor,
+  listarReservasVendedor,
   listarMisReservas,
   listarTodasLasReservas,
   type EstadoReserva,
@@ -15,7 +17,12 @@ import ReservaModal from './ReservaModal';
 
 interface ReservasPanelProps {
   administrador: boolean;
+  vendedor?: boolean;
   onIrTienda?: () => void;
+  busquedaControlada?: {
+    valor: string;
+    alCambiar: (valor: string) => void;
+  };
 }
 
 const ETIQUETAS_ESTADO: Record<EstadoReserva, string> = {
@@ -55,6 +62,24 @@ function opcionesEstado(estado: EstadoReserva): EstadoReserva[] {
     return ['LISTA_PARA_RETIRO', 'RETIRADA', 'CANCELADA', 'VENCIDA'];
   }
   return [estado];
+}
+
+function opcionesEstadoVendedor(estado: EstadoReserva): EstadoReserva[] {
+  if (estado === 'PENDIENTE') return ['PENDIENTE', 'LISTA_PARA_RETIRO'];
+  if (estado === 'LISTA_PARA_RETIRO') return ['LISTA_PARA_RETIRO', 'RETIRADA'];
+  return [estado];
+}
+
+function etiquetaEstado(estado: EstadoReserva, vendedor = false): string {
+  return vendedor && estado === 'RETIRADA'
+    ? 'Retirada'
+    : ETIQUETAS_ESTADO[estado];
+}
+
+function esEstadoVendedor(
+  estado: EstadoReserva,
+): estado is 'LISTA_PARA_RETIRO' | 'RETIRADA' {
+  return estado === 'LISTA_PARA_RETIRO' || estado === 'RETIRADA';
 }
 
 function claseEstado(estado: EstadoReserva): string {
@@ -105,7 +130,9 @@ function Miniaturas({ reserva }: { reserva: Reserva }) {
 
 export default function ReservasPanel({
   administrador,
+  vendedor = false,
   onIrTienda,
+  busquedaControlada,
 }: ReservasPanelProps) {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -116,10 +143,16 @@ export default function ReservasPanel({
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<EstadoReserva | 'TODOS'>('TODOS');
   const [ordenFecha, setOrdenFecha] = useState<'proxima' | 'lejana'>('proxima');
+  const textoBusqueda = busquedaControlada?.valor ?? busqueda;
+  const cambiarBusqueda = busquedaControlada?.alCambiar ?? setBusqueda;
 
   useEffect(() => {
     let activo = true;
-    const cargar = administrador ? listarTodasLasReservas : listarMisReservas;
+    const cargar = administrador
+      ? listarTodasLasReservas
+      : vendedor
+        ? listarReservasVendedor
+        : listarMisReservas;
     cargar()
       .then((datos) => {
         if (activo) setReservas(datos);
@@ -133,10 +166,10 @@ export default function ReservasPanel({
     return () => {
       activo = false;
     };
-  }, [administrador]);
+  }, [administrador, vendedor]);
 
   const reservasVisibles = useMemo(() => {
-    const consulta = busqueda.trim().toLocaleLowerCase('es-CL');
+    const consulta = textoBusqueda.trim().toLocaleLowerCase('es-CL');
     return reservas
       .filter((reserva) => {
         if (filtroEstado !== 'TODOS' && reserva.estado !== filtroEstado) return false;
@@ -152,15 +185,24 @@ export default function ReservasPanel({
         if (orden !== 0) return ordenFecha === 'proxima' ? orden : -orden;
         return b.fechaCreacion.localeCompare(a.fechaCreacion);
       });
-  }, [reservas, busqueda, filtroEstado, ordenFecha]);
+  }, [reservas, textoBusqueda, filtroEstado, ordenFecha]);
 
   const guardarEstado = async (reserva: Reserva, estado: EstadoReserva) => {
     try {
       setError('');
       setActualizandoId(reserva.idReserva);
-      const actualizada = administrador
-        ? await cambiarEstadoReserva(reserva.idReserva, estado)
-        : await cancelarMiReserva(reserva.idReserva);
+      let actualizada: Reserva;
+      if (administrador) {
+        actualizada = await cambiarEstadoReserva(reserva.idReserva, estado);
+      } else if (vendedor) {
+        if (!esEstadoVendedor(estado)) {
+          setError('Ese cambio de estado no está permitido para vendedores.');
+          return;
+        }
+        actualizada = await cambiarEstadoReservaVendedor(reserva.idReserva, estado);
+      } else {
+        actualizada = await cancelarMiReserva(reserva.idReserva);
+      }
       setReservas((actuales) =>
         actuales.map((item) =>
           item.idReserva === actualizada.idReserva ? actualizada : item,
@@ -195,8 +237,8 @@ export default function ReservasPanel({
 
   return (
     <section
-      className={`reservas-panel mx-auto mt-6 w-full ${administrador ? 'max-w-6xl' : ''}`}
-      aria-label={administrador ? 'Todas las reservas' : 'Mis reservas'}
+      className={`reservas-panel mx-auto mt-6 w-full ${administrador || vendedor ? 'max-w-6xl' : ''}`}
+      aria-label={administrador ? 'Todas las reservas' : vendedor ? 'Reservas de tus horarios' : 'Mis reservas'}
       tabIndex={-1}
       data-reserva-focus-fallback
     >
@@ -212,8 +254,8 @@ export default function ReservasPanel({
               <input
                 className="vcm-input"
                 type="search"
-                value={busqueda}
-                onChange={(event) => setBusqueda(event.target.value)}
+                value={textoBusqueda}
+                onChange={(event) => cambiarBusqueda(event.target.value)}
                 placeholder="RES-... o correo"
               />
             </label>
@@ -229,7 +271,9 @@ export default function ReservasPanel({
               >
                 <option value="TODOS">Todos los estados</option>
                 {ESTADOS_RESERVA.map((estado) => (
-                  <option key={estado} value={estado}>{ETIQUETAS_ESTADO[estado]}</option>
+                  <option key={estado} value={estado}>
+                    {etiquetaEstado(estado, vendedor)}
+                  </option>
                 ))}
               </select>
             </label>
@@ -249,9 +293,13 @@ export default function ReservasPanel({
       ) : (
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-extrabold">Mis reservas</h2>
+            <h2 className="text-2xl font-extrabold">
+              {vendedor ? 'Reservas por atender' : 'Mis reservas'}
+            </h2>
             <p className="mt-1 text-sm text-[var(--text-soft)]">
-              Consulta el retiro y seguimiento de tus productos reservados.
+              {vendedor
+                ? 'Gestiona las reservas vinculadas a tus horarios de venta.'
+                : 'Consulta el retiro y seguimiento de tus productos reservados.'}
             </p>
           </div>
           <span className="text-sm font-semibold text-[var(--text-soft)]">
@@ -275,12 +323,18 @@ export default function ReservasPanel({
             </svg>
           </div>
           <h3 className="mt-4 text-lg font-extrabold">
-            {administrador ? 'Todavía no hay reservas' : 'Aún no tienes reservas'}
+            {administrador
+              ? 'Todavía no hay reservas'
+              : vendedor
+                ? 'No tienes reservas asignadas'
+                : 'Aún no tienes reservas'}
           </h3>
           <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--text-soft)]">
             {administrador
               ? 'Cuando un cliente reserve productos, verás aquí los detalles para gestionar el retiro.'
-              : 'Explora los productos UCN y reserva los que quieras retirar en sede.'}
+              : vendedor
+                ? 'Las reservas asociadas a tus horarios aparecerán aquí para que puedas prepararlas y entregarlas.'
+                : 'Explora los productos UCN y reserva los que quieras retirar en sede.'}
           </p>
           {!administrador && onIrTienda && (
             <button type="button" className="vcm-btn vcm-btn--primary mt-5" onClick={onIrTienda}>
@@ -296,7 +350,7 @@ export default function ReservasPanel({
         </div>
       )}
 
-      {!cargando && administrador && reservasVisibles.length > 0 && (
+      {!cargando && (administrador || vendedor) && reservasVisibles.length > 0 && (
         <div className="reserva-admin-list mx-auto w-full max-w-6xl overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)]">
           <div className="reserva-admin-heading" aria-hidden="true">
             <span>Código</span>
@@ -332,7 +386,7 @@ export default function ReservasPanel({
                     {reserva.bloqueHorario && (
                       <span className="block text-xs text-[var(--text-soft)]">{reserva.bloqueHorario}</span>
                     )}
-                    {reserva.horario && (
+                    {administrador && reserva.horario && (
                       <span className="block text-xs text-[var(--text-soft)]">
                         Vendedor: {reserva.horario.vendedor.nombre}
                       </span>
@@ -349,7 +403,9 @@ export default function ReservasPanel({
                 </div>
                 <div className="reserva-admin-cell">
                   <span className="reserva-admin-label">Estado</span>
-                  <span className={claseEstado(reserva.estado)}>{ETIQUETAS_ESTADO[reserva.estado]}</span>
+                  <span className={claseEstado(reserva.estado)}>
+                    {etiquetaEstado(reserva.estado, vendedor)}
+                  </span>
                 </div>
                 <div className="reserva-admin-cell reserva-admin-actions">
                   <span className="reserva-admin-label">Acciones</span>
@@ -374,8 +430,11 @@ export default function ReservasPanel({
                       if (estado && estado !== reserva.estado) solicitarCambioEstado(reserva, estado);
                     }}
                   >
-                    {opcionesEstado(reserva.estado).map((estado) => (
-                      <option key={estado} value={estado}>{ETIQUETAS_ESTADO[estado]}</option>
+                    {(vendedor
+                      ? opcionesEstadoVendedor(reserva.estado)
+                      : opcionesEstado(reserva.estado)
+                    ).map((estado) => (
+                      <option key={estado} value={estado}>{etiquetaEstado(estado, vendedor)}</option>
                     ))}
                   </select>
                 </div>
@@ -448,6 +507,7 @@ export default function ReservasPanel({
 
       <ReservaDetalleModal
         reserva={detalleAbierto}
+        esVendedor={vendedor}
         onCerrar={() => setDetalleAbierto(null)}
         onCancelar={
           !administrador && detalleAbierto?.estado === 'PENDIENTE'

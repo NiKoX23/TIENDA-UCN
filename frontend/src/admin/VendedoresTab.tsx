@@ -8,6 +8,7 @@ import TimePickerField from '../components/pickers/TimePickerField';
 import {
   buscarUsuariosVendedores,
   cambiarDisponibilidadHorario,
+  cambiarDisponibilidadVendedor,
   crearHorarioVenta,
   crearVendedorBiblioteca,
   eliminarVendedorBiblioteca,
@@ -33,12 +34,34 @@ function fechaEnSantiago(): string {
 }
 
 function mostrarFecha(fecha: string): string {
-  return new Date(`${fecha.slice(0, 10)}T12:00:00`).toLocaleDateString('es-CL', {
+  const partes = new Intl.DateTimeFormat('es-CL', {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
-    year: 'numeric',
-  });
+    timeZone: 'UTC',
+  }).formatToParts(new Date(`${fecha.slice(0, 10)}T12:00:00Z`));
+  const valores = Object.fromEntries(partes.map((parte) => [parte.type, parte.value]));
+  const dia = valores.weekday.charAt(0).toLocaleUpperCase('es-CL') + valores.weekday.slice(1);
+  return `${dia} ${valores.day} ${valores.month}`;
 }
+
+function mostrarDuracion(horaInicio: string, horaTermino: string): string {
+  const minutos =
+    Number(horaTermino.slice(0, 2)) * 60 +
+    Number(horaTermino.slice(3, 5)) -
+    Number(horaInicio.slice(0, 2)) * 60 -
+    Number(horaInicio.slice(3, 5));
+  if (minutos <= 0) return '';
+  return minutos % 60 === 0
+    ? `${minutos / 60} h`
+    : `${Math.floor(minutos / 60)} h ${minutos % 60} min`;
+}
+
+const ATAJOS_HORARIO = [
+  { id: 'manana', label: '09:00–12:00', horaInicio: '09:00', horaTermino: '12:00' },
+  { id: 'mediodia', label: '10:00–13:00', horaInicio: '10:00', horaTermino: '13:00' },
+  { id: 'tarde', label: '14:00–17:00', horaInicio: '14:00', horaTermino: '17:00' },
+] as const;
 
 export default function VendedoresTab() {
   const [vendedores, setVendedores] = useState<VendedorBiblioteca[]>([]);
@@ -63,10 +86,26 @@ export default function VendedoresTab() {
   });
   const [guardando, setGuardando] = useState(false);
   const [eliminandoVendedor, setEliminandoVendedor] = useState<number | null>(null);
+  const [cambiandoVendedor, setCambiandoVendedor] = useState<number | null>(null);
   const [cambiandoHorario, setCambiandoHorario] = useState<number | null>(null);
+  const [horarioPersonalizado, setHorarioPersonalizado] = useState(false);
   const [fechaValida, setFechaValida] = useState(true);
   const [horaInicioValida, setHoraInicioValida] = useState(false);
   const [horaTerminoValida, setHoraTerminoValida] = useState(false);
+
+  useEffect(() => {
+    const cerrarMenusFuera = (event: PointerEvent) => {
+      const destino = event.target;
+      if (!(destino instanceof Node)) return;
+      document
+        .querySelectorAll<HTMLDetailsElement>('.seller-actions-menu[open]')
+        .forEach((menu) => {
+          if (!menu.contains(destino)) menu.removeAttribute('open');
+        });
+    };
+    document.addEventListener('pointerdown', cerrarMenusFuera);
+    return () => document.removeEventListener('pointerdown', cerrarMenusFuera);
+  }, []);
 
   useEffect(() => {
     let activo = true;
@@ -158,6 +197,37 @@ export default function VendedoresTab() {
     }
   };
 
+  const alternarVendedor = async (vendedor: VendedorBiblioteca) => {
+    try {
+      setError('');
+      setCambiandoVendedor(vendedor.idVendedor);
+      const actualizado = await cambiarDisponibilidadVendedor(
+        vendedor.idVendedor,
+        !vendedor.activo,
+      );
+      setVendedores((actuales) =>
+        actuales.map((item) =>
+          item.idVendedor === actualizado.idVendedor
+            ? { ...item, ...actualizado, email: actualizado.email ?? item.email }
+            : item,
+        ),
+      );
+      if (!actualizado.activo) {
+        setHorarios((actuales) =>
+          actuales.map((horario) =>
+            horario.idVendedor === actualizado.idVendedor
+              ? { ...horario, activo: false }
+              : horario,
+          ),
+        );
+      }
+    } catch (e: unknown) {
+      setError(mensajeErrorApi(e, `No se pudo actualizar a ${vendedor.nombre}.`));
+    } finally {
+      setCambiandoVendedor(null);
+    }
+  };
+
   const confirmarEliminarVendedor = async () => {
     if (!vendedorAEliminar) return;
     try {
@@ -186,7 +256,8 @@ export default function VendedoresTab() {
       !fechaValida ||
       !horaInicioValida ||
       !horaTerminoValida ||
-      rangoHorarioInvalido
+      rangoHorarioInvalido ||
+      horarioEnConflicto
     ) {
       return;
     }
@@ -208,6 +279,7 @@ export default function VendedoresTab() {
       setFechaValida(true);
       setHoraInicioValida(false);
       setHoraTerminoValida(false);
+      setHorarioPersonalizado(false);
       setModalHorario(false);
     } catch (e: unknown) {
       setErrorModal(mensajeErrorApi(e, 'No se pudo asignar el horario.'));
@@ -242,14 +314,62 @@ export default function VendedoresTab() {
     nuevoHorario.horaTermino &&
     nuevoHorario.horaTermino <= nuevoHorario.horaInicio,
   );
+  const horarioEnConflicto = fechaValida &&
+      horaInicioValida &&
+      horaTerminoValida &&
+      !rangoHorarioInvalido
+    ? horarios.find((horario) =>
+      horario.activo &&
+      horario.fecha === nuevoHorario.fecha &&
+      nuevoHorario.horaInicio < horario.horaTermino &&
+      nuevoHorario.horaTermino > horario.horaInicio,
+    )
+    : undefined;
   const horariosAEliminar = horarios.filter(
     (horario) => horario.idVendedor === vendedorAEliminar?.idVendedor,
   );
+  const duracionMinutos = horaInicioValida &&
+      horaTerminoValida &&
+      !rangoHorarioInvalido
+    ? Number(nuevoHorario.horaTermino.slice(0, 2)) * 60 +
+      Number(nuevoHorario.horaTermino.slice(3, 5)) -
+      Number(nuevoHorario.horaInicio.slice(0, 2)) * 60 -
+      Number(nuevoHorario.horaInicio.slice(3, 5))
+    : null;
+  const duracionFormateada = duracionMinutos === null
+    ? null
+    : duracionMinutos % 60 === 0
+      ? `${duracionMinutos / 60} h`
+      : `${Math.floor(duracionMinutos / 60)} h ${duracionMinutos % 60} min`;
+  const atajoSeleccionado = horarioPersonalizado
+    ? 'personalizado'
+    : ATAJOS_HORARIO.find((atajo) =>
+      atajo.horaInicio === nuevoHorario.horaInicio &&
+      atajo.horaTermino === nuevoHorario.horaTermino,
+    )?.id ?? null;
+
+  const seleccionarAtajo = (atajo: typeof ATAJOS_HORARIO[number] | null) => {
+    if (!atajo) {
+      setHorarioPersonalizado(true);
+      window.requestAnimationFrame(() => {
+        document.getElementById('hora-venta-inicio')?.focus();
+      });
+      return;
+    }
+    setHorarioPersonalizado(false);
+    setNuevoHorario((actual) => ({
+      ...actual,
+      horaInicio: atajo.horaInicio,
+      horaTermino: atajo.horaTermino,
+    }));
+    setHoraInicioValida(true);
+    setHoraTerminoValida(true);
+  };
 
   return (
     <section className="mt-6">
       <AdminSectionHeader
-        titulo="Vendedores de biblioteca"
+        titulo="Equipo y turnos"
         descripcion="Administra al equipo y asigna turnos presenciales para las reservas."
       >
         <div className="admin-toolbar">
@@ -265,7 +385,7 @@ export default function VendedoresTab() {
               setModalVendedor(true);
             }}
           >
-            Agregar vendedor
+            <span aria-hidden="true">+</span> Agregar vendedor
           </button>
           <button
             type="button"
@@ -283,6 +403,7 @@ export default function VendedoresTab() {
               setFechaValida(true);
               setHoraInicioValida(false);
               setHoraTerminoValida(false);
+              setHorarioPersonalizado(false);
               setModalHorario(true);
             }}
             disabled={vendedoresActivos.length === 0}
@@ -298,40 +419,94 @@ export default function VendedoresTab() {
         <section className="vcm-card min-w-0 p-4 sm:p-5" aria-labelledby="vendedores-lista-titulo">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 id="vendedores-lista-titulo" className="text-lg font-extrabold">Vendedores</h3>
+            <span className="seller-shift-count">{vendedoresActivos.length} {vendedoresActivos.length === 1 ? 'activo' : 'activos'}</span>
           </div>
           {cargando ? (
             <div className="vcm-spinner py-8">Cargando vendedores...</div>
           ) : vendedores.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[var(--text-soft)]">
-              Aún no hay vendedores registrados.
-            </p>
+            <div className="seller-empty-state">
+              <span className="seller-empty-state__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <circle cx="9" cy="8" r="3.5" />
+                  <path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 8v6m-3-3h6" />
+                </svg>
+              </span>
+              <p>Aún no hay vendedores registrados.</p>
+              <button
+                type="button"
+                className="vcm-btn vcm-btn--surface"
+                onClick={() => {
+                  setErrorModal('');
+                  setErrorBusqueda('');
+                  setConsultaUsuarios('');
+                  setUsuariosEncontrados([]);
+                  setUsuarioSeleccionado(null);
+                  setModalVendedor(true);
+                }}
+              >
+                Agregar vendedor
+              </button>
+            </div>
           ) : (
-            <ul className="divide-y divide-[var(--border)]">
+            <ul className="seller-list divide-y divide-[var(--border)]">
               {vendedores.map((vendedor) => (
-                <li className="flex items-center justify-between gap-3 py-3" key={vendedor.idVendedor}>
+                <li className="seller-list__row flex items-center justify-between gap-3 py-3" key={vendedor.idVendedor}>
                   <span className="flex min-w-0 items-center gap-3">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--primary-soft)] font-bold text-[var(--vcm-orange)]">
                       {vendedor.nombre.trim().slice(0, 1).toLocaleUpperCase('es-CL')}
                     </span>
                     <span className="min-w-0">
                       <strong className="block truncate">{vendedor.nombre}</strong>
+                      {vendedor.email && (
+                        <span className="block max-w-36 truncate text-xs text-[var(--text-soft)]" title={vendedor.email}>
+                          {vendedor.email}
+                        </span>
+                      )}
+                      <span className={`seller-status ${vendedor.activo ? 'is-active' : 'is-inactive'}`}>
+                        <span className="seller-status__dot" aria-hidden="true" />
+                        {vendedor.activo ? 'Activo' : 'Inactivo'}
+                      </span>
                     </span>
                   </span>
-                  <button
-                    type="button"
-                    className="vcm-btn vcm-btn--danger vcm-btn--sm vendedor-delete-trigger"
-                    aria-label={`Eliminar a ${vendedor.nombre}`}
-                    onClick={() => {
-                      setErrorEliminar('');
-                      setVendedorAEliminar(vendedor);
-                    }}
-                    disabled={eliminandoVendedor !== null}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                      <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />
-                    </svg>
-                    Eliminar
-                  </button>
+                  <details className="seller-actions-menu">
+                    <summary
+                      className="vcm-btn vcm-btn--ghost vcm-btn--sm vendedor-delete-trigger"
+                      aria-label={`Acciones de ${vendedor.nombre}`}
+                      title={`Acciones de ${vendedor.nombre}`}
+                    >
+                      <span aria-hidden="true">⋯</span>
+                    </summary>
+                    <div className="seller-actions-menu__items">
+                      <button
+                        type="button"
+                        disabled={cambiandoVendedor !== null || eliminandoVendedor !== null}
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          void alternarVendedor(vendedor);
+                        }}
+                      >
+                        {cambiandoVendedor === vendedor.idVendedor
+                          ? 'Actualizando...'
+                          : vendedor.activo
+                            ? 'Desactivar vendedor'
+                            : 'Activar vendedor'}
+                      </button>
+                      <button
+                        type="button"
+                        className="is-destructive"
+                        aria-label={`Eliminar a ${vendedor.nombre}`}
+                        title={`Eliminar a ${vendedor.nombre}`}
+                        disabled={eliminandoVendedor !== null || cambiandoVendedor !== null}
+                        onClick={(event) => {
+                          event.currentTarget.closest('details')?.removeAttribute('open');
+                          setErrorEliminar('');
+                          setVendedorAEliminar(vendedor);
+                        }}
+                      >
+                        Eliminar vendedor
+                      </button>
+                    </div>
+                  </details>
                 </li>
               ))}
             </ul>
@@ -341,24 +516,30 @@ export default function VendedoresTab() {
         <section className="vcm-card min-w-0 p-4 sm:p-5" aria-labelledby="horarios-lista-titulo">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 id="horarios-lista-titulo" className="text-lg font-extrabold">Horarios asignados</h3>
-            <span className="text-sm text-[var(--text-soft)]">{horarios.length} turnos</span>
+            <span className="seller-shift-count">{horarios.length} {horarios.length === 1 ? 'turno' : 'turnos'}</span>
           </div>
           {cargando ? (
             <div className="vcm-spinner py-8">Cargando horarios...</div>
           ) : horarios.length === 0 ? (
-            <p className="py-6 text-center text-sm text-[var(--text-soft)]">
-              Aún no hay horarios asignados.
-            </p>
+            <div className="seller-empty-state seller-empty-state--compact">
+              <span className="seller-empty-state__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M16 3v4M8 3v4M3 10h18M8 14h3m-3 3h7" />
+                </svg>
+              </span>
+              <p>Aún no hay horarios asignados.</p>
+            </div>
           ) : (
-            <div className="vcm-admin-table-shell overflow-x-auto rounded-[var(--radius)] border border-[var(--border)]">
-              <table className="vcm-admin-table w-full min-w-[620px] text-sm">
+            <div className="vcm-admin-table-shell vendedor-schedule-shell overflow-x-auto rounded-[var(--radius)] border border-[var(--border)]">
+              <table className="vcm-admin-table vendedor-schedule-table w-full min-w-[620px] text-sm">
                 <thead className="vcm-thead text-xs uppercase tracking-wider">
                   <tr>
                     <th className="px-3 py-3 text-left">Fecha</th>
                     <th className="px-3 py-3 text-left">Horario</th>
                     <th className="px-3 py-3 text-left">Vendedor</th>
                     <th className="px-3 py-3 text-center">Estado</th>
-                    <th className="px-3 py-3 text-center">Acción</th>
+                    <th className="px-3 py-3 text-center">Activo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -367,25 +548,28 @@ export default function VendedoresTab() {
                       <td className="px-3 py-3">{mostrarFecha(horario.fecha)}</td>
                       <td className="px-3 py-3 font-semibold tabular-nums">
                         {horario.horaInicio}–{horario.horaTermino}
+                        <span className="seller-duration-chip">{mostrarDuracion(horario.horaInicio, horario.horaTermino)}</span>
                       </td>
                       <td className="px-3 py-3">{horario.vendedor.nombre}</td>
                       <td className="px-3 py-3 text-center">
                         <span className={`reserva-status ${horario.activo ? 'reserva-status--lista-para-retiro' : 'reserva-status--cancelada'}`}>
+                          <span className="seller-status__dot" aria-hidden="true" />
                           {horario.activo ? 'Disponible' : 'Desactivado'}
                         </span>
                       </td>
                       <td className="px-3 py-3 text-center">
                         <button
                           type="button"
-                          className="vcm-btn vcm-btn--surface vcm-btn--sm"
+                          className="seller-switch"
+                          role="switch"
+                          aria-checked={horario.activo}
+                          aria-label={`${horario.activo ? 'Desactivar' : 'Activar'} turno de ${horario.vendedor.nombre}`}
+                          title={`${horario.activo ? 'Desactivar' : 'Activar'} turno`}
                           onClick={() => void alternarHorario(horario)}
                           disabled={cambiandoHorario !== null}
+                          aria-busy={cambiandoHorario === horario.idHorario}
                         >
-                          {cambiandoHorario === horario.idHorario
-                            ? 'Guardando...'
-                            : horario.activo
-                              ? 'Desactivar'
-                              : 'Activar'}
+                          <span className="seller-switch__thumb" />
                         </button>
                       </td>
                     </tr>
@@ -507,6 +691,7 @@ export default function VendedoresTab() {
               type="submit"
               className="vcm-btn vcm-btn--primary"
               disabled={guardando || !usuarioSeleccionado}
+              aria-busy={guardando}
             >
               {guardando ? 'Guardando...' : 'Guardar vendedor'}
             </button>
@@ -517,98 +702,144 @@ export default function VendedoresTab() {
       <ReservaModal
         abierto={modalHorario}
         tituloId="asignar-horario-titulo"
+        descripcionId="asignar-horario-descripcion"
         onCerrar={() => setModalHorario(false)}
-        clase="max-w-xl"
+        clase="seller-schedule-modal max-w-xl"
       >
-        <form className="space-y-4" onSubmit={(event) => void guardarHorario(event)}>
+        <form className="seller-schedule-form" onSubmit={(event) => void guardarHorario(event)}>
           <div>
             <span className="vcm-eyebrow">Ventas presenciales</span>
             <h2 id="asignar-horario-titulo" className="mt-2 text-2xl font-extrabold">
               Asignar horario
             </h2>
-            <p className="mt-1 text-sm text-[var(--text-soft)]">
-              Los clientes podrán elegir este turno al reservar productos.
+            <p id="asignar-horario-descripcion" className="mt-1 text-sm text-[var(--text-soft)]">
+              Define cuándo atiende el vendedor para entregar productos.
             </p>
           </div>
-          <label className="block space-y-1.5 text-sm font-semibold">
-            Vendedor asignado
-            <select
-              className="vcm-input w-full"
-              value={nuevoHorario.idVendedor || ''}
-              onChange={(event) => setNuevoHorario((actual) => ({
-                ...actual,
-                idVendedor: Number(event.target.value),
-              }))}
-              required
-              data-modal-initial-focus
-            >
-              <option value="" disabled>Selecciona un vendedor</option>
-              {vendedoresActivos.map((vendedor) => (
-                <option key={vendedor.idVendedor} value={vendedor.idVendedor}>
-                  {vendedor.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block space-y-1.5 text-sm font-semibold">
-            Fecha de venta presencial
-            <DatePickerField
-              id="fecha-horario-venta"
-              value={nuevoHorario.fecha}
-              minDate={fechaEnSantiago()}
-              onChange={(fecha) => setNuevoHorario((actual) => ({
-                ...actual,
-                fecha,
-              }))}
-              onValidityChange={setFechaValida}
-            />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1.5 text-sm font-semibold">
+          <div className="seller-schedule-form-grid">
+            <label className="seller-schedule-field seller-schedule-field--wide">
+              Vendedor
+              <select
+                className="vcm-input w-full"
+                value={nuevoHorario.idVendedor || ''}
+                onChange={(event) => setNuevoHorario((actual) => ({
+                  ...actual,
+                  idVendedor: Number(event.target.value),
+                }))}
+                required
+                data-modal-initial-focus
+              >
+                <option value="" disabled>Selecciona un vendedor</option>
+                {vendedoresActivos.map((vendedor) => (
+                  <option key={vendedor.idVendedor} value={vendedor.idVendedor}>
+                    {vendedor.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="seller-schedule-field seller-schedule-field--wide">
+              Fecha de venta presencial
+              <DatePickerField
+                id="fecha-horario-venta"
+                value={nuevoHorario.fecha}
+                minDate={fechaEnSantiago()}
+                onChange={(fecha) => setNuevoHorario((actual) => ({
+                  ...actual,
+                  fecha,
+                }))}
+                onValidityChange={setFechaValida}
+              />
+            </label>
+            <label className="seller-schedule-field">
               Hora de inicio
               <TimePickerField
                 id="hora-venta-inicio"
                 value={nuevoHorario.horaInicio}
-                onChange={(horaInicio) => setNuevoHorario((actual) => ({
-                  ...actual,
-                  horaInicio,
-                }))}
+                onChange={(horaInicio) => {
+                  const siguiente = { ...nuevoHorario, horaInicio };
+                  setNuevoHorario(siguiente);
+                  setHorarioPersonalizado(!ATAJOS_HORARIO.some((atajo) =>
+                    atajo.horaInicio === siguiente.horaInicio &&
+                    atajo.horaTermino === siguiente.horaTermino,
+                  ));
+                }}
                 onValidityChange={setHoraInicioValida}
               />
             </label>
-            <label className="block space-y-1.5 text-sm font-semibold">
+            <label className="seller-schedule-field">
               Hora de término
               <TimePickerField
                 id="hora-venta-termino"
                 value={nuevoHorario.horaTermino}
-                onChange={(horaTermino) => setNuevoHorario((actual) => ({
-                  ...actual,
-                  horaTermino,
-                }))}
+                minTime={nuevoHorario.horaInicio}
+                onChange={(horaTermino) => {
+                  const siguiente = { ...nuevoHorario, horaTermino };
+                  setNuevoHorario(siguiente);
+                  setHorarioPersonalizado(!ATAJOS_HORARIO.some((atajo) =>
+                    atajo.horaInicio === siguiente.horaInicio &&
+                    atajo.horaTermino === siguiente.horaTermino,
+                  ));
+                }}
                 onValidityChange={setHoraTerminoValida}
               />
             </label>
           </div>
-          {rangoHorarioInvalido && (
+          <div className="seller-time-shortcuts" aria-label="Atajos de horario">
+            <span className="seller-time-shortcuts__label">Atajos</span>
+            <div className="seller-time-shortcuts__options">
+              {ATAJOS_HORARIO.map((atajo) => (
+                <button
+                  type="button"
+                  key={atajo.id}
+                  className={`seller-time-shortcut${atajoSeleccionado === atajo.id ? ' is-selected' : ''}`}
+                  aria-pressed={atajoSeleccionado === atajo.id}
+                  onClick={() => seleccionarAtajo(atajo)}
+                >
+                  {atajo.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`seller-time-shortcut${atajoSeleccionado === 'personalizado' ? ' is-selected' : ''}`}
+                aria-pressed={atajoSeleccionado === 'personalizado'}
+                onClick={() => seleccionarAtajo(null)}
+              >
+                Personalizado
+              </button>
+            </div>
+          </div>
+          {duracionFormateada && (
+            <p className="seller-shift-duration" aria-live="polite">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              Duración del turno: <strong>{duracionFormateada}</strong>
+            </p>
+          )}
+          {horarioEnConflicto && (
             <p className="vcm-alert" role="alert">
-              La hora de término debe ser posterior a la hora de inicio.
+              El rango coincide con el horario de {horarioEnConflicto.vendedor.nombre} (
+              {horarioEnConflicto.horaInicio}–{horarioEnConflicto.horaTermino}) ese día.
             </p>
           )}
           {errorModal && <p className="vcm-alert" role="alert">{errorModal}</p>}
-          <div className="flex justify-end gap-2">
+          <div className="seller-schedule-actions">
             <button type="button" className="vcm-btn vcm-btn--surface" onClick={() => setModalHorario(false)} disabled={guardando}>
               Cancelar
             </button>
             <button
               type="submit"
               className="vcm-btn vcm-btn--primary"
+              aria-busy={guardando}
               disabled={
                 guardando ||
                 vendedoresActivos.length === 0 ||
                 !fechaValida ||
                 !horaInicioValida ||
                 !horaTerminoValida ||
-                rangoHorarioInvalido
+                rangoHorarioInvalido ||
+                Boolean(horarioEnConflicto)
               }
             >
               {guardando ? 'Asignando...' : 'Asignar horario'}
@@ -641,7 +872,7 @@ export default function VendedoresTab() {
             </div>
           </div>
           <div className="vendedor-delete-question">
-            ¿Deseas eliminar a <strong>{vendedorAEliminar?.nombre}</strong>?
+            ¿Eliminar a <strong>{vendedorAEliminar?.nombre}</strong>? Esta acción no se puede deshacer.
           </div>
           <div className="vendedor-delete-warning">
             <span aria-hidden="true">!</span>
@@ -664,8 +895,10 @@ export default function VendedoresTab() {
             <button
               type="button"
               className="vcm-btn vcm-btn--danger vendedor-delete-confirm"
+              aria-label={`Confirmar eliminación de ${vendedorAEliminar?.nombre}`}
               onClick={() => void confirmarEliminarVendedor()}
               disabled={eliminandoVendedor !== null}
+              aria-busy={eliminandoVendedor === vendedorAEliminar?.idVendedor}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />

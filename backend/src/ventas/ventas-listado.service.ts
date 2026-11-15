@@ -1,7 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Factura } from '../facturacion/factura.entity';
 import { Salida } from '../facturacion/salida.entity';
+import { VendedorBiblioteca } from '../reservas/vendedor-biblioteca.entity';
 import {
   crearPagina,
   type Pagina,
@@ -87,7 +92,7 @@ const ORDEN_BOLETA_SQL: Record<OrdenBoleta, string> = {
   producto: 'MIN(p.nombre) ASC, f.id_factura ASC',
 };
 
-// $1 = tipo ('normal' | 'tac' | null), $2 = patrón ILIKE o null.
+// $1 = tipo, $2 = patrón ILIKE, $3/$4 = rango de fechas, $5 = vendedor.
 // La búsqueda va en HAVING con BOOL_OR para que la boleta se calcule completa
 // (todas sus líneas) aunque solo una línea coincida con el texto.
 const BOLETAS_DESDE = `
@@ -97,6 +102,9 @@ const BOLETAS_DESDE = `
   JOIN productos p ON p.codigo_producto = v.codigo_producto
   LEFT JOIN documentos_tac d ON d.id_tac = f.id_tac
   WHERE ($1::text IS NULL OR f.tipo_venta = $1::text)
+    AND ($3::date IS NULL OR f.fecha >= $3::date)
+    AND ($4::date IS NULL OR f.fecha < $4::date + INTERVAL '1 day')
+    AND ($5::integer IS NULL OR f.id_vendedor = $5::integer)
   GROUP BY f.id_factura
   HAVING ($2::text IS NULL OR BOOL_OR(
     f.numero_documento ILIKE $2::text
@@ -113,20 +121,53 @@ export class VentasListadoService {
 
   /** Historial paginado por boleta, con filtros y orden resueltos en la base de datos. */
   async listarBoletas(query: ListarBoletasQueryDto): Promise<Pagina<BoletaVenta>> {
+    return this.listarBoletasFiltradas(query, null);
+  }
+
+  async listarBoletasVendedor(
+    uid: number,
+    query: ListarBoletasQueryDto,
+  ): Promise<Pagina<BoletaVenta>> {
+    const vendedor = await this.dataSource
+      .getRepository(VendedorBiblioteca)
+      .findOne({
+        where: { usuario: { uid } },
+        select: { idVendedor: true },
+      });
+    if (!vendedor) throw new NotFoundException('Vendedor no encontrado');
+    return this.listarBoletasFiltradas(query, vendedor.idVendedor);
+  }
+
+  private async listarBoletasFiltradas(
+    query: ListarBoletasQueryDto,
+    idVendedor: number | null,
+  ): Promise<Pagina<BoletaVenta>> {
     const { page, limit, offset } = resolverPagina(query);
+    if (query.desde && query.hasta && query.desde > query.hasta) {
+      throw new BadRequestException(
+        'La fecha desde no puede ser posterior a la fecha hasta',
+      );
+    }
     const tipo = query.tipo && query.tipo !== 'todos' ? query.tipo : null;
     const patron = patronBusqueda(query.q);
     const orden = ORDEN_BOLETA_SQL[query.orden ?? 'fecha-desc'];
+    const parametros = [
+      tipo,
+      patron,
+      query.desde ?? null,
+      query.hasta ?? null,
+      idVendedor,
+    ];
 
     const [conteo] = await this.dataSource.query<Array<{ total: number }>>(
       `SELECT COUNT(*)::int AS total FROM (SELECT f.id_factura ${BOLETAS_DESDE}) t`,
-      [tipo, patron],
+      parametros,
     );
     const total = conteo?.total ?? 0;
 
     const filas = await this.dataSource.query<Array<{ id_factura: number }>>(
-      `SELECT f.id_factura ${BOLETAS_DESDE} ORDER BY ${orden} LIMIT $3 OFFSET $4`,
-      [tipo, patron, limit, offset],
+      `SELECT f.id_factura ${BOLETAS_DESDE} ORDER BY ${orden} LIMIT $6 OFFSET $7`,
+      [...parametros, limit, offset],
     );
     const ids = filas.map((fila) => Number(fila.id_factura));
     if (ids.length === 0) return crearPagina([], total, page, limit);

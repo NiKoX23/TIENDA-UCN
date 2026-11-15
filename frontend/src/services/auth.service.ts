@@ -5,6 +5,7 @@ export interface Usuario {
     nombre: string;
     email: string;
     esAdmin: boolean;
+    esVendedor: boolean;
 }
 
 const coloresAvatar = [

@@ -11,6 +11,9 @@ import Perfil from './perfil/Perfil';
 import DetalleProducto from './productos/DetalleProducto';
 import AdminPanel from './admin/AdminPanel';
 import MisReservas from './reservas/MisReservas';
+import MisHorarios from './reservas/MisHorarios';
+import ReservasVendedor from './reservas/ReservasVendedor';
+import MisVentas from './ventas/MisVentas';
 
 type Theme = 'dark' | 'light';
 
@@ -47,7 +50,10 @@ export default function App() {
 
     return (
         <div className="app-shell min-h-screen">
-            {location.pathname !== '/' && !location.pathname.startsWith('/producto/') && (
+            {location.pathname !== '/' &&
+                location.pathname !== '/mis-horarios' &&
+                !location.pathname.startsWith('/vendedor/') &&
+                !location.pathname.startsWith('/producto/') && (
                 <button
                     type="button"
                     className="vcm-iconbtn fixed right-[76px] top-[18px] z-[100] text-lg shadow-lg max-[720px]:right-[68px] max-[720px]:top-3"
@@ -102,6 +108,54 @@ export default function App() {
                     <Route
                         path="/reservas"
                         element={usuario ? <MisReservas /> : <Navigate to="/login" replace />}
+                    />
+                    <Route
+                        path="/mis-horarios"
+                        element={
+                            usuario?.esVendedor && !usuario.esAdmin ? (
+                                <MisHorarios
+                                    usuario={usuario}
+                                    tema={tema}
+                                    onToggleTema={() => setTema((actual) => (actual === 'dark' ? 'light' : 'dark'))}
+                                    onPerfil={() => navigate('/perfil')}
+                                    onLogin={() => navigate('/login')}
+                                    onLogout={handleLogout}
+                                    onAdmin={() => navigate('/admin')}
+                                />
+                            ) : (
+                                <Navigate to="/" replace />
+                            )
+                        }
+                    />
+                    <Route
+                        path="/vendedor/reservas"
+                        element={
+                            usuario?.esVendedor && !usuario.esAdmin ? (
+                                <ReservasVendedor
+                                    usuario={usuario}
+                                    tema={tema}
+                                    onToggleTema={() => setTema((actual) => (actual === 'dark' ? 'light' : 'dark'))}
+                                    onLogout={handleLogout}
+                                />
+                            ) : (
+                                <Navigate to="/" replace />
+                            )
+                        }
+                    />
+                    <Route
+                        path="/vendedor/ventas"
+                        element={
+                            usuario?.esVendedor && !usuario.esAdmin ? (
+                                <MisVentas
+                                    usuario={usuario}
+                                    tema={tema}
+                                    onToggleTema={() => setTema((actual) => (actual === 'dark' ? 'light' : 'dark'))}
+                                    onLogout={handleLogout}
+                                />
+                            ) : (
+                                <Navigate to="/" replace />
+                            )
+                        }
                     />
                     <Route
                         path="/admin"

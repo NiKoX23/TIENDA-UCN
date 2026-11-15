@@ -8,7 +8,9 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
-type AuthRequest = Request & { user?: { esAdmin?: boolean } };
+type AuthRequest = Request & {
+  user?: { esAdmin?: boolean; esVendedor?: boolean };
+};
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -24,8 +26,15 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<AuthRequest>();
 
-    if (request.user?.esAdmin !== true) {
-      throw new ForbiddenException('Necesitas permisos de administrador');
+    const autorizado = roles.some(
+      (role) =>
+        (role === 'admin' && request.user?.esAdmin === true) ||
+        (role === 'vendedor' && request.user?.esVendedor === true),
+    );
+    if (!autorizado) {
+      throw new ForbiddenException(
+        'No tienes permisos para acceder a este recurso',
+      );
     }
 
     return true;
