@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { ArchivosService } from '../common/archivos.service';
 import { VentasService } from './ventas.service';
 
 describe('VentasService', () => {
@@ -14,7 +15,7 @@ describe('VentasService', () => {
           operation(manager),
       ),
     } as unknown as DataSource;
-    const service = new VentasService(dataSource);
+    const service = new VentasService(dataSource, {} as ArchivosService);
 
     await expect(
       service.registrarVenta({

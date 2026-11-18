@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatearCLP } from '../utils/precio';
 import { mensajeErrorApi } from '../utils/mensajeErrorApi';
 import AdminSectionHeader from '../components/AdminSectionHeader';
@@ -46,6 +46,17 @@ interface CambioPendiente {
   estado: EstadoReserva;
 }
 
+interface AvisoReserva {
+  id: number;
+  mensaje: string;
+  tono: 'success' | 'error';
+  idReserva?: number;
+  estadoAnterior?: Extract<
+    EstadoReserva,
+    'PENDIENTE' | 'LISTA_PARA_RETIRO'
+  >;
+}
+
 function mostrarFecha(fecha: string): string {
   return new Date(`${fecha.slice(0, 10)}T12:00:00`).toLocaleDateString('es-CL', {
     day: 'numeric',
@@ -64,22 +75,20 @@ function opcionesEstado(estado: EstadoReserva): EstadoReserva[] {
   return [estado];
 }
 
-function opcionesEstadoVendedor(estado: EstadoReserva): EstadoReserva[] {
-  if (estado === 'PENDIENTE') return ['PENDIENTE', 'LISTA_PARA_RETIRO'];
-  if (estado === 'LISTA_PARA_RETIRO') return ['LISTA_PARA_RETIRO', 'RETIRADA'];
-  return [estado];
-}
-
 function etiquetaEstado(estado: EstadoReserva, vendedor = false): string {
   return vendedor && estado === 'RETIRADA'
-    ? 'Retirada'
+    ? 'Entregada'
     : ETIQUETAS_ESTADO[estado];
 }
 
 function esEstadoVendedor(
   estado: EstadoReserva,
-): estado is 'LISTA_PARA_RETIRO' | 'RETIRADA' {
-  return estado === 'LISTA_PARA_RETIRO' || estado === 'RETIRADA';
+): estado is 'PENDIENTE' | 'LISTA_PARA_RETIRO' | 'RETIRADA' {
+  return (
+    estado === 'PENDIENTE' ||
+    estado === 'LISTA_PARA_RETIRO' ||
+    estado === 'RETIRADA'
+  );
 }
 
 function claseEstado(estado: EstadoReserva): string {
@@ -140,11 +149,22 @@ export default function ReservasPanel({
   const [actualizandoId, setActualizandoId] = useState<number | null>(null);
   const [detalleAbierto, setDetalleAbierto] = useState<Reserva | null>(null);
   const [cambioPendiente, setCambioPendiente] = useState<CambioPendiente | null>(null);
+  const [aviso, setAviso] = useState<AvisoReserva | null>(null);
+  const [deshaciendo, setDeshaciendo] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<EstadoReserva | 'TODOS'>('TODOS');
   const [ordenFecha, setOrdenFecha] = useState<'proxima' | 'lejana'>('proxima');
+  const avisoTimer = useRef<number | null>(null);
+  const siguienteAvisoId = useRef(0);
   const textoBusqueda = busquedaControlada?.valor ?? busqueda;
   const cambiarBusqueda = busquedaControlada?.alCambiar ?? setBusqueda;
+
+  useEffect(
+    () => () => {
+      if (avisoTimer.current !== null) window.clearTimeout(avisoTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     let activo = true;
@@ -197,7 +217,7 @@ export default function ReservasPanel({
       } else if (vendedor) {
         if (!esEstadoVendedor(estado)) {
           setError('Ese cambio de estado no está permitido para vendedores.');
-          return;
+          return null;
         }
         actualizada = await cambiarEstadoReservaVendedor(reserva.idReserva, estado);
       } else {
@@ -211,11 +231,93 @@ export default function ReservasPanel({
       setDetalleAbierto((actual) =>
         actual?.idReserva === actualizada.idReserva ? actualizada : actual,
       );
+      return actualizada;
     } catch (e: unknown) {
       setError(mensajeErrorApi(e, 'No se pudo actualizar la reserva.'));
+      return null;
     } finally {
       setActualizandoId(null);
     }
+  };
+
+  const mostrarAviso = (
+    mensaje: string,
+    tono: AvisoReserva['tono'],
+    cambio?: Pick<AvisoReserva, 'idReserva' | 'estadoAnterior'>,
+  ) => {
+    if (avisoTimer.current !== null) window.clearTimeout(avisoTimer.current);
+    const nuevoAviso: AvisoReserva = {
+      id: ++siguienteAvisoId.current,
+      mensaje,
+      tono,
+      ...cambio,
+    };
+    setAviso(nuevoAviso);
+    avisoTimer.current = window.setTimeout(
+      () => setAviso(null),
+      cambio ? 5000 : 3800,
+    );
+  };
+
+  const marcarEntregada = async (reserva: Reserva) => {
+    if (
+      reserva.estado !== 'PENDIENTE' &&
+      reserva.estado !== 'LISTA_PARA_RETIRO'
+    ) {
+      return;
+    }
+
+    const actualizada = await guardarEstado(reserva, 'RETIRADA');
+    if (actualizada) {
+      mostrarAviso(
+        `La reserva ${actualizada.codigoReserva} quedó marcada como entregada.`,
+        'success',
+        {
+          idReserva: actualizada.idReserva,
+          estadoAnterior: reserva.estado,
+        },
+      );
+    }
+  };
+
+  const deshacerEntrega = async () => {
+    if (
+      !aviso?.idReserva ||
+      !aviso.estadoAnterior ||
+      !vendedor
+    ) {
+      return;
+    }
+
+    if (avisoTimer.current !== null) window.clearTimeout(avisoTimer.current);
+    setDeshaciendo(true);
+    try {
+      const reserva = await cambiarEstadoReservaVendedor(
+        aviso.idReserva,
+        aviso.estadoAnterior,
+      );
+      setReservas((actuales) =>
+        actuales.map((item) =>
+          item.idReserva === reserva.idReserva ? reserva : item,
+        ),
+      );
+      setDetalleAbierto((actual) =>
+        actual?.idReserva === reserva.idReserva ? reserva : actual,
+      );
+      mostrarAviso('Cambio deshecho.', 'success');
+    } catch (e: unknown) {
+      mostrarAviso(
+        mensajeErrorApi(e, 'No se pudo deshacer la entrega.'),
+        'error',
+      );
+    } finally {
+      setDeshaciendo(false);
+    }
+  };
+
+  const cerrarAviso = () => {
+    if (avisoTimer.current !== null) window.clearTimeout(avisoTimer.current);
+    setAviso(null);
   };
 
   const solicitarCambioEstado = (reserva: Reserva, estado: EstadoReserva) => {
@@ -417,26 +519,41 @@ export default function ReservasPanel({
                     <IconoProductos />
                     <span className="w-full text-center">Ver productos</span>
                   </button>
-                  <label className="sr-only" htmlFor={`estado-reserva-${reserva.idReserva}`}>
-                    Cambiar estado de {reserva.codigoReserva}
-                  </label>
-                  <select
-                    id={`estado-reserva-${reserva.idReserva}`}
-                    className="vcm-input vcm-input--sm w-full"
-                    value={reserva.estado}
-                    disabled={actualizandoId !== null}
-                    onChange={(event) => {
-                      const estado = ESTADOS_RESERVA.find((opcion) => opcion === event.target.value);
-                      if (estado && estado !== reserva.estado) solicitarCambioEstado(reserva, estado);
-                    }}
-                  >
-                    {(vendedor
-                      ? opcionesEstadoVendedor(reserva.estado)
-                      : opcionesEstado(reserva.estado)
-                    ).map((estado) => (
-                      <option key={estado} value={estado}>{etiquetaEstado(estado, vendedor)}</option>
-                    ))}
-                  </select>
+                  {vendedor ? (
+                    (reserva.estado === 'PENDIENTE' ||
+                      reserva.estado === 'LISTA_PARA_RETIRO') && (
+                      <button
+                        type="button"
+                        className="vcm-btn vcm-btn--primary vcm-btn--sm w-full justify-center"
+                        disabled={actualizandoId !== null}
+                        onClick={() => void marcarEntregada(reserva)}
+                      >
+                        {actualizandoId === reserva.idReserva
+                          ? 'Actualizando…'
+                          : 'Marcar como entregada'}
+                      </button>
+                    )
+                  ) : (
+                    <>
+                      <label className="sr-only" htmlFor={`estado-reserva-${reserva.idReserva}`}>
+                        Cambiar estado de {reserva.codigoReserva}
+                      </label>
+                      <select
+                        id={`estado-reserva-${reserva.idReserva}`}
+                        className="vcm-input vcm-input--sm w-full"
+                        value={reserva.estado}
+                        disabled={actualizandoId !== null}
+                        onChange={(event) => {
+                          const estado = ESTADOS_RESERVA.find((opcion) => opcion === event.target.value);
+                          if (estado && estado !== reserva.estado) solicitarCambioEstado(reserva, estado);
+                        }}
+                      >
+                        {opcionesEstado(reserva.estado).map((estado) => (
+                          <option key={estado} value={estado}>{etiquetaEstado(estado)}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
               </article>
             ))}
@@ -444,7 +561,10 @@ export default function ReservasPanel({
         </div>
       )}
 
-      {!cargando && !administrador && reservasVisibles.length > 0 && (
+      {!cargando &&
+        !administrador &&
+        !vendedor &&
+        reservasVisibles.length > 0 && (
         <div className="mx-auto grid w-full max-w-4xl gap-4">
           {reservasVisibles.map((reserva) => (
             <article
@@ -555,6 +675,34 @@ export default function ReservasPanel({
           </>
         )}
       </ReservaModal>
+
+      {vendedor && aviso && (
+        <div
+          key={aviso.id}
+          className={`admin-users-toast admin-users-toast--${aviso.tono}`}
+          role={aviso.tono === 'error' ? 'alert' : 'status'}
+          aria-live={aviso.tono === 'error' ? 'assertive' : 'polite'}
+        >
+          <span>{aviso.mensaje}</span>
+          {aviso.estadoAnterior && (
+            <button
+              type="button"
+              disabled={deshaciendo}
+              onClick={() => void deshacerEntrega()}
+            >
+              {deshaciendo ? 'Deshaciendo…' : 'Deshacer'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="admin-users-toast__close"
+            aria-label="Cerrar notificación"
+            onClick={cerrarAviso}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </section>
   );
 }

@@ -8,8 +8,14 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import type { ArchivoSubido } from '../common/archivos.types';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -76,16 +82,38 @@ export class VentasController {
   }
 
   @Post('tac')
-  crearDocumentoTac(@Body() dto: CrearDocumentoTacDto) {
-    return this.ventasService.crearDocumentoTac(dto);
+  @UseInterceptors(FileInterceptor('archivo'))
+  crearDocumentoTac(
+    @Body() dto: CrearDocumentoTacDto,
+    @UploadedFile() archivo?: ArchivoSubido,
+  ) {
+    return this.ventasService.crearDocumentoTac(dto, archivo);
   }
 
   @Patch('tac/:idTac')
+  @UseInterceptors(FileInterceptor('archivo'))
   actualizarDocumentoTac(
     @Param('idTac', ParseIntPipe) idTac: number,
     @Body() dto: ActualizarDocumentoTacDto,
+    @UploadedFile() archivo?: ArchivoSubido,
   ) {
-    return this.ventasService.actualizarDocumentoTac(idTac, dto);
+    return this.ventasService.actualizarDocumentoTac(idTac, dto, archivo);
+  }
+
+  @Get('tac/:idTac/archivo')
+  async obtenerArchivoTac(
+    @Param('idTac', ParseIntPipe) idTac: number,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const pdf = await this.ventasService.obtenerArchivoTac(idTac);
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Length': pdf.length,
+      'Content-Disposition': `inline; filename="documento-TAC-${idTac}.pdf"`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return pdf;
   }
 
   @Delete('tac/:idTac')

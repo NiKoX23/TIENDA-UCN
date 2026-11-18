@@ -12,6 +12,8 @@ import { resolve } from 'node:path';
 import { Cliente } from '../clientes/cliente.entity';
 import { Factura } from '../facturacion/factura.entity';
 import { Salida } from '../facturacion/salida.entity';
+import { ArchivosService } from '../common/archivos.service';
+import { ArchivoSubido } from '../common/archivos.types';
 import { VarianteProducto } from '../productos/variante-producto.entity';
 import { VendedorBiblioteca } from '../reservas/vendedor-biblioteca.entity';
 import { DocumentoTac } from './documento-tac.entity';
@@ -71,13 +73,17 @@ type DocumentoTacDetalle = {
   firmaVendedor: DocumentoTac['firmaVendedor'];
   estado: 'Aprobado' | 'Pendiente' | 'Rechazado';
   tieneVenta: boolean;
+  tieneArchivoPdf: boolean;
 };
 
 @Injectable()
 export class VentasService implements OnModuleInit {
   private readonly logger = new Logger(VentasService.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly archivosService: ArchivosService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     const rutaExcel = this.obtenerRutaExcelHistorico();
@@ -538,6 +544,7 @@ export class VentasService implements OnModuleInit {
       firmaVendedor: d.firmaVendedor,
       estado: estadoTac(d.firmaComprador, d.firmaVendedor),
       tieneVenta,
+      tieneArchivoPdf: d.archivoPdfDisponible,
     };
   }
 
@@ -578,10 +585,18 @@ export class VentasService implements OnModuleInit {
       firmaVendedor: d.firmaVendedor,
       estado: estadoTac(d.firmaComprador, d.firmaVendedor),
       tieneVenta: idsVinculados.has(d.idTac),
+      tieneArchivoPdf: d.archivoPdfDisponible,
     }));
   }
 
-  async crearDocumentoTac(dto: CrearDocumentoTacDto) {
+  async crearDocumentoTac(dto: CrearDocumentoTacDto, archivo?: ArchivoSubido) {
+    if (!archivo) {
+      throw new BadRequestException(
+        'Debes adjuntar el archivo PDF del documento TAC.',
+      );
+    }
+    const archivoPdf = this.archivosService.cifrarPdf(archivo);
+
     const variante = await this.dataSource
       .getRepository(VarianteProducto)
       .findOne({
@@ -606,12 +621,21 @@ export class VentasService implements OnModuleInit {
         responsable: dto.responsable?.trim() || null,
         firmaComprador: dto.firmaComprador ?? 'Pendiente',
         firmaVendedor: dto.firmaVendedor ?? 'Pendiente',
+        archivoPdf,
+        archivoPdfDisponible: true,
       }),
     );
     return this.obtenerDetalleTac(documento.idTac);
   }
 
-  async actualizarDocumentoTac(idTac: number, dto: ActualizarDocumentoTacDto) {
+  async actualizarDocumentoTac(
+    idTac: number,
+    dto: ActualizarDocumentoTacDto,
+    archivo?: ArchivoSubido,
+  ) {
+    const archivoPdf = archivo
+      ? this.archivosService.cifrarPdf(archivo)
+      : undefined;
     await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(DocumentoTac);
       const documento = await repo.findOne({
@@ -653,10 +677,30 @@ export class VentasService implements OnModuleInit {
         documento.firmaComprador = dto.firmaComprador;
       if (dto.firmaVendedor !== undefined)
         documento.firmaVendedor = dto.firmaVendedor;
+      if (archivoPdf) {
+        documento.archivoPdf = archivoPdf;
+        documento.archivoPdfDisponible = true;
+      }
       documento.total = documento.cantidad * documento.precioTac;
       await repo.save(documento);
     });
     return this.obtenerDetalleTac(idTac);
+  }
+
+  async obtenerArchivoTac(idTac: number): Promise<Buffer> {
+    const documento = await this.dataSource
+      .getRepository(DocumentoTac)
+      .createQueryBuilder('d')
+      .addSelect('d.archivoPdf')
+      .where('d.id_tac = :idTac', { idTac })
+      .getOne();
+    if (!documento) throw new NotFoundException('Documento TAC no encontrado');
+    if (!documento.archivoPdfDisponible || !documento.archivoPdf) {
+      throw new NotFoundException(
+        'Este documento TAC no tiene un PDF adjunto.',
+      );
+    }
+    return this.archivosService.descifrarPdf(documento.archivoPdf);
   }
 
   async eliminarDocumentoTac(idTac: number) {

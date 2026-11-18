@@ -41,8 +41,6 @@ El archivo `.env` debe definir:
 
 `DB_PORT` usa `5432` por defecto y `BACKEND_PORT` usa `3000`. Para habilitar el inicio de sesión con Google, se deben definir también `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
 
-No se deben guardar credenciales reales en el repositorio.
-
 ## Base de datos
 
 Al crear una base de datos nueva, el servicio de PostgreSQL carga `docs/DB.sql` y `docs/catalogo.sql`. Estos scripts de inicialización se ejecutan cuando el volumen de datos está vacío; no se vuelven a aplicar automáticamente sobre una base existente.
@@ -62,8 +60,6 @@ podman exec tienda-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -
 podman compose restart backend
 podman compose logs --tail=100 backend
 ```
-
-Ambos esquemas son idempotentes y se pueden aplicar sin borrar el volumen ni los datos existentes. Las reservas descuentan las unidades disponibles; al cancelar una reserva pendiente o marcarla como vencida, el stock se devuelve.
 
 ## Ejecución
 

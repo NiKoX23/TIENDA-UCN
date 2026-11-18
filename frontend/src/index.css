@@ -2080,6 +2080,34 @@ html[data-theme='light'] .storefront-page .storefront-cart-button:disabled {
   border-radius: var(--admin-radius);
 }
 .admin-toolbar__count { margin: 0 0 0 0.25rem; color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; }
+.admin-inventory-section-header { margin-bottom: 0.75rem; }
+.admin-inventory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--admin-space-2);
+}
+.admin-inventory-actions > :is(button, .vcm-btn) {
+  min-height: var(--admin-control-height);
+  white-space: nowrap;
+}
+.admin-inventory-filterbar {
+  display: grid;
+  grid-template-columns: minmax(16rem, 2fr) repeat(2, minmax(10rem, 0.75fr)) auto;
+  align-items: center;
+  gap: var(--admin-space-2);
+  margin-bottom: 1rem;
+}
+.admin-inventory-filterbar > :is(input, select) {
+  width: 100%;
+  min-height: var(--admin-control-height);
+}
+.admin-inventory-filterbar__count {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
 .admin-toolbar--filters {
   display: grid;
   width: min(100%, 42rem);
@@ -2265,6 +2293,10 @@ html:root:root .admin-form-field:focus {
 @media (max-width: 760px) {
   .vcm-admin-section-header { align-items: stretch; flex-direction: column; gap: 0.65rem; }
   .vcm-admin-section-controls { width: 100%; }
+  .admin-inventory-actions { justify-content: stretch; }
+  .admin-inventory-actions > :is(button, .vcm-btn) { flex: 1 1 8rem; }
+  .admin-inventory-filterbar { grid-template-columns: minmax(0, 1fr); }
+  .admin-inventory-filterbar__count { width: 100%; }
   .admin-toolbar { justify-content: flex-start; }
   .admin-toolbar--filters,
   .admin-toolbar--reservation { width: 100%; grid-template-columns: minmax(0, 1fr); }

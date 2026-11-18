@@ -1,6 +1,11 @@
 import { useEffect, useState, Fragment, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
+import ArchivoUpload from '../components/ArchivoUpload';
+import {
+    obtenerConfiguracionArchivos,
+    type ConfiguracionArchivos,
+} from '../services/archivos.service';
 import { formatearCLP } from '../utils/precio';
 import {
     ajustarStock,
@@ -43,7 +48,12 @@ function mensajeError(e: unknown): string {
     if (axios.isAxiosError(e)) {
         const msg = (e.response?.data as { message?: string | string[] })?.message;
         if (Array.isArray(msg)) return msg.join(', ');
-        if (msg) return msg;
+        if (msg) {
+            if (msg.toLowerCase() === 'file too large') {
+                return 'El archivo supera el tamaño máximo permitido.';
+            }
+            return msg;
+        }
     }
     return 'Ocurrió un error inesperado.';
 }
@@ -233,6 +243,9 @@ interface ModalProductoProps {
 function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalProductoProps) {
     const esNuevo = !item;
     const [guardando, setGuardando] = useState(false);
+    const [archivoImagen, setArchivoImagen] = useState<File | null>(null);
+    const [configuracionArchivos, setConfiguracionArchivos] = useState<ConfiguracionArchivos | null>(null);
+    const [errorConfiguracionArchivos, setErrorConfiguracionArchivos] = useState('');
 
     const [nombre, setNombre] = useState(item?.nombre ?? '');
     const [idCategoria, setIdCategoria] = useState(() => {
@@ -255,6 +268,26 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
     const [costoAdquisicion, setCostoAdquisicion] = useState(String(item?.costoAdquisicion ?? ''));
     const [precioVenta, setPrecioVenta] = useState(String(item?.precioVenta ?? ''));
     const [precioTac, setPrecioTac] = useState(item?.precioTac ? String(item.precioTac) : '');
+
+    useEffect(() => {
+        let activo = true;
+        obtenerConfiguracionArchivos()
+            .then((configuracion) => {
+                if (activo) setConfiguracionArchivos(configuracion);
+            })
+            .catch((e: unknown) => {
+                if (!activo) return;
+                const mensaje = axios.isAxiosError(e)
+                    ? (e.response?.data as { message?: string })?.message
+                    : undefined;
+                setErrorConfiguracionArchivos(
+                    mensaje ?? 'No se pudo cargar la configuración de archivos.',
+                );
+            });
+        return () => {
+            activo = false;
+        };
+    }, []);
 
     const invalido =
         nombre.trim() === '' ||
@@ -282,8 +315,7 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
                     costoAdquisicion: Number(costoAdquisicion),
                     precioVenta: Number(precioVenta),
                     precioTac: precioTac.trim() === '' ? undefined : Number(precioTac),
-                    imagenUrl: imagenUrl.trim() || undefined,
-                    activo: true,
+                    archivo: archivoImagen ?? undefined,
                     variante: {
                         talla: usaTallas ? talla.trim() : 'unica',
                         color: color.trim() || undefined,
@@ -394,12 +426,25 @@ function ModalProducto({ categorias, item, onCerrar, onCrear, onEditar }: ModalP
                         </label>
                         <input id="marca" className={inputCls} value={marca} onChange={(e) => setMarca(e.target.value)} />
                     </div>
-                    <div>
-                        <label htmlFor="imagenUrl" className={labelCls}>
-                            URL imagen
-                        </label>
-                        <input id="imagenUrl" className={inputCls} value={imagenUrl} onChange={(e) => setImagenUrl(e.target.value)} />
-                    </div>
+                    {esNuevo ? (
+                        <ArchivoUpload
+                            id="imagen-producto"
+                            tipo="imagen"
+                            etiqueta="Imagen del producto"
+                            ayuda="Puedes elegir una imagen desde el computador o la galería del celular."
+                            archivo={archivoImagen}
+                            configuracion={configuracionArchivos}
+                            errorConfiguracion={errorConfiguracionArchivos}
+                            alCambiar={setArchivoImagen}
+                        />
+                    ) : (
+                        <div>
+                            <label htmlFor="imagenUrl" className={labelCls}>
+                                URL imagen
+                            </label>
+                            <input id="imagenUrl" className={inputCls} value={imagenUrl} onChange={(e) => setImagenUrl(e.target.value)} />
+                        </div>
+                    )}
                 </div>
 
                 <div>
@@ -967,7 +1012,7 @@ export default function InventarioTab() {
 
     return (
         <div className="mt-6 space-y-5">
-            <section aria-label="Resumen del inventario" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <section aria-label="Resumen del inventario" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
                     { etiqueta: 'Productos', valor: grupos.length.toLocaleString('es-CL') },
                     { etiqueta: 'Variantes críticas', valor: variantesCriticas.toLocaleString('es-CL') },
@@ -979,23 +1024,25 @@ export default function InventarioTab() {
             </section>
 
             <section aria-label="Herramientas de inventario" className="mt-2">
-            <AdminSectionHeader titulo="Inventario">
-                <div className="admin-toolbar">
-                <input aria-label="Buscar por nombre o SKU" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar producto o SKU" className={`${inputCls} admin-toolbar__search min-w-[210px] flex-1 rounded-md`} />
-                <select aria-label="Filtrar por categoría" value={categoriaFiltro} onChange={(e) => setCategoriaFiltro(e.target.value)} className={`${inputCls} w-full rounded-md sm:w-auto`}>
-                    <option value="">Todas las categorías</option>{categorias.map((categoria) => <option key={categoria.idCategoria} value={categoria.nombre}>{categoria.nombre}</option>)}
-                </select>
-                <select aria-label="Filtrar por estado de stock" value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={`${inputCls} w-full rounded-md sm:w-auto`}>
-                    <option value="">Todos los estados</option><option value="AGOTADO">Agotado</option><option value="CRITICO">Crítico</option><option value="BAJO">Bajo</option><option value="NORMAL">Normal</option>
-                </select>
+            <AdminSectionHeader titulo="Inventario" className="admin-inventory-section-header">
+                <div className="admin-inventory-actions">
                 <button type="button" className={`${botonSecundarioCls} rounded-md`} onClick={() => void manejarExportar()} disabled={exportando}>
                     {exportando ? 'Exportando...' : 'Exportar Excel'}
                 </button>
                 <button type="button" className={`${botonPrimarioCls} rounded-md`} onClick={() => abrirModal('producto')}>Nuevo producto</button>
                 <button type="button" className={`${botonSecundarioCls} rounded-md`} onClick={() => void recargar()}>Refrescar</button>
-                <p aria-live="polite" className="admin-toolbar__count">{gruposFiltrados.length} {gruposFiltrados.length === 1 ? 'producto' : 'productos'}</p>
                 </div>
             </AdminSectionHeader>
+            <div className="admin-inventory-filterbar">
+                <input aria-label="Buscar por nombre o SKU" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar producto o SKU" className={`${inputCls} admin-inventory-filterbar__search rounded-md`} />
+                <select aria-label="Filtrar por categoría" value={categoriaFiltro} onChange={(e) => setCategoriaFiltro(e.target.value)} className={`${inputCls} rounded-md`}>
+                    <option value="">Todas las categorías</option>{categorias.map((categoria) => <option key={categoria.idCategoria} value={categoria.nombre}>{categoria.nombre}</option>)}
+                </select>
+                <select aria-label="Filtrar por estado de stock" value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={`${inputCls} rounded-md`}>
+                    <option value="">Todos los estados</option><option value="AGOTADO">Agotado</option><option value="CRITICO">Crítico</option><option value="BAJO">Bajo</option><option value="NORMAL">Normal</option>
+                </select>
+                <p aria-live="polite" className="admin-inventory-filterbar__count">{gruposFiltrados.length} {gruposFiltrados.length === 1 ? 'producto' : 'productos'}</p>
+            </div>
             </section>
 
             {error && (
@@ -1014,17 +1061,17 @@ export default function InventarioTab() {
                 <div className="vcm-admin-table-shell overflow-x-auto rounded-lg border border-slate-400/15 bg-slate-950/10">
                     <table className="vcm-admin-table vcm-admin-table--inventory hidden w-full min-w-[760px] table-fixed text-left text-sm md:table">
                         <colgroup>
-                            <col className="w-[28%] min-w-[200px]" />
-                            <col className="hidden w-[10%] xl:table-column" />
-                            <col className="w-[18%] min-w-[140px]" />
-                            <col className="w-[16%] min-w-[120px]" />
-                            <col className="w-[12%] min-w-[110px]" />
-                            <col className="w-[16%] min-w-[150px]" />
+                            <col className="w-[26%] min-w-[190px]" />
+                            <col className="w-[10%] min-w-[90px]" />
+                            <col className="w-[18%] min-w-[130px]" />
+                            <col className="w-[18%] min-w-[130px]" />
+                            <col className="w-[12%] min-w-[100px]" />
+                            <col className="w-[16%] min-w-[130px]" />
                         </colgroup>
                         <thead className="border-b border-slate-400/15 text-sm text-[var(--text-soft)]">
                             <tr>
                                 <th className="px-3 py-3 text-left font-medium">Producto</th>
-                                <th className="hidden px-3 py-3 text-center text-sm font-medium xl:table-cell">Variantes</th>
+                                <th className="px-3 py-3 text-center text-sm font-medium">Variantes</th>
                                 <th className="px-3 py-3 text-left font-medium">Stock</th>
                                 <th className="px-3 py-3 text-right font-medium">Precio de venta</th>
                                 <th className="px-3 py-3 text-center font-medium">Estado</th>
@@ -1052,7 +1099,7 @@ export default function InventarioTab() {
                                                     </button>
                                                 </div>
                                             </td>
-                                            <td className="hidden px-3 py-2 text-center text-sm text-slate-400 xl:table-cell">
+                                            <td className="px-3 py-2 text-center text-sm text-slate-400">
                                                 {numero(variantes.length)}
                                             </td>
                                             <td className="px-3 py-2">

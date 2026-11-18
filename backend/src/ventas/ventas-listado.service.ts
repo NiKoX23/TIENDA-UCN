@@ -305,6 +305,7 @@ export class VentasListadoService {
       firmaVendedor: d.firmaVendedor,
       estado: estadoTac(d.firmaComprador, d.firmaVendedor),
       tieneVenta: idsVinculados.has(d.idTac),
+      tieneArchivoPdf: d.archivoPdfDisponible,
     }));
     return crearPagina(data, total, page, limit);
   }

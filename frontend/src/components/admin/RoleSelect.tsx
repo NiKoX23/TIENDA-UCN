@@ -7,8 +7,6 @@ interface RoleSelectProps {
   disabled?: boolean;
   loading?: boolean;
   title?: string;
-  disableUserOption?: boolean;
-  disableVendorOption?: boolean;
   onChange: (role: AdminRole) => void;
 }
 
@@ -18,8 +16,6 @@ export default function RoleSelect({
   disabled = false,
   loading = false,
   title,
-  disableUserOption = false,
-  disableVendorOption = false,
   onChange,
 }: RoleSelectProps) {
   return (
@@ -52,14 +48,7 @@ export default function RoleSelect({
         onChange={(event) => onChange(event.target.value as AdminRole)}
       >
         {(Object.keys(ADMIN_ROLE_LABELS) as AdminRole[]).map((role) => (
-          <option
-            key={role}
-            value={role}
-            disabled={
-              (role === 'usuario' && disableUserOption) ||
-              (role === 'vendedor' && disableVendorOption)
-            }
-          >
+          <option key={role} value={role}>
             {ADMIN_ROLE_LABELS[role]}
           </option>
         ))}

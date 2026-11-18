@@ -15,7 +15,6 @@ import DashboardTab from './DashboardTab';
 import VentasTab from './VentasTab';
 import ControlTacTab from './ControlTacTab';
 import { exportarTodo, exportarUsuarios } from '../services/export.service';
-import { crearVendedorBiblioteca } from '../services/horarios-venta.service';
 import { useListaPaginada } from '../hooks/useListaPaginada';
 import Paginacion from '../components/Paginacion';
 import ReservasPanel from '../reservas/ReservasPanel';
@@ -82,7 +81,9 @@ function mensajeError(e: unknown): string {
 
 type FiltroRol = AdminRole | 'todos';
 type ClaveOrden = 'nombre' | 'rol';
-type Confirmacion = { tipo: 'admin' | 'borrar'; usuario: AdminUsuario };
+type Confirmacion =
+    | { tipo: 'borrar'; usuario: AdminUsuario }
+    | { tipo: 'rol'; usuario: AdminUsuario; nuevoRol: AdminRole };
 type ToastAdmin = {
     id: number;
     mensaje: string;
@@ -191,37 +192,17 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
         }
     };
 
-    const cambiarRolDirecto = async (target: AdminUsuario, nuevoRol: 'usuario' | 'vendedor') => {
+    const cambiarRolDirecto = async (target: AdminUsuario, nuevoRol: AdminRole) => {
         try {
             setError('');
             setCambiandoUid(target.uid);
-            if (nuevoRol === 'vendedor') {
-                if (target.esVendedor) {
-                    await cambiarRol(target.uid, false);
-                    lista.recargar();
-                    mostrarToast(
-                        `${normalizarNombre(target.nombre)} ahora tiene rol de vendedor.`,
-                        'success',
-                        async () => {
-                            await cambiarRol(target.uid, true);
-                            lista.recargar();
-                        },
-                    );
-                    return;
-                }
-                await crearVendedorBiblioteca(target.uid);
-                lista.recargar();
-                mostrarToast(`${normalizarNombre(target.nombre)} ahora es vendedor.`, 'success');
-                return;
-            }
-
-            await cambiarRol(target.uid, false);
+            await cambiarRol(target.uid, nuevoRol);
             lista.recargar();
             mostrarToast(
-                `Se quitó el rol de administrador a ${normalizarNombre(target.nombre)}.`,
+                `${normalizarNombre(target.nombre)} ahora tiene rol de ${nuevoRol}.`,
                 'success',
                 async () => {
-                    await cambiarRol(target.uid, true);
+                    await cambiarRol(target.uid, obtenerRol(target));
                     lista.recargar();
                 },
             );
@@ -234,20 +215,11 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
 
     const solicitarCambioRol = (target: AdminUsuario, nuevoRol: AdminRole) => {
         if (target.uid === usuario.uid || nuevoRol === obtenerRol(target)) return;
-        if (nuevoRol === 'admin') {
-            setConfirmacion({ tipo: 'admin', usuario: target });
+        if (nuevoRol === 'admin' || (target.esVendedor && nuevoRol !== 'vendedor')) {
+            setConfirmacion({ tipo: 'rol', usuario: target, nuevoRol });
             return;
         }
-        if (
-            nuevoRol === 'vendedor' &&
-            ((target.esAdmin && target.esVendedor) || (!target.esAdmin && !target.esVendedor))
-        ) {
-            void cambiarRolDirecto(target, 'vendedor');
-            return;
-        }
-        if (nuevoRol === 'usuario' && target.esAdmin && !target.esVendedor) {
-            void cambiarRolDirecto(target, 'usuario');
-        }
+        void cambiarRolDirecto(target, nuevoRol);
     };
 
     const borrarUsuario = (target: AdminUsuario) => {
@@ -261,24 +233,22 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
             setError('');
             setCambiandoUid(accion.usuario.uid);
             setConfirmando(true);
-            if (accion.tipo === 'admin') {
-                await cambiarRol(accion.usuario.uid, true);
+            if (accion.tipo === 'rol') {
+                await cambiarRol(accion.usuario.uid, accion.nuevoRol);
                 lista.recargar();
                 setConfirmacion(null);
-                mostrarToast(`${normalizarNombre(accion.usuario.nombre)} ahora es administrador.`, 'success');
+                mostrarToast(
+                    `${normalizarNombre(accion.usuario.nombre)} ahora tiene rol de ${accion.nuevoRol}.`,
+                    'success',
+                );
             } else {
                 await eliminarUsuario(accion.usuario.uid);
                 lista.recargar();
                 setConfirmacion(null);
                 mostrarToast(`Se eliminó a ${normalizarNombre(accion.usuario.nombre)}.`, 'success');
             }
-        } catch {
-            mostrarToast(
-                accion.tipo === 'admin'
-                    ? `No se pudo cambiar el rol de ${normalizarNombre(accion.usuario.nombre)}.`
-                    : `No se pudo eliminar a ${normalizarNombre(accion.usuario.nombre)}.`,
-                'error',
-            );
+        } catch (e: unknown) {
+            mostrarToast(mensajeError(e), 'error');
         } finally {
             setConfirmando(false);
             setCambiandoUid(null);
@@ -322,11 +292,16 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
         }
     };
 
+    const confirmacionQuitaVendedor =
+        confirmacion?.tipo === 'rol' &&
+        confirmacion.usuario.esVendedor &&
+        confirmacion.nuevoRol !== 'vendedor';
+
     return (
         <main className="vcm-page vcm-admin-page flex flex-col items-center px-5 pb-12 pt-8">
             <BackToStore className="mb-8 self-start" />
 
-            <div className="vcm-card w-full max-w-6xl overflow-hidden shadow-2xl">
+            <div className="vcm-card w-full max-w-[1600px] overflow-hidden shadow-2xl">
                 <div className="vcm-hero vcm-admin-hero px-8 py-9 max-[480px]:px-5">
                     <BrandBlocks variant="hero" />
                     <div key={tab} className="vcm-hero__content max-w-2xl pr-[12%]">
@@ -522,17 +497,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                                                                             value={rolActual}
                                                                             disabled={inhabilitado}
                                                                             loading={cambiandoUid === persona.uid}
-                                                                            title={
-                                                                                esTu
-                                                                                    ? 'No puedes cambiar tu propio rol'
-                                                                                    : persona.esVendedor
-                                                                                        ? 'Quitar el rol vendedor elimina sus horarios; gestiona esa acción en Vendedores.'
-                                                                                        : persona.esAdmin
-                                                                                            ? 'Los administradores no pueden asignarse como vendedores.'
-                                                                                            : undefined
-                                                                            }
-                                                                            disableUserOption={persona.esVendedor}
-                                                                            disableVendorOption={persona.esAdmin && !persona.esVendedor}
+                                                                            title={esTu ? 'No puedes cambiar tu propio rol' : undefined}
                                                                             onChange={(rol) => solicitarCambioRol(persona, rol)}
                                                                         />
                                                                     </td>
@@ -618,14 +583,30 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
             <ConfirmModal
                 open={confirmacion !== null}
                 titleId="admin-users-confirm-title"
-                title={confirmacion?.tipo === 'borrar' ? 'Eliminar usuario' : 'Confirmar rol de administrador'}
+                title={
+                    confirmacion?.tipo === 'borrar'
+                        ? 'Eliminar usuario'
+                        : confirmacion?.nuevoRol === 'admin'
+                            ? 'Confirmar rol de administrador'
+                            : 'Quitar rol de vendedor'
+                }
                 description={
                     confirmacion?.tipo === 'borrar'
                         ? `¿Eliminar a ${normalizarNombre(confirmacion.usuario.nombre)}? Esta acción no se puede deshacer.`
-                        : `Al hacer administrador a ${confirmacion ? normalizarNombre(confirmacion.usuario.nombre) : ''}, obtendrá acceso para gestionar usuarios, ventas, inventario y vendedores.`
+                        : confirmacionQuitaVendedor
+                            ? `Al cambiar el rol de ${normalizarNombre(confirmacion!.usuario.nombre)}, también se eliminarán sus horarios asignados.`
+                        : confirmacion?.nuevoRol === 'admin'
+                            ? `Al hacer administrador a ${normalizarNombre(confirmacion.usuario.nombre)}, obtendrá acceso para gestionar usuarios, ventas, inventario y vendedores.`
+                            : ''
                 }
-                confirmText={confirmacion?.tipo === 'borrar' ? 'Eliminar usuario' : 'Hacer administrador'}
-                destructive={confirmacion?.tipo === 'borrar'}
+                confirmText={
+                    confirmacion?.tipo === 'borrar'
+                        ? 'Eliminar usuario'
+                        : confirmacion?.nuevoRol === 'admin'
+                            ? 'Hacer administrador'
+                            : 'Quitar rol de vendedor'
+                }
+                destructive={confirmacion?.tipo === 'borrar' || confirmacionQuitaVendedor}
                 loading={confirmando}
                 onCancel={() => {
                     if (!confirmando) setConfirmacion(null);

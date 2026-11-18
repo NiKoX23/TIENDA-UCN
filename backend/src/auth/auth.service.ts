@@ -8,15 +8,17 @@ import {
 import { OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { ILike, In, Repository } from 'typeorm';
+import { DataSource, ILike, In, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { Usuario } from './usuario.entity';
 import { VendedorBiblioteca } from '../reservas/vendedor-biblioteca.entity';
+import { HorarioVenta } from '../reservas/horario-venta.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ListarUsuariosQueryDto } from './dto/listar-usuarios.dto';
+import { RolUsuario } from './dto/admin-rol.dto';
 import {
   crearPagina,
   patronBusqueda,
@@ -32,6 +34,7 @@ export class AuthService implements OnModuleInit {
     private vendedorRepository: Repository<VendedorBiblioteca>,
     private jwtService: JwtService,
     private config: ConfigService,
+    private dataSource: DataSource,
   ) {}
 
   async onModuleInit() {
@@ -235,24 +238,62 @@ export class AuthService implements OnModuleInit {
     );
   }
 
-  async cambiarRolAdmin(uid: number, nuevoUid: number, esAdmin: boolean) {
+  async cambiarRolAdmin(uid: number, nuevoUid: number, role: RolUsuario) {
     if (uid === nuevoUid) {
       throw new ForbiddenException(
         'No puedes cambiar tu propio rol de administrador',
       );
     }
 
-    const usuario = await this.usuarioRepository.findOne({
-      where: { uid: nuevoUid },
+    return this.dataSource.transaction(async (manager) => {
+      const usuarios = manager.getRepository(Usuario);
+      const usuario = await usuarios.findOne({
+        where: { uid: nuevoUid },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!usuario) {
+        throw new NotFoundException('Usuario no encontrado');
+      }
+
+      const esAdminConfigurado = this.obtenerEmailsAdmin().includes(
+        this.normalizarEmail(usuario.email),
+      );
+      if (esAdminConfigurado && role !== 'admin') {
+        throw new ForbiddenException(
+          'No puedes quitar el rol del administrador configurado',
+        );
+      }
+
+      const vendedores = manager.getRepository(VendedorBiblioteca);
+      const vendedor = await vendedores.findOne({
+        where: { usuario: { uid: usuario.uid } },
+      });
+
+      if (role === 'vendedor' && !vendedor) {
+        await vendedores.save(
+          vendedores.create({
+            nombre: usuario.nombre.trim(),
+            usuario,
+            activo: true,
+          }),
+        );
+      } else if (role !== 'vendedor' && vendedor) {
+        await manager
+          .getRepository(HorarioVenta)
+          .delete({ idVendedor: vendedor.idVendedor });
+        await vendedores.delete({ idVendedor: vendedor.idVendedor });
+      }
+
+      usuario.esAdmin = role === 'admin';
+      await usuarios.save(usuario);
+
+      return {
+        uid: usuario.uid,
+        role,
+        esAdmin: usuario.esAdmin,
+        esVendedor: role === 'vendedor',
+      };
     });
-    if (!usuario) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
-    usuario.esAdmin = esAdmin;
-    await this.usuarioRepository.save(usuario);
-
-    return { uid: usuario.uid, esAdmin: usuario.esAdmin };
   }
 
   async eliminarUsuarioAdmin(uid: number, usuarioUid: number) {
@@ -268,16 +309,25 @@ export class AuthService implements OnModuleInit {
     }
 
     if (usuario.esAdmin) {
-      const cantidadAdmins = await this.usuarioRepository.countBy({ esAdmin: true });
+      const cantidadAdmins = await this.usuarioRepository.countBy({
+        esAdmin: true,
+      });
       if (cantidadAdmins <= 1) {
-        throw new ForbiddenException('No puedes eliminar al único administrador');
+        throw new ForbiddenException(
+          'No puedes eliminar al único administrador',
+        );
       }
     }
 
     await this.usuarioRepository.manager.transaction(async (manager) => {
       // Conserva historial de clientes y alertas sin dejar referencias al usuario eliminado.
-      await manager.query('UPDATE clientes SET uid = NULL WHERE uid = $1', [usuarioUid]);
-      await manager.query('UPDATE alertas_stock SET uid_resuelve = NULL WHERE uid_resuelve = $1', [usuarioUid]);
+      await manager.query('UPDATE clientes SET uid = NULL WHERE uid = $1', [
+        usuarioUid,
+      ]);
+      await manager.query(
+        'UPDATE alertas_stock SET uid_resuelve = NULL WHERE uid_resuelve = $1',
+        [usuarioUid],
+      );
       await manager.delete(Usuario, { uid: usuarioUid });
     });
 

@@ -1,6 +1,10 @@
-import { IsBoolean } from 'class-validator';
+import { IsIn } from 'class-validator';
+
+export type RolUsuario = 'usuario' | 'vendedor' | 'admin';
 
 export class AdminRolDto {
-  @IsBoolean({ message: 'esAdmin debe ser un valor booleano' })
-  esAdmin!: boolean;
+  @IsIn(['usuario', 'vendedor', 'admin'], {
+    message: 'role debe ser usuario, vendedor o admin',
+  })
+  role!: RolUsuario;
 }

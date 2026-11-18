@@ -271,13 +271,21 @@ export class ReservasService {
       if (!reserva) throw new NotFoundException('Reserva no encontrada');
       if (reserva.estado === estado) return;
 
-      const siguienteEstado: Partial<Record<EstadoReserva, EstadoReserva>> = {
-        [EstadoReserva.PENDIENTE]: EstadoReserva.LISTA_PARA_RETIRO,
-        [EstadoReserva.LISTA_PARA_RETIRO]: EstadoReserva.RETIRADA,
-      };
-      if (siguienteEstado[reserva.estado] !== estado) {
+      const estadosPermitidos: Partial<Record<EstadoReserva, EstadoReserva[]>> =
+        {
+          [EstadoReserva.PENDIENTE]: [
+            EstadoReserva.LISTA_PARA_RETIRO,
+            EstadoReserva.RETIRADA,
+          ],
+          [EstadoReserva.LISTA_PARA_RETIRO]: [EstadoReserva.RETIRADA],
+          [EstadoReserva.RETIRADA]: [
+            EstadoReserva.PENDIENTE,
+            EstadoReserva.LISTA_PARA_RETIRO,
+          ],
+        };
+      if (!estadosPermitidos[reserva.estado]?.includes(estado)) {
         throw new BadRequestException(
-          'El vendedor solo puede marcar reservas pendientes como listas para retiro y las listas como retiradas',
+          'El vendedor solo puede completar o deshacer la entrega de sus reservas',
         );
       }
 

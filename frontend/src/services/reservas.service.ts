@@ -102,7 +102,10 @@ export async function cambiarEstadoReserva(
 
 export async function cambiarEstadoReservaVendedor(
   idReserva: number,
-  estado: Extract<EstadoReserva, 'LISTA_PARA_RETIRO' | 'RETIRADA'>,
+  estado: Extract<
+    EstadoReserva,
+    'PENDIENTE' | 'LISTA_PARA_RETIRO' | 'RETIRADA'
+  >,
 ): Promise<Reserva> {
   const { data } = await api.patch<Reserva>(
     `/reservas/vendedor/${idReserva}/estado`,

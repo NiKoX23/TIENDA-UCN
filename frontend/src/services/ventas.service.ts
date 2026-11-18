@@ -43,6 +43,7 @@ export interface DocumentoTac {
     firmaVendedor: FirmaEstado;
     estado: EstadoTac;
     tieneVenta: boolean;
+    tieneArchivoPdf: boolean;
 }
 
 export interface PayloadDocumentoTac {
@@ -112,19 +113,39 @@ export async function actualizarFirmas(idTac: number, payload: PayloadFirmas): P
     return data;
 }
 
-export async function crearDocumentoTac(payload: PayloadDocumentoTac): Promise<DocumentoTac> {
-    const { data } = await api.post<DocumentoTac>('/ventas/admin/tac', payload);
+function crearFormularioDocumento(payload: PayloadDocumentoTac, archivo?: File): FormData {
+    const formulario = new FormData();
+    Object.entries(payload).forEach(([clave, valor]) => {
+        if (valor !== undefined) formulario.append(clave, String(valor));
+    });
+    if (archivo) formulario.append('archivo', archivo);
+    return formulario;
+}
+
+export async function crearDocumentoTac(payload: PayloadDocumentoTac, archivo: File): Promise<DocumentoTac> {
+    const { data } = await api.post<DocumentoTac>(
+        '/ventas/admin/tac',
+        crearFormularioDocumento(payload, archivo),
+    );
     return data;
 }
 
 export async function actualizarDocumentoTac(
     idTac: number,
     payload: PayloadDocumentoTac,
+    archivo?: File,
 ): Promise<DocumentoTac> {
-    const { data } = await api.patch<DocumentoTac>(`/ventas/admin/tac/${idTac}`, payload);
+    const { data } = await api.patch<DocumentoTac>(
+        `/ventas/admin/tac/${idTac}`,
+        archivo ? crearFormularioDocumento(payload, archivo) : payload,
+    );
     return data;
 }
 
 export async function eliminarDocumentoTac(idTac: number): Promise<void> {
     await api.delete(`/ventas/admin/tac/${idTac}`);
+}
+
+export function urlArchivoDocumentoTac(idTac: number): string {
+    return api.getUri({ url: `/ventas/admin/tac/${idTac}/archivo` });
 }

@@ -58,6 +58,10 @@ DB.sql
 package*.json
 
 /docs/
+!/docs/
+/docs/*
+!/docs/documentos_tac_archivos.sql
+!/docs/productos_imagenes.sql
 catalogo.xlsx
 *catalogo.xlsx
 Inventario.xlsx

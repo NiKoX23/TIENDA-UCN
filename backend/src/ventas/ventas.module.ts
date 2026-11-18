@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ArchivosModule } from '../common/archivos.module';
 import { Usuario } from '../auth/usuario.entity';
 import { Cliente } from '../clientes/cliente.entity';
 import { Factura } from '../facturacion/factura.entity';
@@ -14,6 +15,7 @@ import { VentasListadoService } from './ventas-listado.service';
 
 @Module({
   imports: [
+    ArchivosModule,
     TypeOrmModule.forFeature([
       Factura,
       Salida,

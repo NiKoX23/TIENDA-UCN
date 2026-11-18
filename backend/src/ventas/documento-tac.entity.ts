@@ -52,4 +52,15 @@ export class DocumentoTac {
     default: 'Pendiente',
   })
   firmaVendedor!: FirmaEstado;
+
+  @Column({
+    name: 'archivo_pdf',
+    type: 'bytea',
+    nullable: true,
+    select: false,
+  })
+  archivoPdf!: Buffer | null;
+
+  @Column({ name: 'archivo_pdf_disponible', type: 'boolean', default: false })
+  archivoPdfDisponible!: boolean;
 }

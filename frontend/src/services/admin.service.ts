@@ -15,8 +15,16 @@ export async function listarUsuarios(): Promise<AdminUsuario[]> {
     return data;
 }
 
-export async function cambiarRol(uid: number, esAdmin: boolean): Promise<{ uid: number; esAdmin: boolean }> {
-    const { data } = await api.patch<{ uid: number; esAdmin: boolean }>(`/auth/admin/usuarios/${uid}/rol`, { esAdmin });
+export async function cambiarRol(
+    uid: number,
+    role: 'usuario' | 'vendedor' | 'admin',
+): Promise<{ uid: number; role: 'usuario' | 'vendedor' | 'admin'; esAdmin: boolean; esVendedor: boolean }> {
+    const { data } = await api.patch<{
+        uid: number;
+        role: 'usuario' | 'vendedor' | 'admin';
+        esAdmin: boolean;
+        esVendedor: boolean;
+    }>(`/auth/admin/usuarios/${uid}/rol`, { role });
     return data;
 }
 

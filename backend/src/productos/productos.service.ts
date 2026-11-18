@@ -9,6 +9,8 @@ import { Repository } from 'typeorm';
 import { Categoria } from './categoria.entity';
 import { Producto } from './producto.entity';
 import { VarianteProducto } from './variante-producto.entity';
+import { ArchivosService } from '../common/archivos.service';
+import { ArchivoSubido } from '../common/archivos.types';
 import {
   ActualizarProductoDto,
   ActualizarVarianteDto,
@@ -51,6 +53,7 @@ export class ProductosService {
     private readonly categoriaRepository: Repository<Categoria>,
     @InjectRepository(VarianteProducto)
     private readonly varianteRepository: Repository<VarianteProducto>,
+    private readonly archivosService: ArchivosService,
   ) {}
 
   async listar() {
@@ -191,7 +194,7 @@ export class ProductosService {
     };
   }
 
-  async crearProducto(dto: CrearProductoDto) {
+  async crearProducto(dto: CrearProductoDto, archivo?: ArchivoSubido) {
     const codigoProducto = dto.codigoProducto.trim().toUpperCase();
 
     const existente = await this.productoRepository.findOne({
@@ -218,33 +221,52 @@ export class ProductosService {
       throw new ConflictException(`Ya existe una variante con SKU ${sku}`);
     }
 
-    const producto = await this.productoRepository.save(
-      this.productoRepository.create({
-        codigoProducto,
-        categoria,
-        nombre: dto.nombre.trim(),
-        descripcion: dto.descripcion?.trim() || null,
-        marca: dto.marca?.trim() || null,
-        costoAdquisicion: dto.costoAdquisicion,
-        precioVenta: dto.precioVenta,
-        precioTac: dto.precioTac ?? null,
-        imagenUrl: dto.imagenUrl?.trim() || null,
-        activo: dto.activo ?? true,
-      }),
-    );
+    const imagenUrl = archivo
+      ? await this.archivosService.guardarImagen(archivo)
+      : dto.imagenUrl?.trim() || null;
 
-    await this.varianteRepository.save(
-      this.varianteRepository.create({
-        producto,
-        talla: dto.variante.talla.trim() || 'unica',
-        color: dto.variante.color?.trim() || null,
-        sku,
-        stock: dto.variante.stock,
-        stockMinimo: dto.variante.stockMinimo,
-      }),
-    );
+    try {
+      const resultado = await this.productoRepository.manager.transaction(
+        async (manager) => {
+          const producto = await manager.getRepository(Producto).save(
+            manager.getRepository(Producto).create({
+              codigoProducto,
+              categoria,
+              nombre: dto.nombre.trim(),
+              descripcion: dto.descripcion?.trim() || null,
+              marca: dto.marca?.trim() || null,
+              costoAdquisicion: dto.costoAdquisicion,
+              precioVenta: dto.precioVenta,
+              precioTac: dto.precioTac ?? null,
+              imagenUrl,
+              activo: dto.activo ?? true,
+            }),
+          );
 
-    return { codigoProducto: producto.codigoProducto, nombre: producto.nombre };
+          await manager.getRepository(VarianteProducto).save(
+            manager.getRepository(VarianteProducto).create({
+              producto,
+              talla: dto.variante.talla.trim() || 'unica',
+              color: dto.variante.color?.trim() || null,
+              sku,
+              stock: dto.variante.stock,
+              stockMinimo: dto.variante.stockMinimo,
+            }),
+          );
+
+          return {
+            codigoProducto: producto.codigoProducto,
+            nombre: producto.nombre,
+          };
+        },
+      );
+      return resultado;
+    } catch (error) {
+      if (archivo && imagenUrl) {
+        await this.archivosService.eliminarImagen(imagenUrl);
+      }
+      throw error;
+    }
   }
 
   async actualizarProducto(codigoProducto: string, dto: ActualizarProductoDto) {

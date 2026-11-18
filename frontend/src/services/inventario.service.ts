@@ -58,6 +58,7 @@ export interface NuevoProductoPayload {
     precioVenta: number;
     precioTac?: number;
     imagenUrl?: string;
+    archivo?: File;
     activo?: boolean;
     variante: VariantePayload;
 }
@@ -80,7 +81,14 @@ export async function ajustarStock(sku: string, stock: number): Promise<{ sku: s
 }
 
 export async function crearProducto(payload: NuevoProductoPayload): Promise<{ codigoProducto: string; nombre: string }> {
-    const { data } = await api.post('/productos/admin/inventario', payload);
+    const { archivo, variante, ...campos } = payload;
+    const formulario = new FormData();
+    Object.entries(campos).forEach(([clave, valor]) => {
+        if (valor !== undefined) formulario.append(clave, String(valor));
+    });
+    formulario.append('variante', JSON.stringify(variante));
+    if (archivo) formulario.append('archivo', archivo);
+    const { data } = await api.post('/productos/admin/inventario', formulario);
     return data;
 }
 

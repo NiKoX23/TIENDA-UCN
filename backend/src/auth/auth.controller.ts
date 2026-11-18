@@ -18,10 +18,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
-import {
-  JwtAuthGuard,
-  OptionalJwtAuthGuard,
-} from './guards/jwt-auth.guard';
+import { JwtAuthGuard, OptionalJwtAuthGuard } from './guards/jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
@@ -111,8 +108,7 @@ export class AuthController {
   async callbackGoogle(@Req() req: GoogleAuthRequest, @Res() res: Response) {
     const { access_token } = await this.authService.loginConGoogle(req.user);
     res.cookie('access_token', access_token, COOKIE_OPTIONS);
-    const frontendUrl = this.config.get('FRONTEND_URL');
-    res.redirect(frontendUrl);
+    res.redirect(this.config.getOrThrow<string>('FRONTEND_URL'));
   }
 
   @Get('admin/usuarios')
@@ -133,7 +129,7 @@ export class AuthController {
     return this.authService.cambiarRolAdmin(
       req.user.uid,
       Number(uid),
-      dto.esAdmin,
+      dto.role,
     );
   }
 

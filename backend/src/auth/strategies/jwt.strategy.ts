@@ -11,13 +11,16 @@ import { VendedorBiblioteca } from '../../reservas/vendedor-biblioteca.entity';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    config: ConfigService,
+    private config: ConfigService,
     @InjectRepository(Usuario) private usuarioRepository: Repository<Usuario>,
     @InjectRepository(VendedorBiblioteca)
     private vendedorRepository: Repository<VendedorBiblioteca>,
   ) {
     super({
-      jwtFromRequest: (req: Request) => req?.cookies?.access_token ?? null,
+      jwtFromRequest: (req: Request) =>
+        typeof req?.cookies?.access_token === 'string'
+          ? req.cookies.access_token
+          : null,
       ignoreExpiration: false,
       secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
     });
@@ -44,8 +47,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       uid: usuario.uid,
       nombre: usuario.nombre,
       email: usuario.email,
-      esAdmin: usuario.esAdmin,
+      esAdmin:
+        usuario.esAdmin ||
+        this.obtenerEmailsAdmin().includes(usuario.email.trim().toLowerCase()),
       esVendedor,
     };
+  }
+
+  private obtenerEmailsAdmin(): string[] {
+    return (this.config.get<string>('ADMIN_EMAILS', '') ?? '')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
   }
 }

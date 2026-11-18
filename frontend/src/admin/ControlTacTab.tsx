@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { formatearCLP } from '../utils/precio';
+import ArchivoUpload from '../components/ArchivoUpload';
+import {
+    obtenerConfiguracionArchivos,
+    type ConfiguracionArchivos,
+} from '../services/archivos.service';
 import { useListaPaginada } from '../hooks/useListaPaginada';
 import Paginacion from '../components/Paginacion';
 import { listarDocumentosTacPaginado, obtenerResumenTac, type ResumenTac } from '../services/listados.service';
@@ -10,6 +15,7 @@ import {
     actualizarDocumentoTac,
     crearDocumentoTac,
     eliminarDocumentoTac,
+    urlArchivoDocumentoTac,
     type DocumentoTac,
     type FirmaEstado,
     type PayloadDocumentoTac,
@@ -30,7 +36,12 @@ function mensajeError(e: unknown): string {
     if (axios.isAxiosError(e)) {
         const msg = (e.response?.data as { message?: string | string[] })?.message;
         if (Array.isArray(msg)) return msg.join(', ');
-        if (msg) return msg;
+        if (msg) {
+            if (msg.toLowerCase() === 'file too large') {
+                return 'El archivo supera el tamaño máximo permitido.';
+            }
+            return msg;
+        }
     }
     return 'Ocurrió un error inesperado.';
 }
@@ -115,6 +126,9 @@ export default function ControlTacTab() {
     const [formularioAbierto, setFormularioAbierto] = useState(false);
     const [modoEdicion, setModoEdicion] = useState(false);
     const [formulario, setFormulario] = useState<FormularioDocumento>(formularioVacio);
+    const [archivoPdf, setArchivoPdf] = useState<File | null>(null);
+    const [configuracionArchivos, setConfiguracionArchivos] = useState<ConfiguracionArchivos | null>(null);
+    const [errorConfiguracionArchivos, setErrorConfiguracionArchivos] = useState('');
 
     // Filtros, orden y página se resuelven en el servidor; la búsqueda se envía tras una breve pausa.
     const lista = useListaPaginada(listarDocumentosTacPaginado, { filtros: { estado: filtroEstado, orden }, busqueda });
@@ -163,6 +177,20 @@ export default function ControlTacTab() {
     }, []);
 
     useEffect(() => {
+        let activo = true;
+        obtenerConfiguracionArchivos()
+            .then((configuracion) => {
+                if (activo) setConfiguracionArchivos(configuracion);
+            })
+            .catch((e: unknown) => {
+                if (activo) setErrorConfiguracionArchivos(mensajeError(e));
+            });
+        return () => {
+            activo = false;
+        };
+    }, []);
+
+    useEffect(() => {
         listarInventario()
             .then(setInventario)
             .catch((e: unknown) => setError(mensajeError(e)));
@@ -184,6 +212,7 @@ export default function ControlTacTab() {
 
     const abrirNuevo = () => {
         setEditando(null);
+        setArchivoPdf(null);
         setFormulario(formularioVacio());
         setModoEdicion(true);
         setFormularioAbierto(true);
@@ -193,6 +222,7 @@ export default function ControlTacTab() {
 
     const verDocumento = (documento: DocumentoTac) => {
         setEditando(documento);
+        setArchivoPdf(null);
         setFormulario(datosFormulario(documento));
         setModoEdicion(false);
         setFormularioAbierto(true);
@@ -203,6 +233,10 @@ export default function ControlTacTab() {
     const guardarDocumento = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!modoEdicion) return;
+        if (!editando && !archivoPdf) {
+            setError('Adjunta el archivo PDF del documento TAC para crearlo.');
+            return;
+        }
         try {
             setError('');
             setExito('');
@@ -219,8 +253,8 @@ export default function ControlTacTab() {
                 firmaComprador: formulario.firmaComprador,
                 firmaVendedor: formulario.firmaVendedor,
             };
-            if (editando) await actualizarDocumentoTac(editando.idTac, payload);
-            else await crearDocumentoTac(payload);
+            if (editando) await actualizarDocumentoTac(editando.idTac, payload, archivoPdf ?? undefined);
+            else if (archivoPdf) await crearDocumentoTac(payload, archivoPdf);
             lista.recargar();
             await cargarResumen();
             setEditando(null);
@@ -417,6 +451,20 @@ export default function ControlTacTab() {
                                         {ESTADOS_FIRMA.map((estado) => <option key={estado}>{estado}</option>)}
                                     </select>
                                 </label>
+                                <div className="sm:col-span-2">
+                                    <ArchivoUpload
+                                        id="archivo-tac"
+                                        tipo="pdf"
+                                        etiqueta={editando ? 'PDF del documento TAC' : 'PDF del documento TAC *'}
+                                        ayuda={editando?.tieneArchivoPdf
+                                            ? 'El PDF actual se conserva si no seleccionas otro.'
+                                            : 'El PDF se cifra antes de guardarse en la base de datos.'}
+                                        archivo={archivoPdf}
+                                        configuracion={configuracionArchivos}
+                                        errorConfiguracion={errorConfiguracionArchivos}
+                                        alCambiar={setArchivoPdf}
+                                    />
+                                </div>
                             </div>
                         ) : editando ? (
                             <dl className="grid gap-3 sm:grid-cols-2">
@@ -442,6 +490,21 @@ export default function ControlTacTab() {
                                     <dt className="tac-dialog-muted text-[11px]">Firma vendedor</dt>
                                     <dd className="mt-1"><span className={badgeFirma(editando.firmaVendedor)}>{editando.firmaVendedor}</span></dd>
                                 </div>
+                                <div className="tac-dialog-card rounded-lg px-3 py-2 sm:col-span-2">
+                                    <dt className="tac-dialog-muted text-[11px]">Archivo adjunto</dt>
+                                    <dd className="tac-dialog-strong mt-1 text-sm font-medium">
+                                        {editando.tieneArchivoPdf ? (
+                                            <a
+                                                className="tac-primary-button inline-flex"
+                                                href={urlArchivoDocumentoTac(editando.idTac)}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                Abrir PDF
+                                            </a>
+                                        ) : 'Sin PDF adjunto'}
+                                    </dd>
+                                </div>
                             </dl>
                         ) : null}
 
@@ -457,7 +520,7 @@ export default function ControlTacTab() {
                                 {modoEdicion ? (
                                     <>
                                         <button type="button" className={botonSecundarioCls} onClick={() => editando ? setModoEdicion(false) : cerrarFormulario()}>Cancelar</button>
-                                        <button type="submit" className={botonSecundarioCls} disabled={guardando || (!varianteSeleccionada && !editando?.tieneVenta)}>{guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear documento'}</button>
+                                        <button type="submit" className={botonSecundarioCls} disabled={guardando || (!varianteSeleccionada && !editando?.tieneVenta) || (!editando && !archivoPdf)}>{guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear documento'}</button>
                                     </>
                                 ) : editando ? (
                                     <button type="button" className={botonSecundarioCls} onClick={() => setModoEdicion(true)}>Editar documento</button>

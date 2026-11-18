@@ -5,8 +5,12 @@ import {
   Param,
   Patch,
   Post,
+  UploadedFile,
+  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { ArchivoSubido } from '../common/archivos.types';
 import { ProductosService } from './productos.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -44,8 +48,12 @@ export class ProductosAdminController {
   }
 
   @Post('inventario')
-  crearProducto(@Body() dto: CrearProductoDto) {
-    return this.productosService.crearProducto(dto);
+  @UseInterceptors(FileInterceptor('archivo'))
+  crearProducto(
+    @Body() dto: CrearProductoDto,
+    @UploadedFile() archivo?: ArchivoSubido,
+  ) {
+    return this.productosService.crearProducto(dto, archivo);
   }
 
   @Patch('inventario/:codigoProducto')

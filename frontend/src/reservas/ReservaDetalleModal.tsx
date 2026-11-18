@@ -120,7 +120,7 @@ export default function ReservaDetalleModal({
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
             <span className={`reserva-status reserva-status--${reserva.estado.toLowerCase().replaceAll('_', '-')}`}>
               {esVendedor && reserva.estado === 'RETIRADA'
-                ? 'Retirada'
+                ? 'Entregada'
                 : ETIQUETAS_ESTADO[reserva.estado]}
             </span>
             {onCancelar && reserva.estado === 'PENDIENTE' && (

@@ -150,26 +150,38 @@ export default function ReservaForm({
 
         <label className="block space-y-1.5 text-sm font-semibold">
           Horario disponible
-          <select
-            className="vcm-input w-full"
-            value={idHorario}
-            onChange={(event) => setIdHorario(event.target.value)}
-            disabled={cargandoHorarios || horarios.length === 0}
-            required
-          >
-            <option value="">
-              {cargandoHorarios
-                ? 'Buscando horarios...'
-                : horarios.length === 0
-                  ? 'No hay horarios disponibles'
-                  : 'Selecciona un horario'}
-            </option>
-            {horarios.map((horario) => (
-              <option key={horario.idHorario} value={horario.idHorario}>
-                {horario.horaInicio}–{horario.horaTermino} · {horario.vendedor.nombre}
+          <div className="relative">
+            <select
+              className="vcm-input w-full appearance-none pr-12"
+              value={idHorario}
+              onChange={(event) => setIdHorario(event.target.value)}
+              disabled={cargandoHorarios || horarios.length === 0}
+              required
+            >
+              <option value="">
+                {cargandoHorarios
+                  ? 'Buscando horarios...'
+                  : horarios.length === 0
+                    ? 'No hay horarios disponibles'
+                    : 'Selecciona un horario'}
               </option>
-            ))}
-          </select>
+              {horarios.map((horario) => (
+                <option key={horario.idHorario} value={horario.idHorario}>
+                  {horario.horaInicio}–{horario.horaTermino} · {horario.vendedor.nombre}
+                </option>
+              ))}
+            </select>
+            <svg
+              className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-soft)]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
         </label>
         {errorHorarios && <p className="vcm-alert" role="alert">{errorHorarios}</p>}
         {!cargandoHorarios && !errorHorarios && horarios.length === 0 && (

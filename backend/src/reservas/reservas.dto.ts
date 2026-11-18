@@ -101,6 +101,10 @@ export class ActualizarEstadoReservaDto {
 }
 
 export class ActualizarEstadoReservaVendedorDto {
-  @IsIn([EstadoReserva.LISTA_PARA_RETIRO, EstadoReserva.RETIRADA])
+  @IsIn([
+    EstadoReserva.PENDIENTE,
+    EstadoReserva.LISTA_PARA_RETIRO,
+    EstadoReserva.RETIRADA,
+  ])
   estado!: EstadoReserva;
 }

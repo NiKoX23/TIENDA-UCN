@@ -1,4 +1,5 @@
-import { Type } from 'class-transformer';
+import { BadRequestException } from '@nestjs/common';
+import { plainToInstance, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -84,6 +85,16 @@ export class CrearProductoDto {
   activo?: boolean;
 
   @ValidateNested()
+  @Transform(({ value }: { value: unknown }) => {
+    if (typeof value !== 'string') return value;
+    try {
+      return plainToInstance(VarianteDto, JSON.parse(value) as object);
+    } catch {
+      throw new BadRequestException(
+        'La variante del producto no tiene un formato válido.',
+      );
+    }
+  })
   @Type(() => VarianteDto)
   variante!: VarianteDto;
 }
