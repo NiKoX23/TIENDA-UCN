@@ -12,11 +12,13 @@ import { VentasModule } from './ventas/ventas.module';
 import { ExportModule } from './export/export.module';
 import { ReservasModule } from './reservas/reservas.module';
 import { ArchivosModule } from './common/archivos.module';
+import { AnalistaModule } from './analista/analista.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ArchivosModule,
+    AnalistaModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

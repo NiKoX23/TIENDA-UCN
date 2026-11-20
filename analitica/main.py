@@ -2,9 +2,12 @@ import os
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Request
 import psycopg
 from psycopg.rows import dict_row
+from analytics import ingresos as analytics_ingresos
+from analytics import prediccion as analytics_prediccion
+from analytics import resumen as analytics_resumen
 
 app = FastAPI(title="Analitica Tienda UCN")
 
@@ -289,3 +292,42 @@ def registro_ventas():
         ]
     except (psycopg.Error, RuntimeError, ValueError) as exc:
         raise HTTPException(status_code=503, detail=f"No se pudo consultar el registro de ventas en la base de datos: {exc}") from exc
+
+
+@app.get("/analytics/ingresos")
+def analytics_ingresos_endpoint(
+    request: Request,
+    meses_hist: int = Query(default=12, ge=1, le=60),
+    categoria: str | None = Query(default=None, max_length=50),
+    producto_id: str | None = Query(default=None, max_length=15),
+):
+    from analytics import _authorized
+
+    _authorized(request)
+    return analytics_ingresos(meses_hist, categoria, producto_id)
+
+
+@app.get("/analytics/prediccion")
+def analytics_prediccion_endpoint(
+    request: Request,
+    meses: int = Query(default=3, ge=1, le=24),
+    categoria: str | None = Query(default=None, max_length=50),
+    producto_id: str | None = Query(default=None, max_length=15),
+):
+    from analytics import _authorized
+
+    _authorized(request)
+    return analytics_prediccion(meses, categoria, producto_id)
+
+
+@app.get("/analytics/resumen")
+def analytics_resumen_endpoint(
+    request: Request,
+    meses: int = Query(default=3, ge=1, le=24),
+    categoria: str | None = Query(default=None, max_length=50),
+    producto_id: str | None = Query(default=None, max_length=15),
+):
+    from analytics import _authorized
+
+    _authorized(request)
+    return analytics_resumen(meses, categoria, producto_id)

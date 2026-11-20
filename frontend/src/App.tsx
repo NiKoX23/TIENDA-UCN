@@ -1,19 +1,20 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import Login from './login/Login';
-import Register from './register/Register';
 import { logout, obtenerPerfil } from './services/auth.service';
 import type { Usuario } from './services/auth.service';
 import { claveAvisoTurnosVendedor } from './services/horarios-venta.service';
 import TurnoVendedorAviso from './components/TurnoVendedorAviso';
-import Tienda from './tienda/Tienda';
-import Perfil from './perfil/Perfil';
-import DetalleProducto from './productos/DetalleProducto';
-import AdminPanel from './admin/AdminPanel';
-import MisReservas from './reservas/MisReservas';
-import MisHorarios from './reservas/MisHorarios';
-import ReservasVendedor from './reservas/ReservasVendedor';
-import MisVentas from './ventas/MisVentas';
+
+const Login = lazy(() => import('./login/Login'));
+const Register = lazy(() => import('./register/Register'));
+const Tienda = lazy(() => import('./tienda/Tienda'));
+const Perfil = lazy(() => import('./perfil/Perfil'));
+const DetalleProducto = lazy(() => import('./productos/DetalleProducto'));
+const AdminPanel = lazy(() => import('./admin/AdminPanel'));
+const MisReservas = lazy(() => import('./reservas/MisReservas'));
+const MisHorarios = lazy(() => import('./reservas/MisHorarios'));
+const ReservasVendedor = lazy(() => import('./reservas/ReservasVendedor'));
+const MisVentas = lazy(() => import('./ventas/MisVentas'));
 
 type Theme = 'dark' | 'light';
 
@@ -72,6 +73,7 @@ export default function App() {
                     <span className="vcm-spinner">Cargando...</span>
                 </div>
             ) : (
+                <Suspense fallback={<div className="vcm-auth"><span className="vcm-spinner">Cargando sección...</span></div>}>
                 <Routes>
                     <Route
                         path="/"
@@ -164,6 +166,7 @@ export default function App() {
                     <Route path="/login" element={<Login tema={tema} onAuthenticated={setUsuario} />} />
                     <Route path="/register" element={<Register tema={tema} onAuthenticated={setUsuario} />} />
                 </Routes>
+                </Suspense>
             )}
         </div>
     );

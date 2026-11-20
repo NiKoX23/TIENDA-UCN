@@ -17,10 +17,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private vendedorRepository: Repository<VendedorBiblioteca>,
   ) {
     super({
-      jwtFromRequest: (req: Request) =>
-        typeof req?.cookies?.access_token === 'string'
-          ? req.cookies.access_token
-          : null,
+      jwtFromRequest: (req: Request) => {
+        if (typeof req?.cookies?.access_token === 'string') {
+          return req.cookies.access_token;
+        }
+        const authorization = req?.headers?.authorization;
+        return authorization?.toLowerCase().startsWith('bearer ')
+          ? authorization.slice(7).trim()
+          : null;
+      },
       ignoreExpiration: false,
       secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
     });

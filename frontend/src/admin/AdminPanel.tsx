@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import type { Usuario } from '../services/auth.service';
 import BackToStore from '../components/BackToStore';
@@ -10,15 +10,16 @@ import type { AdminRole } from '../components/admin/adminRoles';
 import { BrandBlocks } from '../components/brand/BrandFigures';
 import { cambiarRol, eliminarUsuario, type AdminUsuario } from '../services/admin.service';
 import { listarUsuariosPaginado } from '../services/listados.service';
-import InventarioTab from './InventarioTab';
-import DashboardTab from './DashboardTab';
-import VentasTab from './VentasTab';
-import ControlTacTab from './ControlTacTab';
 import { exportarTodo, exportarUsuarios } from '../services/export.service';
 import { useListaPaginada } from '../hooks/useListaPaginada';
 import Paginacion from '../components/Paginacion';
-import ReservasPanel from '../reservas/ReservasPanel';
-import VendedoresTab from './VendedoresTab';
+const InventarioTab = lazy(() => import('./InventarioTab'));
+const DashboardTab = lazy(() => import('./DashboardTab'));
+const VentasTab = lazy(() => import('./VentasTab'));
+const ControlTacTab = lazy(() => import('./ControlTacTab'));
+const ReservasPanel = lazy(() => import('../reservas/ReservasPanel'));
+const VendedoresTab = lazy(() => import('./VendedoresTab'));
+const AnalistaTab = lazy(() => import('./AnalistaTab'));
 
 interface AdminPanelProps {
     tema: 'dark' | 'light';
@@ -26,7 +27,7 @@ interface AdminPanelProps {
     usuario: Usuario;
 }
 
-type TabId = 'inicio' | 'inventario' | 'ventas' | 'tac' | 'reservas' | 'vendedores' | 'usuarios';
+type TabId = 'inicio' | 'inventario' | 'ventas' | 'tac' | 'reservas' | 'vendedores' | 'analista' | 'usuarios';
 
 const TABS: { id: TabId; label: string }[] = [
     { id: 'inicio', label: 'Inicio' },
@@ -35,6 +36,7 @@ const TABS: { id: TabId; label: string }[] = [
     { id: 'tac', label: 'Control TAC' },
     { id: 'reservas', label: 'Reservas' },
     { id: 'vendedores', label: 'Vendedores' },
+    { id: 'analista', label: 'Análisis predictivo' },
     { id: 'usuarios', label: 'Usuarios' },
 ];
 
@@ -62,6 +64,10 @@ const CONTENIDO_TAB: Record<TabId, { titulo: string; descripcion: string }> = {
     vendedores: {
         titulo: 'Vendedores de biblioteca',
         descripcion: 'Administra vendedores y asigna horarios para las ventas presenciales.',
+    },
+    analista: {
+        titulo: 'Análisis predictivo',
+        descripcion: 'Explora ingresos históricos y proyecciones de ventas.',
     },
     usuarios: {
         titulo: 'Usuarios',
@@ -297,6 +303,14 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
         confirmacion.usuario.esVendedor &&
         confirmacion.nuevoRol !== 'vendedor';
 
+    if (tab === 'analista') {
+        return (
+            <Suspense fallback={<div className="analista-state" role="status">Cargando análisis…</div>}>
+                <AnalistaTab />
+            </Suspense>
+        );
+    }
+
     return (
         <main className="vcm-page vcm-admin-page flex flex-col items-center px-5 pb-12 pt-8">
             <BackToStore className="mb-8 self-start" />
@@ -348,6 +362,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                     {errorVisible && <p className="vcm-alert mt-4 text-center" role="alert">{errorVisible}</p>}
                     {exito && <p className="vcm-alert vcm-alert--success mt-4 text-center" role="status">{exito}</p>}
 
+                    <Suspense fallback={<div className="vcm-spinner mt-8" role="status">Cargando sección...</div>}>
                     <div key={tab} className="vcm-tab-panel" role="tabpanel">
                         {tab === 'inicio' && (
                             <div className="mt-6">
@@ -555,6 +570,7 @@ export default function AdminPanel({ tema, onToggleTema, usuario }: AdminPanelPr
                             </>
                         )}
                     </div>
+                    </Suspense>
                 </div>
             </div>
             {toast && (
